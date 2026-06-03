@@ -1,0 +1,531 @@
+{
+  "subjects": [
+    {
+      "id": "sub-1",
+      "name": "Mathematics"
+    },
+    {
+      "id": "sub-2",
+      "name": "Physics"
+    },
+    {
+      "id": "sub-3",
+      "name": "Chemistry"
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-1",
+      "name": "Algebra",
+      "subject_id": "sub-1"
+    },
+    {
+      "id": "topic-2",
+      "name": "Calculus",
+      "subject_id": "sub-1"
+    },
+    {
+      "id": "topic-3",
+      "name": "Mechanics",
+      "subject_id": "sub-2"
+    },
+    {
+      "id": "topic-4",
+      "name": "Electromagnetism",
+      "subject_id": "sub-2"
+    },
+    {
+      "id": "topic-5",
+      "name": "Organic Chemistry",
+      "subject_id": "sub-3"
+    },
+    {
+      "id": "topic-6",
+      "name": "Inorganic Chemistry",
+      "subject_id": "sub-3"
+    }
+  ],
+  "sub_topics": [
+    {
+      "id": "subtopic-1",
+      "name": "Quadratic Equations",
+      "topic_id": "topic-1"
+    },
+    {
+      "id": "subtopic-2",
+      "name": "Matrices",
+      "topic_id": "topic-1"
+    },
+    {
+      "id": "subtopic-3",
+      "name": "Limits & Continuity",
+      "topic_id": "topic-2"
+    },
+    {
+      "id": "subtopic-4",
+      "name": "Integration",
+      "topic_id": "topic-2"
+    },
+    {
+      "id": "subtopic-5",
+      "name": "Kinematics",
+      "topic_id": "topic-3"
+    },
+    {
+      "id": "subtopic-6",
+      "name": "Newton's Laws",
+      "topic_id": "topic-3"
+    },
+    {
+      "id": "subtopic-7",
+      "name": "Electrostatics",
+      "topic_id": "topic-4"
+    },
+    {
+      "id": "subtopic-8",
+      "name": "Magnetic Effects of Current",
+      "topic_id": "topic-4"
+    },
+    {
+      "id": "subtopic-9",
+      "name": "Alkanes & Alkenes",
+      "topic_id": "topic-5"
+    },
+    {
+      "id": "subtopic-10",
+      "name": "Alcohols & Phenols",
+      "topic_id": "topic-5"
+    },
+    {
+      "id": "subtopic-11",
+      "name": "Chemical Bonding",
+      "topic_id": "topic-6"
+    },
+    {
+      "id": "subtopic-12",
+      "name": "Coordination Compounds",
+      "topic_id": "topic-6"
+    }
+  ],
+  "tests": [
+    {
+      "id": "test-1",
+      "name": "Algebra Core Concepts",
+      "type": "practice",
+      "subject": "Mathematics",
+      "subject_id": "sub-1",
+      "topics": [
+        "topic-1"
+      ],
+      "sub_topics": [
+        "subtopic-1"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "difficulty": "easy",
+      "total_time": 45,
+      "total_marks": 100,
+      "total_questions": 2,
+      "status": "live",
+      "questions": [
+        "q-test-1-1780484098534-0",
+        "q-test-1-1780484818426-1"
+      ],
+      "created_at": "2026-05-10T10:00:00Z"
+    },
+    {
+      "id": "test-2",
+      "name": "Calculus Foundations",
+      "type": "practice",
+      "subject": "Mathematics",
+      "subject_id": "sub-1",
+      "topics": [
+        "topic-2"
+      ],
+      "sub_topics": [
+        "subtopic-3"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "difficulty": "medium",
+      "total_time": 60,
+      "total_marks": 120,
+      "total_questions": 1,
+      "status": "draft",
+      "questions": [
+        "q-test-2-1780484235987-0"
+      ],
+      "created_at": "2026-05-11T11:00:00Z"
+    },
+    {
+      "id": "test-3",
+      "name": "Mechanics Practice Test",
+      "type": "practice",
+      "subject": "Physics",
+      "subject_id": "sub-2",
+      "topics": [
+        "topic-3"
+      ],
+      "sub_topics": [
+        "subtopic-5"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "difficulty": "easy",
+      "total_time": 30,
+      "total_marks": 80,
+      "total_questions": 20,
+      "status": "live",
+      "questions": [],
+      "created_at": "2026-05-12T09:00:00Z"
+    },
+    {
+      "id": "test-4",
+      "name": "Organic Chemistry Basics",
+      "type": "practice",
+      "subject": "Chemistry",
+      "subject_id": "sub-3",
+      "topics": [
+        "topic-5"
+      ],
+      "sub_topics": [
+        "subtopic-9"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": 0,
+      "unattempt_marks": 0,
+      "difficulty": "easy",
+      "total_time": 40,
+      "total_marks": 100,
+      "total_questions": 25,
+      "status": "draft",
+      "questions": [],
+      "created_at": "2026-05-13T14:30:00Z"
+    },
+    {
+      "id": "test-5",
+      "name": "Advanced Algebra Problems",
+      "type": "mock",
+      "subject": "Mathematics",
+      "subject_id": "sub-1",
+      "topics": [
+        "topic-1"
+      ],
+      "sub_topics": [
+        "subtopic-1",
+        "subtopic-2"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "difficulty": "hard",
+      "total_time": 90,
+      "total_marks": 200,
+      "total_questions": 50,
+      "status": "live",
+      "questions": [],
+      "created_at": "2026-05-14T16:00:00Z"
+    },
+    {
+      "id": "test-6",
+      "name": "Integration Techniques",
+      "type": "practice",
+      "subject": "Mathematics",
+      "subject_id": "sub-1",
+      "topics": [
+        "topic-2"
+      ],
+      "sub_topics": [
+        "subtopic-4"
+      ],
+      "correct_marks": 5,
+      "wrong_marks": -2,
+      "unattempt_marks": -0.5,
+      "difficulty": "hard",
+      "total_time": 75,
+      "total_marks": 150,
+      "total_questions": 30,
+      "status": "draft",
+      "questions": [],
+      "created_at": "2026-05-15T08:00:00Z"
+    },
+    {
+      "id": "test-7",
+      "name": "Newton's Laws Workout",
+      "type": "practice",
+      "subject": "Physics",
+      "subject_id": "sub-2",
+      "topics": [
+        "topic-3"
+      ],
+      "sub_topics": [
+        "subtopic-6"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "difficulty": "medium",
+      "total_time": 50,
+      "total_marks": 100,
+      "total_questions": 25,
+      "status": "live",
+      "questions": [],
+      "created_at": "2026-05-16T10:15:00Z"
+    },
+    {
+      "id": "test-8",
+      "name": "Electrostatics Mock",
+      "type": "mock",
+      "subject": "Physics",
+      "subject_id": "sub-2",
+      "topics": [
+        "topic-4"
+      ],
+      "sub_topics": [
+        "subtopic-7"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "difficulty": "medium",
+      "total_time": 60,
+      "total_marks": 120,
+      "total_questions": 30,
+      "status": "draft",
+      "questions": [],
+      "created_at": "2026-05-17T11:45:00Z"
+    },
+    {
+      "id": "test-9",
+      "name": "Inorganic Bonding Exam",
+      "type": "previous_year",
+      "subject": "Chemistry",
+      "subject_id": "sub-3",
+      "topics": [
+        "topic-6"
+      ],
+      "sub_topics": [
+        "subtopic-11"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "difficulty": "easy",
+      "total_time": 60,
+      "total_marks": 120,
+      "total_questions": 30,
+      "status": "live",
+      "questions": [],
+      "created_at": "2026-05-18T13:00:00Z"
+    },
+    {
+      "id": "test-10",
+      "name": "Alcohols and Phenols Quiz",
+      "type": "practice",
+      "subject": "Chemistry",
+      "subject_id": "sub-3",
+      "topics": [
+        "topic-5"
+      ],
+      "sub_topics": [
+        "subtopic-10"
+      ],
+      "correct_marks": 3,
+      "wrong_marks": 0,
+      "unattempt_marks": 0,
+      "difficulty": "easy",
+      "total_time": 30,
+      "total_marks": 60,
+      "total_questions": 20,
+      "status": "draft",
+      "questions": [],
+      "created_at": "2026-05-19T15:20:00Z"
+    },
+    {
+      "id": "test-11",
+      "name": "Matrices & Determinants",
+      "type": "practice",
+      "subject": "Mathematics",
+      "subject_id": "sub-1",
+      "topics": [
+        "topic-1"
+      ],
+      "sub_topics": [
+        "subtopic-2"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "difficulty": "medium",
+      "total_time": 45,
+      "total_marks": 100,
+      "total_questions": 25,
+      "status": "live",
+      "questions": [],
+      "created_at": "2026-05-20T17:00:00Z"
+    },
+    {
+      "id": "test-12",
+      "name": "Limits & Continuity Drill",
+      "type": "practice",
+      "subject": "Mathematics",
+      "subject_id": "sub-1",
+      "topics": [
+        "topic-2"
+      ],
+      "sub_topics": [
+        "subtopic-3"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "difficulty": "easy",
+      "total_time": 40,
+      "total_marks": 80,
+      "total_questions": 20,
+      "status": "draft",
+      "questions": [],
+      "created_at": "2026-05-21T09:30:00Z"
+    },
+    {
+      "id": "test-13",
+      "name": "Magnetic Effects Mock",
+      "type": "mock",
+      "subject": "Physics",
+      "subject_id": "sub-2",
+      "topics": [
+        "topic-4"
+      ],
+      "sub_topics": [
+        "subtopic-8"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "difficulty": "hard",
+      "total_time": 90,
+      "total_marks": 200,
+      "total_questions": 50,
+      "status": "live",
+      "questions": [],
+      "created_at": "2026-05-22T10:45:00Z"
+    },
+    {
+      "id": "test-14",
+      "name": "Coordination Compounds PYQ",
+      "type": "previous_year",
+      "subject": "Chemistry",
+      "subject_id": "sub-3",
+      "topics": [
+        "topic-6"
+      ],
+      "sub_topics": [
+        "subtopic-12"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "difficulty": "hard",
+      "total_time": 60,
+      "total_marks": 120,
+      "total_questions": 30,
+      "status": "draft",
+      "questions": [],
+      "created_at": "2026-05-23T14:15:00Z"
+    },
+    {
+      "id": "test-15",
+      "name": "Physics Kinematics Sprint",
+      "type": "practice",
+      "subject": "Physics",
+      "subject_id": "sub-2",
+      "topics": [
+        "topic-3"
+      ],
+      "sub_topics": [
+        "subtopic-5"
+      ],
+      "correct_marks": 4,
+      "wrong_marks": 0,
+      "unattempt_marks": 0,
+      "difficulty": "easy",
+      "total_time": 20,
+      "total_marks": 40,
+      "total_questions": 10,
+      "status": "live",
+      "questions": [],
+      "created_at": "2026-05-24T16:50:00Z"
+    },
+    {
+      "id": "test-1780483784752",
+      "name": "Verification Test",
+      "subject": "Mathematics",
+      "type": "practice",
+      "topics": [
+        "topic-1"
+      ],
+      "sub_topics": [
+        "subtopic-1"
+      ],
+      "difficulty": "easy",
+      "correct_marks": 5,
+      "wrong_marks": -1,
+      "unattempt_marks": 0,
+      "total_time": 60,
+      "total_marks": 50,
+      "total_questions": 10,
+      "subject_id": "sub-1",
+      "status": null,
+      "questions": [],
+      "created_at": "2026-06-03T10:49:44.753Z"
+    }
+  ],
+  "questions": [
+    {
+      "id": "q-test-2-1780484235987-0",
+      "question": "oops=",
+      "option1": "2",
+      "option2": "5",
+      "option3": "7",
+      "option4": "3",
+      "correct_option": "option1",
+      "explanation": "fae",
+      "difficulty": "easy",
+      "topic_id": "topic-1",
+      "sub_topic_id": "subtopic-3",
+      "type": "mcq",
+      "test_id": "test-2"
+    },
+    {
+      "id": "q-test-1-1780484098534-0",
+      "question": "1+1=__",
+      "option1": "2",
+      "option2": "4",
+      "option3": "6",
+      "option4": "8",
+      "correct_option": "option1",
+      "explanation": "2+2=4",
+      "difficulty": "easy",
+      "topic_id": "topic-2",
+      "sub_topic_id": "subtopic-1",
+      "type": "mcq",
+      "test_id": "test-1"
+    },
+    {
+      "id": "q-test-1-1780484818426-1",
+      "question": "What is the sum of roots of ax^2 + bx + c = 0?",
+      "option1": "b/a",
+      "option2": "c/a",
+      "option3": "-b/a",
+      "option4": "-c/a",
+      "correct_option": "option3",
+      "explanation": "Sum of roots is -b/a",
+      "topic_id": "topic-1",
+      "type": "mcq",
+      "test_id": "test-1"
+    }
+  ]
+}
