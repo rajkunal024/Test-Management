@@ -48,5 +48,10 @@ JWT_SECRET=your_own_key
   - **Secure Cryptography**: Password hashing using pbkdf2Sync (with hex salt), incorporating dynamic database migration of legacy plain-text passwords to hashed passwords on startup.
   - **Cookie-Based Authentication**: Secure HS256 JSON Web Tokens (JWT) signed with `JWT_SECRET` and transmitted via secure, cross-origin `HttpOnly; SameSite=Lax` cookies.
   - **Randomized Question Slices**: Deterministic Fisher-Yates shuffle & Mulberry32 pseudo-random slice based on `studentId-testId` seed, ensuring students receive unique question combinations while maintaining consistent pages on refresh.
-  - **Result Filtering fallback**: Strict question filters on results page ensuring students only see their assigned questions.
+  - **Result Filtering**: Strict question filters on results page ensuring students only see their assigned questions.
   - **Notification Feed**: Live feed alerts generated when a test goes live or when results are declared.
+
+## Author
+
+- **Kunal Raj**
+
