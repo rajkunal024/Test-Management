@@ -29,7 +29,7 @@ const loadEnv = () => {
 loadEnv();
 
 const port = Number(process.env.PORT ?? 4000);
-const mongoUri = process.env.MONGODB_URI ?? "mongodb+srv://rajkunalkr24_db_user:Kunal024@project.cdfwglx.mongodb.net/test";
+const mongoUri = process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017/preproute";
 
 // Connect to MongoDB
 connectDB(mongoUri)

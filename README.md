@@ -34,9 +34,9 @@ VITE_API_BASE_URL=http://127.0.0.1:4000/api
 ```env
 PORT=4000
 FRONTEND_ORIGIN=http://127.0.0.1:5173
-MONGODB_URI=your_mongodb_connection_string
-ADMIN_SIGNUP_KEY=roar
-JWT_SECRET=81f8bff1f1d5205403b336fc674612df7ae7a5767d78d1ca17067a2992b6a9c5
+MONGODB_URI=your_own_key
+ADMIN_SIGNUP_KEY=your_own_key
+JWT_SECRET=your_own_key
 ```
 
 ## Architecture & Core Features

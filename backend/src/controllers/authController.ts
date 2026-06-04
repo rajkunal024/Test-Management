@@ -51,7 +51,7 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
   try {
     const body = JSON.parse(await readBody(request));
     const { userId, password, role } = body;
-    const secret = process.env.JWT_SECRET ?? "81f8bff1f1d5205403b336fc674612df7ae7a5767d78d1ca17067a2992b6a9c5";
+    const secret = process.env.JWT_SECRET ?? "dev_jwt_secret_key_change_me";
 
     if (role === "Admin") {
       const admin = await AdminModel.findOne({ userId });
