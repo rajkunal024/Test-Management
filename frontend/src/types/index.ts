@@ -5,11 +5,15 @@ export interface User {
   role?: string;
   email?: string;
   avatarUrl?: string;
+  subject?: string;
+  dob?: string;
 }
 
 export interface LoginRequest {
   userId: string;
   password: string;
+  role?: string;
+  subject?: string;
 }
 
 export interface AuthResponse {
@@ -43,8 +47,9 @@ export interface Test {
   id: string;
   name: string;
   type: string;
-  subject: string;
+  subject: string | string[];
   subject_id?: string;
+  subject_ids?: string[];
   topics: string[];
   sub_topics: string[];
   correct_marks: number;
@@ -57,6 +62,9 @@ export interface Test {
   status: TestStatus;
   questions: string[];
   created_at: string;
+  start_time?: string;
+  end_time?: string;
+  results_shared?: boolean;
 }
 
 export interface Question {
@@ -74,12 +82,18 @@ export interface Question {
   topic_id?: string;
   sub_topic_id?: string;
   media_url?: string;
+  new_topic_name?: string;
+  new_sub_topic_name?: string;
+  topic_name?: string;
+  sub_topic_name?: string;
+  subject_id?: string;
 }
 
 export interface TestPayload {
   name: string;
-  subject: string;
+  subject: string | string[];
   subject_id?: string;
+  subject_ids?: string[];
   type: TestType;
   topics: string[];
   sub_topics: string[];
@@ -92,10 +106,55 @@ export interface TestPayload {
   total_questions: number;
   status: TestStatus;
   questions?: string[];
+  start_time?: string;
+  end_time?: string;
+  results_shared?: boolean;
 }
 
 export interface ApiEnvelope<T> {
   success?: boolean;
   data?: T;
   message?: string;
+}
+
+export interface Attempt {
+  id?: string;
+  test_id: string;
+  test_name?: string;
+  user_id: string;
+  score: number;
+  total_marks?: number;
+  correct_answers: number;
+  wrong_answers: number;
+  unattempted: number;
+  answers: Record<string, string>;
+  time_spent: number;
+  submitted_at: string;
+  test_copy?: Array<{
+    id?: string;
+    question: string;
+    option1: string;
+    option2: string;
+    option3: string;
+    option4: string;
+    correct_option: string;
+    selected_option?: string;
+  }>;
+}
+
+export interface AttemptPayload {
+  test_id: string;
+  user_id?: string;
+  answers: Record<string, string>;
+  time_spent: number;
+}
+
+export interface AppNotification {
+  id: string;
+  message: string;
+  type: "test_live" | "result_declared";
+  test_id: string;
+  test_name: string;
+  read: boolean;
+  created_at: string;
 }

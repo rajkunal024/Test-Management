@@ -1,22 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Calendar, CheckCircle2, Clock, Pencil } from "lucide-react";
+import { CheckCircle2, Clock, Pencil } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
-import { Select } from "../components/ui/Select";
 import { Spinner } from "../components/ui/Spinner";
 import { Toast } from "../components/ui/Toast";
 import { fetchBulkQuestions, getErrorMessage, publishTest } from "../services/api";
 import { useSubTopics, useTest, useTopics } from "../hooks/useTests";
+import { useAuthStore } from "../store/authStore";
+
+const getTodayDateString = () => {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
 
 export const PreviewPublishPage = () => {
+  const user = useAuthStore((state) => state.user);
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const { data: test, isLoading } = useTest(id);
+
+  useEffect(() => {
+    if (user && user.role !== "Admin") {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
@@ -83,7 +96,11 @@ export const PreviewPublishPage = () => {
             <div className="flex flex-wrap items-center gap-3">
               <Badge tone="blue">Chapter Wise</Badge>
               <h2 className="font-bold text-slate-900">📚 Chapter 1</h2>
-              <Badge tone="green">{test.difficulty}</Badge>
+              <Badge tone={
+                (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" : 
+                (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" : 
+                (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
+              }>{test.difficulty}</Badge>
             </div>
             <Link to={`/tests/${id}/edit`} title="Edit test details">
               <Pencil className="h-4 w-4 text-primary-600" />
@@ -120,36 +137,7 @@ export const PreviewPublishPage = () => {
           </div>
         </section>
 
-        <div className="mb-6 inline-flex rounded-md border border-slate-200 bg-white p-1">
-          <button className="h-10 min-w-[142px] rounded-md bg-white px-4 text-sm font-bold text-slate-900">Publish Now</button>
-          <button className="h-10 min-w-[156px] rounded-md px-4 text-sm font-semibold text-slate-400">Schedule Publish</button>
-        </div>
 
-        <section className="mb-8">
-          <h2 className="mb-3 text-sm font-bold text-slate-800">Live Until</h2>
-          <p className="mb-5 text-sm text-slate-600">Choose how long this test should remain available on the platform.</p>
-          <div className="mb-6 grid gap-5 md:grid-cols-2">
-            {["Always Available", "3 Weeks", "1 Week", "1 Month", "2 Weeks", "Custom Duration"].map((label, index) => (
-              <label key={label} className="flex items-center gap-3 text-sm font-medium text-slate-600">
-                <input type="radio" name="liveUntil" defaultChecked={index === 5} className="h-4 w-4 accent-[#6c7df7]" />
-                {label}
-              </label>
-            ))}
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="relative block">
-              <input className="h-12 w-full rounded-md border border-slate-300 px-4 pr-10 text-sm outline-none" placeholder="Select End Date" />
-              <Calendar className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-            </label>
-            <Select
-              options={[
-                { label: "Select End Time", value: "" },
-                { label: "11:59 PM", value: "23:59" },
-                { label: "6:00 PM", value: "18:00" },
-              ]}
-            />
-          </div>
-        </section>
 
         <section className="mb-8 rounded-md border border-slate-200 bg-white p-5">
           <h2 className="mb-5 text-sm font-bold text-slate-800">Questions Preview</h2>
@@ -175,7 +163,6 @@ export const PreviewPublishPage = () => {
                       </div>
                     ))}
                   </div>
-                  {question.explanation ? <p className="mt-3 text-sm text-slate-600">Explanation: {question.explanation}</p> : null}
                 </article>
               ))}
             </div>

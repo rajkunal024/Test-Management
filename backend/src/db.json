@@ -527,5 +527,6 @@
       "type": "mcq",
       "test_id": "test-1"
     }
-  ]
+  ],
+  "attempts": []
 }

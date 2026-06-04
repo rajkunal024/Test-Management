@@ -1,5 +1,6 @@
-import { ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { ReactNode, useState } from "react";
+import { NavLink, useNavigate, Link } from "react-router-dom";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   BarChart3,
   Bell,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuthStore } from "../../store/authStore";
+import { logout as apiLogout, getNotifications, markNotificationsRead } from "../../services/api";
 
 const sidebarItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
@@ -27,8 +29,30 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const navigate = useNavigate();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const logout = () => {
+  const { data: notifications = [], refetch: refetchNotifications } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: getNotifications,
+    enabled: Boolean(user),
+    refetchInterval: 15000,
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: markNotificationsRead,
+    onSuccess: () => {
+      refetchNotifications();
+    },
+  });
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const logout = async () => {
+    try {
+      await apiLogout();
+    } catch (e) {
+      console.error("Logout API failed", e);
+    }
     clearAuth();
     navigate("/login");
   };
@@ -106,10 +130,83 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
         }`}
       >
         <div className="flex items-center gap-4">
-          <button className="relative flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white">
-            <Bell className="h-5 w-5 text-slate-700" />
-            <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => {
+                setDropdownOpen(!dropdownOpen);
+                if (!dropdownOpen && unreadCount > 0) {
+                  markReadMutation.mutate();
+                }
+              }}
+              className="relative flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition"
+            >
+              <Bell className="h-5 w-5 text-slate-700" />
+              {unreadCount > 0 && (
+                <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full border-2 border-white bg-indigo-600 animate-pulse" />
+              )}
+            </button>
+            
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl z-50 max-h-[380px] overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                      {unreadCount} new
+                    </span>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-slate-400 py-6 text-center">No notifications yet</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <div 
+                        key={n.id} 
+                        className={`p-3 rounded-lg border text-left transition duration-155 ${
+                          n.read ? "border-slate-100 bg-slate-50/50" : "border-indigo-100 bg-indigo-50/20"
+                        }`}
+                      >
+                        <div className="flex justify-between items-start gap-2 mb-1">
+                          <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                            n.type === "test_live" ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-indigo-700"
+                          }`}>
+                            {n.type === "test_live" ? "Exam Live" : "Results Out"}
+                          </span>
+                          <span className="text-[9px] font-medium text-slate-400">
+                            {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-700 font-semibold leading-relaxed">{n.message}</p>
+                        {user?.role === "Student" && (
+                          <div className="mt-2 text-right">
+                            {n.type === "test_live" ? (
+                              <Link 
+                                to={`/tests/${n.test_id}/attempt`} 
+                                onClick={() => setDropdownOpen(false)}
+                                className="text-[10px] font-bold text-indigo-600 hover:underline"
+                              >
+                                Attempt Test →
+                              </Link>
+                            ) : (
+                              <Link 
+                                to={`/tests/${n.test_id}/result`} 
+                                onClick={() => setDropdownOpen(false)}
+                                className="text-[10px] font-bold text-indigo-600 hover:underline"
+                              >
+                                View Scorecard →
+                              </Link>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           <div className="h-12 w-12 overflow-hidden rounded-full border border-primary-400 bg-[#ffd584]">
             <div className="mt-1 text-center text-3xl">🙂</div>
           </div>

@@ -10,7 +10,7 @@ const numericRequired = (label: string) =>
 
 export const testSchema = z.object({
   name: z.string().min(1, "Test name is required"),
-  subject: z.string().min(1, "Subject is required"),
+  subject: z.array(z.string()).min(1, "Select at least one subject"),
   type: z.enum(["practice", "mock", "previous_year"]),
   topics: z.array(z.string()).min(1, "Select at least one topic"),
   sub_topics: z.array(z.string()).default([]),
@@ -21,6 +21,29 @@ export const testSchema = z.object({
   total_time: numericRequired("Duration").positive("Duration must be greater than 0"),
   total_marks: numericRequired("Total marks").positive("Total marks must be greater than 0"),
   total_questions: numericRequired("Total questions").int().positive("Total questions must be greater than 0"),
+  start_time: z.string().min(1, "Start time slot is required"),
+  end_time: z.string().min(1, "End time slot is required"),
+}).refine((data) => {
+  if (data.start_time) {
+    const now = new Date().getTime();
+    const start = new Date(data.start_time).getTime();
+    // Allow a small 60-second buffer for form filling time latency
+    return start >= now - 60000;
+  }
+  return true;
+}, {
+  message: "Start time slot cannot be in the past",
+  path: ["start_time"],
+}).refine((data) => {
+  if (data.start_time && data.end_time) {
+    const start = new Date(data.start_time).getTime();
+    const end = new Date(data.end_time).getTime();
+    return end >= start;
+  }
+  return true;
+}, {
+  message: "End time slot cannot be earlier than start time slot",
+  path: ["end_time"],
 });
 
 export const questionSchema = z.object({
@@ -30,10 +53,11 @@ export const questionSchema = z.object({
   option3: z.string().min(1, "Option 3 is required"),
   option4: z.string().min(1, "Option 4 is required"),
   correct_option: z.enum(["option1", "option2", "option3", "option4"]),
-  explanation: z.string().optional(),
   difficulty: z.string().optional(),
   topic_id: z.string().optional(),
   sub_topic_id: z.string().optional(),
+  new_topic_name: z.string().optional(),
+  new_sub_topic_name: z.string().optional(),
   media_url: z.string().url("Enter a valid URL").or(z.literal("")).optional(),
 });
 

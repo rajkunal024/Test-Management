@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getErrorMessage } from "../services/api";
+import { getErrorMessage, signupAdmin } from "../services/api";
 import { useLogin } from "../hooks/useAuth";
 import { Logo } from "../components/layout/Logo";
 import { Button } from "../components/ui/Button";
@@ -40,20 +40,46 @@ export const LoginPage = () => {
   const loginMutation = useLogin();
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"Admin" | "Teacher" | "Student">("Admin");
+  const [subject, setSubject] = useState("Mathematics");
   const [error, setError] = useState("");
+
+  // Admin Signup states
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [adminName, setAdminName] = useState("");
+  const [adminKey, setAdminKey] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
-    if (!userId.trim() || !password.trim()) {
-      setError("User ID and password are required.");
-      return;
-    }
-    try {
-      await loginMutation.mutateAsync({ userId, password });
-      navigate("/dashboard");
-    } catch (err) {
-      setError(getErrorMessage(err));
+    setSuccessMessage("");
+
+    if (isSignUp) {
+      if (!userId.trim() || !password.trim() || !adminName.trim() || !adminKey.trim()) {
+        setError("All fields are required.");
+        return;
+      }
+      try {
+        await signupAdmin({ userId, password, name: adminName, signupKey: adminKey });
+        setSuccessMessage("Admin registered successfully! You can now log in.");
+        setIsSignUp(false);
+        setAdminName("");
+        setAdminKey("");
+      } catch (err) {
+        setError(getErrorMessage(err));
+      }
+    } else {
+      if (!userId.trim() || !password.trim()) {
+        setError("User ID and password are required.");
+        return;
+      }
+      try {
+        await loginMutation.mutateAsync({ userId, password, role, subject: role === "Teacher" ? subject : undefined });
+        navigate("/dashboard");
+      } catch (err) {
+        setError(getErrorMessage(err));
+      }
     }
   };
 
@@ -67,24 +93,132 @@ export const LoginPage = () => {
           <div className="mb-12">
             <Logo />
           </div>
-          <h1 className="mb-7 text-xl font-bold text-slate-700">Login</h1>
-          <p className="mb-9 text-sm text-slate-600">Use your company provided Login credentials</p>
-          <div className="space-y-6">
-            <Input label="User ID" placeholder="Enter User ID" value={userId} onChange={(event) => setUserId(event.target.value)} />
-            <Input
-              label="Password"
-              placeholder="Enter Password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
+          <h1 className="mb-7 text-xl font-bold text-slate-700">
+            {isSignUp ? "Admin Sign Up" : "Login"}
+          </h1>
+          <p className="mb-6 text-sm text-slate-600">
+            {isSignUp
+              ? "Fill in your details and enter the registration key to register a new admin account"
+              : "Choose your role and use your credentials to login"}
+          </p>
+          
+          {!isSignUp && (
+            <div className="mb-6 flex rounded-md bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setRole("Admin");
+                  setUserId("");
+                  setPassword("");
+                }}
+                className={`flex-1 py-2.5 text-center text-xs font-bold rounded-md transition-all ${
+                  role === "Admin" ? "bg-white text-[#6c7df7] shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRole("Teacher");
+                  setUserId("");
+                  setPassword("");
+                }}
+                className={`flex-1 py-2.5 text-center text-xs font-bold rounded-md transition-all ${
+                  role === "Teacher" ? "bg-white text-[#6c7df7] shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Teacher
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRole("Student");
+                  setUserId("");
+                  setPassword("");
+                }}
+                className={`flex-1 py-2.5 text-center text-xs font-bold rounded-md transition-all ${
+                  role === "Student" ? "bg-white text-[#6c7df7] shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Student
+              </button>
+            </div>
+          )}
+
+          {!isSignUp && role === "Teacher" && (
+            <div className="mb-6">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">Your Assigned Subject</label>
+              <select
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="h-12 w-full rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-primary-500"
+              >
+                <option value="Mathematics">Mathematics</option>
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+              </select>
+            </div>
+          )}
+
+          {isSignUp ? (
+            <div className="space-y-6">
+              <Input label="Full Name" placeholder="Enter Full Name" value={adminName} onChange={(event) => setAdminName(event.target.value)} />
+              <Input label="User ID (Username)" placeholder="Enter User ID" value={userId} onChange={(event) => setUserId(event.target.value)} />
+              <Input
+                label="Password"
+                placeholder="Enter Password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+              <Input
+                label="Admin Registration Key"
+                placeholder="Enter signup key (roar)"
+                type="password"
+                value={adminKey}
+                onChange={(event) => setAdminKey(event.target.value)}
+              />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <Input label="User ID" placeholder="Enter User ID" value={userId} onChange={(event) => setUserId(event.target.value)} />
+              <Input
+                label="Password"
+                placeholder="Enter Password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-col gap-2">
+            {role === "Admin" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError("");
+                  setSuccessMessage("");
+                }}
+                className="self-start text-sm font-medium text-[#6c7df7] hover:underline"
+              >
+                {isSignUp ? "Already have an admin account? Login" : "Don't have an admin account? Sign Up"}
+              </button>
+            )}
+            {!isSignUp && (
+              <button type="button" className="self-start text-sm font-medium text-[#6c7df7] hover:underline">
+                Forgot password?
+              </button>
+            )}
           </div>
-          <button type="button" className="mt-6 self-start text-sm font-medium text-primary-600">
-            Forgot password?
-          </button>
-          {error ? <p className="mt-4 rounded-md bg-rose-50 px-3 py-2 text-sm font-medium text-rose-600">{error}</p> : null}
-          <Button className="mt-8 w-full" disabled={loginMutation.isPending}>
-            {loginMutation.isPending ? "Logging in..." : "Login"}
+
+          {successMessage && <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-600">{successMessage}</p>}
+          {error && <p className="mt-4 rounded-md bg-rose-50 px-3 py-2 text-sm font-medium text-rose-600">{error}</p>}
+          
+          <Button className="mt-8 w-full" disabled={loginMutation.isPending || isSignUp && !adminName}>
+            {isSignUp ? "Sign Up" : (loginMutation.isPending ? "Logging in..." : "Login")}
           </Button>
         </form>
       </section>

@@ -9,6 +9,10 @@ import {
   Test,
   TestPayload,
   Topic,
+  Attempt,
+  AttemptPayload,
+  User,
+  AppNotification,
 } from "../types";
 import { useAuthStore } from "../store/authStore";
 
@@ -19,6 +23,7 @@ export const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true,
 });
 
 const unwrap = <T>(payload: ApiEnvelope<T> | T): T => {
@@ -76,8 +81,17 @@ export const login = async (payload: LoginRequest): Promise<AuthResponse> => {
   return unwrap(data);
 };
 
+export const logout = async (): Promise<void> => {
+  await api.post("/auth/logout");
+};
+
 export const getSubjects = async (): Promise<Subject[]> => {
   const { data } = await api.get<ApiEnvelope<Subject[]> | Subject[]>("/subjects");
+  return unwrap(data);
+};
+
+export const createSubject = async (name: string): Promise<Subject> => {
+  const { data } = await api.post<ApiEnvelope<Subject> | Subject>("/subjects", { name });
   return unwrap(data);
 };
 
@@ -131,3 +145,61 @@ export const fetchBulkQuestions = async (questionIds: string[]): Promise<Questio
 };
 
 export const publishTest = async (id: string): Promise<Test> => updateTest(id, { status: "live" });
+
+export const submitAttempt = async (payload: AttemptPayload): Promise<Attempt> => {
+  const { data } = await api.post<ApiEnvelope<Attempt> | Attempt>("/attempts", payload);
+  return unwrap(data);
+};
+
+export const getAllAttempts = async (): Promise<Attempt[]> => {
+  const { data } = await api.get<ApiEnvelope<Attempt[]> | Attempt[]>("/attempts");
+  return unwrap(data);
+};
+
+export const shareTestResults = async (testId: string): Promise<Test> => {
+  const { data } = await api.post<ApiEnvelope<Test> | Test>(`/tests/${testId}/share-results`);
+  return unwrap(data);
+};
+
+export const getAllQuestions = async (): Promise<Question[]> => {
+  const { data } = await api.get<ApiEnvelope<Question[]> | Question[]>("/questions");
+  return unwrap(data);
+};
+
+export const createQuestion = async (payload: Question): Promise<Question> => {
+  const { data } = await api.post<ApiEnvelope<Question> | Question>("/questions", payload);
+  return unwrap(data);
+};
+
+export const updateQuestion = async (id: string, payload: Partial<Question>): Promise<Question> => {
+  const { data } = await api.put<ApiEnvelope<Question> | Question>(`/questions/${id}`, payload);
+  return unwrap(data);
+};
+
+export const deleteQuestion = async (id: string): Promise<void> => {
+  await api.delete(`/questions/${id}`);
+};
+
+export const getAdminUsers = async (): Promise<User[]> => {
+  const { data } = await api.get<ApiEnvelope<User[]> | User[]>("/admin/users");
+  return unwrap(data);
+};
+
+export const registerUser = async (payload: Partial<User> & { password?: string }): Promise<User> => {
+  const { data } = await api.post<ApiEnvelope<User> | User>("/admin/users", payload);
+  return unwrap(data);
+};
+
+export const signupAdmin = async (payload: { userId: string; password?: string; name: string; signupKey: string }): Promise<User> => {
+  const { data } = await api.post<ApiEnvelope<User> | User>("/auth/signup-admin", payload);
+  return unwrap(data);
+};
+
+export const getNotifications = async (): Promise<AppNotification[]> => {
+  const { data } = await api.get<ApiEnvelope<AppNotification[]> | AppNotification[]>("/notifications");
+  return unwrap(data);
+};
+
+export const markNotificationsRead = async (): Promise<void> => {
+  await api.post("/notifications/read-all");
+};

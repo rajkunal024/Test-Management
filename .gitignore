@@ -6,3 +6,6 @@ backend/dist/
 frontend/.env
 backend/.env
 *.tsbuildinfo
+**/.env
+**/.env.*
+

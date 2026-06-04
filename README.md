@@ -1,6 +1,6 @@
 # PrepRoute Test Management
 
-A separated React frontend and Node/Express backend for test management. The backend proxies authenticated API calls to the staging PrepRoute API, while the frontend remains a React 18 + TypeScript app.
+A separated React frontend and native Node.js HTTP backend (zero external web framework dependencies) for test management, persisting data in MongoDB.
 
 ## Setup
 
@@ -30,20 +30,16 @@ cp frontend/.env.example frontend/.env
 cp backend/.env.example backend/.env
 ```
 
-The backend forwards to:
+Ensure `JWT_SECRET` is defined in `backend/.env`.
 
-```text
-https://admin-moderator-backend-staging.up.railway.app/api
-```
+## Architecture & Core Features
 
-## Architecture
-
-- `frontend/` contains the React 18 + TypeScript UI.
-- `frontend/src/services/api.ts` owns frontend Axios calls to the local backend.
-- `frontend/src/store` contains Zustand auth and current-test stores.
-- `frontend/src/hooks` wraps React Query calls for tests, subjects, topics, and sub-topics.
-- `frontend/src/pages` contains login, dashboard, create/edit, questions, and preview/publish.
-- `backend/` contains the Express API proxy and health endpoint.
-- `backend/src/upstream.ts` forwards `/api/*` requests to the staging API while preserving bearer auth.
-
-Authentication tokens and user data are persisted to `localStorage`. Protected routes redirect unauthenticated users to `/login`; API `401` responses clear auth and return the app to login.
+- **Frontend (`frontend/`)**: React 18 + TypeScript + Zustand + React Query app.
+  - Interceptors automatically enable `withCredentials: true` to forward HTTP-only session cookies.
+  - App Shell includes an interactive, glassmorphic notifications panel polling every 15s.
+- **Backend (`backend/`)**: Native Node.js `node:http` server with MongoDB persistence via Mongoose.
+  - **Secure Cryptography**: Password hashing using pbkdf2Sync (with hex salt), incorporating dynamic database migration of legacy plain-text passwords to hashed passwords on startup.
+  - **Cookie-Based Authentication**: Secure HS256 JSON Web Tokens (JWT) signed with `JWT_SECRET` and transmitted via secure, cross-origin `HttpOnly; SameSite=Lax` cookies.
+  - **Randomized Question Slices**: Deterministic Fisher-Yates shuffle & Mulberry32 pseudo-random slice based on `studentId-testId` seed, ensuring students receive unique question combinations while maintaining consistent pages on refresh.
+  - **Result Filtering fallback**: Strict question filters on results page ensuring students only see their assigned questions.
+  - **Notification Feed**: Live feed alerts generated when a test goes live or when results are declared.
