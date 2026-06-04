@@ -23,14 +23,21 @@ http://127.0.0.1:4000
 
 ## Environment
 
-Copy the examples if you need custom values:
+Create the following `.env` configuration files (these are ignored by Git):
 
-```bash
-cp frontend/.env.example frontend/.env
-cp backend/.env.example backend/.env
+**Frontend (`frontend/.env`)**:
+```env
+VITE_API_BASE_URL=http://127.0.0.1:4000/api
 ```
 
-Ensure `JWT_SECRET` is defined in `backend/.env`.
+**Backend (`backend/.env`)**:
+```env
+PORT=4000
+FRONTEND_ORIGIN=http://127.0.0.1:5173
+MONGODB_URI=your_mongodb_connection_string
+ADMIN_SIGNUP_KEY=roar
+JWT_SECRET=81f8bff1f1d5205403b336fc674612df7ae7a5767d78d1ca17067a2992b6a9c5
+```
 
 ## Architecture & Core Features
 
