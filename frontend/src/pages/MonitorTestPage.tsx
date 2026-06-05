@@ -234,6 +234,7 @@ export const MonitorTestPage = () => {
                   <th className="px-6 py-4">Submitted At</th>
                   <th className="px-6 py-4">Score</th>
                   <th className="px-6 py-4">Time Spent</th>
+                  <th className="px-6 py-4">Tab Switches</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -256,6 +257,13 @@ export const MonitorTestPage = () => {
                         {attempt.score} / {test.total_marks}
                       </td>
                       <td className="px-6 py-4 text-slate-500 font-mono text-xs">{timeStr}</td>
+                      <td className="px-6 py-4">
+                        {attempt.tab_switches && attempt.tab_switches > 0 ? (
+                          <Badge tone="red">{attempt.tab_switches} switches</Badge>
+                        ) : (
+                          <span className="text-slate-400 font-medium text-xs">0</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-right">
                         <Button
                           variant="secondary"
@@ -287,7 +295,7 @@ export const MonitorTestPage = () => {
         >
           {selectedAttempt && (
             <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 border border-slate-200 rounded-lg text-sm font-semibold">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-slate-50 p-4 border border-slate-200 rounded-lg text-sm font-semibold">
                 <div>
                   <span className="text-[10px] text-slate-400 block uppercase">Student ID</span>
                   <span className="text-slate-800">{selectedAttempt.user_id}</span>
@@ -303,6 +311,12 @@ export const MonitorTestPage = () => {
                 <div>
                   <span className="text-[10px] text-slate-400 block uppercase">Wrong Answers</span>
                   <span className="text-rose-500">{selectedAttempt.wrong_answers}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase">Tab Switches</span>
+                  <span className={selectedAttempt.tab_switches && selectedAttempt.tab_switches > 0 ? "text-rose-600" : "text-slate-600"}>
+                    {selectedAttempt.tab_switches ?? 0}
+                  </span>
                 </div>
               </div>
 

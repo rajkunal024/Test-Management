@@ -39,6 +39,7 @@ export const StudentSchema = new Schema({
   role: { type: String, default: "Student" },
   email: { type: String, required: true, unique: true },
   dob: { type: String, required: true },
+  class: { type: String },
   results: [{
     test_id: { type: String, required: true },
     test_name: { type: String, required: true },
@@ -70,7 +71,8 @@ export const QuestionSchema = new Schema({
   test_id: { type: String },
   topic_id: { type: String },
   sub_topic_id: { type: String },
-  media_url: { type: String }
+  media_url: { type: String },
+  class: { type: String }
 });
 export const QuestionModel = mongoose.model("Question", QuestionSchema);
 
@@ -84,6 +86,7 @@ export const ResultSchema = new Schema({
   unattempted: { type: Number, required: true },
   answers: { type: Map, of: String },
   time_spent: { type: Number, required: true },
+  tab_switches: { type: Number, default: 0 },
   submitted_at: { type: Date, default: Date.now },
   test_copy: [{
     id: { type: String },
@@ -119,7 +122,8 @@ export const TestSchema = new Schema({
   created_at: { type: Date, default: Date.now },
   start_time: { type: String },
   end_time: { type: String },
-  results_shared: { type: Boolean, default: false }
+  results_shared: { type: Boolean, default: false },
+  class: { type: String }
 });
 export const TestModel = mongoose.model("Test", TestSchema);
 
@@ -130,6 +134,7 @@ export const NotificationSchema = new Schema({
   test_id: { type: String, required: true },
   test_name: { type: String, required: true },
   read_by: { type: [String], default: [] },
+  cleared_by: { type: [String], default: [] },
   created_at: { type: Date, default: Date.now }
 });
 export const NotificationModel = mongoose.model("Notification", NotificationSchema);

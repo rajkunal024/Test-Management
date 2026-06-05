@@ -15,7 +15,8 @@ export const getUsers = async (request: IncomingMessage, response: ServerRespons
         name: s.name,
         email: s.email,
         dob: s.dob,
-        role: "Student"
+        role: "Student",
+        class: s.class
       })),
       ...teachers.map((t: any) => ({
         id: t._id,
@@ -81,6 +82,7 @@ export const createUser = async (request: IncomingMessage, response: ServerRespo
         role: "Student",
         email,
         dob,
+        class: body.class || "Class 10",
         results: []
       });
       await newStudent.save();

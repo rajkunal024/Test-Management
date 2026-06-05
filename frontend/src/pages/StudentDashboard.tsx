@@ -44,8 +44,10 @@ export const StudentDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Only show live tests for students
-  const liveTests = useMemo(() => tests.filter((t) => t.status === "live"), [tests]);
+  // Only show live tests for students matching their class
+  const liveTests = useMemo(() => {
+    return tests.filter((t) => t.status === "live" && t.class === user?.class);
+  }, [tests, user?.class]);
 
   // Filter available subjects dynamically (supports both string and string[])
   const subjects = useMemo(() => {

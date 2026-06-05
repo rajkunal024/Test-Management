@@ -58,8 +58,11 @@ api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      useAuthStore.getState().clearAuth();
-      window.location.href = "/login";
+      const isLoginRequest = error.config?.url?.endsWith("/auth/login");
+      if (!isLoginRequest) {
+        useAuthStore.getState().clearAuth();
+        window.location.href = "/";
+      }
     }
     return Promise.reject(error);
   },
@@ -203,3 +206,33 @@ export const getNotifications = async (): Promise<AppNotification[]> => {
 export const markNotificationsRead = async (): Promise<void> => {
   await api.post("/notifications/read-all");
 };
+
+export const clearAllNotifications = async (): Promise<void> => {
+  await api.delete("/notifications/clear-all");
+};
+
+export interface ActiveStream {
+  user_id: string;
+  username: string;
+  frame: string;
+  hasVideo: boolean;
+  hasAudio: boolean;
+  lastSeen: number;
+}
+
+export const uploadStreamFrame = async (payload: {
+  test_id: string;
+  user_id: string;
+  username: string;
+  frame: string;
+  hasVideo: boolean;
+  hasAudio: boolean;
+}): Promise<void> => {
+  await api.post("/attempts/stream-frame", payload);
+};
+
+export const getActiveStreams = async (testId: string): Promise<ActiveStream[]> => {
+  const { data } = await api.get<ApiEnvelope<ActiveStream[]> | ActiveStream[]>(`/attempts/active-streams?test_id=${testId}`);
+  return unwrap(data);
+};
+

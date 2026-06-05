@@ -12,6 +12,7 @@ export const testSchema = z.object({
   name: z.string().min(1, "Test name is required"),
   subject: z.array(z.string()).min(1, "Select at least one subject"),
   type: z.enum(["practice", "mock", "previous_year"]),
+  class: z.string().min(1, "Class is required"),
   topics: z.array(z.string()).min(1, "Select at least one topic"),
   sub_topics: z.array(z.string()).default([]),
   difficulty: z.enum(["easy", "medium", "hard"]),
@@ -27,8 +28,8 @@ export const testSchema = z.object({
   if (data.start_time) {
     const now = new Date().getTime();
     const start = new Date(data.start_time).getTime();
-    // Allow a small 60-second buffer for form filling time latency
-    return start >= now - 60000;
+    // Allow a 15-minute buffer for form filling time latency
+    return start >= now - 15 * 60 * 1000;
   }
   return true;
 }, {
@@ -59,6 +60,7 @@ export const questionSchema = z.object({
   new_topic_name: z.string().optional(),
   new_sub_topic_name: z.string().optional(),
   media_url: z.string().url("Enter a valid URL").or(z.literal("")).optional(),
+  class: z.string().min(1, "Class is required"),
 });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;

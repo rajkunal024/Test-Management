@@ -10,7 +10,7 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { Spinner } from "../components/ui/Spinner";
-import { createTest, getErrorMessage, updateTest, getTopicsBySubject } from "../services/api";
+import { createTest, getErrorMessage, updateTest, getTopicsBySubject, getAllQuestions } from "../services/api";
 import { useSubjects, useSubTopics, useTest } from "../hooks/useTests";
 import { TestPayload } from "../types";
 import { testSchema, TestFormInput, TestFormValues } from "../utils/validators";
@@ -76,6 +76,7 @@ export const CreateEditTestPage = () => {
       name: "",
       subject: [],
       type: "practice",
+      class: "Class 10",
       topics: [],
       sub_topics: [],
       difficulty: "easy",
@@ -94,6 +95,23 @@ export const CreateEditTestPage = () => {
   const selectedTopics = watch("topics") || [];
   const selectedType = watch("type");
   const selectedDifficulty = watch("difficulty");
+  const selectedClass = watch("class");
+
+  // Fetch all questions from pool
+  const { data: allQuestions = [] } = useQuery({
+    queryKey: ["questions"],
+    queryFn: getAllQuestions,
+  });
+
+  // Track class changes to clear selections
+  const [prevClass, setPrevClass] = useState(selectedClass);
+  useEffect(() => {
+    if (selectedClass !== prevClass) {
+      setValue("topics", []);
+      setValue("sub_topics", []);
+      setPrevClass(selectedClass);
+    }
+  }, [selectedClass, prevClass, setValue]);
 
   // Fetch topics for all selected subjects in parallel
   const { data: topics = [] } = useQuery({
@@ -107,23 +125,48 @@ export const CreateEditTestPage = () => {
     enabled: subjectIds.length > 0,
   });
 
+  // Filter topics dynamically by the selected class questions
+  const filteredTopics = useMemo(() => {
+    if (!selectedClass) return [];
+    const activeTopicIds = new Set(
+      allQuestions
+        .filter(q => q.class === selectedClass)
+        .map(q => q.topic_id)
+        .filter(Boolean)
+    );
+    return topics.filter(t => activeTopicIds.has(t.id));
+  }, [topics, allQuestions, selectedClass]);
+
   const { data: subTopics = [] } = useSubTopics(selectedTopics);
   const selectedSubtopics = watch("sub_topics") || [];
 
-  // Clean up selected subtopics that no longer belong to selected topics
+  // Filter subtopics dynamically by the selected class questions
+  const filteredSubTopics = useMemo(() => {
+    if (!selectedClass) return [];
+    const activeSubTopicIds = new Set(
+      allQuestions
+        .filter(q => q.class === selectedClass)
+        .map(q => q.sub_topic_id)
+        .filter(Boolean)
+    );
+    return subTopics.filter(st => activeSubTopicIds.has(st.id));
+  }, [subTopics, allQuestions, selectedClass]);
+
+  // Automatically select all subtopics that belong to the selected topics
   useEffect(() => {
     if (selectedTopics.length === 0) {
       if (selectedSubtopics.length > 0) {
         setValue("sub_topics", []);
       }
-    } else if (subTopics.length > 0) {
-      const validSubtopicIds = new Set(subTopics.map(st => st.id));
-      const filteredSubtopics = selectedSubtopics.filter(id => validSubtopicIds.has(id));
-      if (filteredSubtopics.length !== selectedSubtopics.length) {
-        setValue("sub_topics", filteredSubtopics);
+    } else if (filteredSubTopics.length > 0) {
+      const allSubTopicIds = filteredSubTopics.map(st => st.id);
+      const currentSet = new Set(selectedSubtopics);
+      const isExactlySame = allSubTopicIds.length === selectedSubtopics.length && allSubTopicIds.every(id => currentSet.has(id));
+      if (!isExactlySame) {
+        setValue("sub_topics", allSubTopicIds);
       }
     }
-  }, [selectedTopics, subTopics, selectedSubtopics, setValue]);
+  }, [selectedTopics, filteredSubTopics, selectedSubtopics, setValue]);
 
   const correctMarks = watch("correct_marks");
   const totalQuestions = watch("total_questions");
@@ -203,6 +246,7 @@ export const CreateEditTestPage = () => {
         name: existingTest.name,
         subject: testSubjectIds,
         type: existingTest.type === "mock" || existingTest.type === "previous_year" ? existingTest.type : "practice",
+        class: existingTest.class ?? "Class 10",
         topics: existingTest.topics ?? [],
         sub_topics: existingTest.sub_topics ?? [],
         difficulty: existingTest.difficulty === "medium" || existingTest.difficulty === "hard" ? existingTest.difficulty : "easy",
@@ -333,54 +377,69 @@ export const CreateEditTestPage = () => {
                   </label>
                 )}
               />
+              <Controller
+                name="class"
+                control={control}
+                render={({ field }) => (
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-slate-700">Class</span>
+                    <select
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      className="h-12 w-full rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-[#6c7df7]"
+                    >
+                      <option value="Class 9">Class 9</option>
+                      <option value="Class 10">Class 10</option>
+                      <option value="Class 11">Class 11</option>
+                      <option value="Class 12">Class 12</option>
+                    </select>
+                    {errors.class?.message ? (
+                      <span className="mt-1 block text-xs font-medium text-rose-500">{errors.class.message}</span>
+                    ) : null}
+                  </label>
+                )}
+              />
               <Input label="Name of Test" placeholder="Enter name of Test" error={errors.name?.message} {...register("name")} />
 
               <Controller
                 name="topics"
                 control={control}
                 render={({ field }) => (
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold text-slate-700">Topic</span>
-                    <select
-                      multiple
-                      value={field.value}
-                      onChange={(event) => field.onChange(Array.from(event.target.selectedOptions, (option) => option.value))}
-                      className="min-h-12 w-full rounded-md border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-primary-500"
-                    >
-                      {topics.length === 0 ? <option value="">Choose from Drop-down</option> : null}
-                      {topics.map((topic) => (
-                        <option key={topic.id} value={topic.id}>
-                          {topic.name}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.topics?.message ? <span className="mt-1 block text-xs font-medium text-rose-500">{errors.topics.message}</span> : null}
+                  <label className="block col-span-1 md:col-span-2">
+                    <span className="mb-2 block text-sm font-semibold text-slate-700">Topic(s)</span>
+                    <div className="flex flex-wrap gap-4 border border-slate-300 rounded-md p-3.5 bg-white min-h-12">
+                      {filteredTopics.length === 0 ? (
+                        <span className="text-sm text-slate-400">No topics available for selected Class / Subject(s)</span>
+                      ) : (
+                        filteredTopics.map((topic) => {
+                          const isChecked = field.value?.includes(topic.id);
+                          return (
+                            <label key={topic.id} className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                className="h-4 w-4 accent-[#6c7df7]"
+                                onChange={() => {
+                                  const nextValue = isChecked
+                                    ? field.value.filter((id: string) => id !== topic.id)
+                                    : [...(field.value || []), topic.id];
+                                  field.onChange(nextValue);
+                                }}
+                              />
+                              {topic.name}
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                    {errors.topics?.message ? (
+                      <span className="mt-1 block text-xs font-medium text-rose-500">{errors.topics.message}</span>
+                    ) : null}
                   </label>
                 )}
               />
 
-              <Controller
-                name="sub_topics"
-                control={control}
-                render={({ field }) => (
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold text-slate-700">Sub Topic</span>
-                    <select
-                      multiple
-                      value={field.value}
-                      onChange={(event) => field.onChange(Array.from(event.target.selectedOptions, (option) => option.value))}
-                      className="min-h-12 w-full rounded-md border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-primary-500"
-                    >
-                      {subTopics.length === 0 ? <option value="">Choose from Drop-down</option> : null}
-                      {subTopics.map((subTopic) => (
-                        <option key={subTopic.id} value={subTopic.id}>
-                          {subTopic.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              />
+              {/* Sub Topic selector removed since subtopics are auto-selected on topic selection */}
 
               <div>
                 <span className="mb-2 block text-sm font-semibold text-slate-700">Scheduling Type</span>
@@ -413,6 +472,7 @@ export const CreateEditTestPage = () => {
                     label="Start Time (Today)"
                     type="time"
                     value={startTimeTimePart}
+                    error={errors.start_time?.message}
                     onChange={(e) => {
                       const timeVal = e.target.value;
                       if (timeVal) {
@@ -429,6 +489,7 @@ export const CreateEditTestPage = () => {
                     label="End Time (Today)"
                     type="time"
                     value={endTimeTimePart}
+                    error={errors.end_time?.message}
                     readOnly
                     className="bg-slate-50 cursor-not-allowed"
                   />

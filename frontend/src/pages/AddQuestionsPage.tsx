@@ -102,16 +102,17 @@ export const AddQuestionsPage = () => {
     queryFn: getAllQuestions,
   });
 
-  // Filter global pool to only show questions matching test's selected topics, which are not already linked
+  // Filter global pool to only show questions matching test's selected topics and class, which are not already linked
   const availablePoolQuestions = useMemo(() => {
     const linkedIds = new Set(test?.questions ?? []);
     const testTopics = test?.topics ?? [];
     return globalPool.filter((q) => {
       const belongsToSelectedTopics = q.topic_id && testTopics.includes(q.topic_id);
+      const matchesClass = q.class === test?.class;
       const notLinked = !linkedIds.has(q.id ?? "");
-      return belongsToSelectedTopics && notLinked;
+      return belongsToSelectedTopics && matchesClass && notLinked;
     });
-  }, [globalPool, test?.questions, test?.topics]);
+  }, [globalPool, test?.questions, test?.topics, test?.class]);
 
   // Mutations
   const updateTestMutation = useMutation({

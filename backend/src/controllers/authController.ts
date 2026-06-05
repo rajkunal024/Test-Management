@@ -112,7 +112,7 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { id: student.id, name: student.name, userId: student.userId, role: "Student" }
+              user: { id: student.id, name: student.name, userId: student.userId, role: "Student", class: student.class || "Class 10" }
             }
           },
           {

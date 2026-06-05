@@ -1,10 +1,11 @@
-import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getErrorMessage, signupAdmin } from "../services/api";
+import { FormEvent, useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { getErrorMessage, signupAdmin, getSubjects } from "../services/api";
 import { useLogin } from "../hooks/useAuth";
 import { Logo } from "../components/layout/Logo";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
+import { Subject } from "../types";
 
 const LoginIllustration = () => (
   <div className="relative h-[460px] w-[520px] max-w-full">
@@ -36,13 +37,55 @@ const LoginIllustration = () => (
 );
 
 export const LoginPage = () => {
+  const { role: urlRole } = useParams<{ role?: string }>();
   const navigate = useNavigate();
   const loginMutation = useLogin();
+
+  const getMappedRole = (r?: string): "Admin" | "Teacher" | "Student" | null => {
+    if (!r) return null;
+    const lower = r.toLowerCase();
+    if (lower === "admin") return "Admin";
+    if (lower === "teacher") return "Teacher";
+    if (lower === "student") return "Student";
+    return null;
+  };
+
+  const initialRole = getMappedRole(urlRole);
+
+  useEffect(() => {
+    if (!initialRole) {
+      navigate("/", { replace: true });
+    }
+  }, [initialRole, navigate]);
+
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"Admin" | "Teacher" | "Student">("Admin");
-  const [subject, setSubject] = useState("Mathematics");
+  const [role, setRole] = useState<"Admin" | "Teacher" | "Student">(initialRole || "Student");
+  const [subject, setSubject] = useState("");
+  const [registeredSubjects, setRegisteredSubjects] = useState<Subject[]>([]);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const mapped = getMappedRole(urlRole);
+    if (mapped) {
+      setRole(mapped);
+    }
+  }, [urlRole]);
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        const data = await getSubjects();
+        setRegisteredSubjects(data);
+        if (data.length > 0) {
+          setSubject(data[0].name);
+        }
+      } catch (err) {
+        console.error("Error fetching subjects:", err);
+      }
+    };
+    fetchSubjects();
+  }, []);
 
   // Admin Signup states
   const [isSignUp, setIsSignUp] = useState(false);
@@ -94,57 +137,15 @@ export const LoginPage = () => {
             <Logo />
           </div>
           <h1 className="mb-7 text-xl font-bold text-slate-700">
-            {isSignUp ? "Admin Sign Up" : "Login"}
+            {isSignUp ? "Admin Sign Up" : `Sign In as ${role}`}
           </h1>
           <p className="mb-6 text-sm text-slate-600">
             {isSignUp
               ? "Fill in your details and enter the registration key to register a new admin account"
-              : "Choose your role and use your credentials to login"}
+              : `Use your ${role.toLowerCase()} credentials to login`}
           </p>
           
-          {!isSignUp && (
-            <div className="mb-6 flex rounded-md bg-slate-100 p-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setRole("Admin");
-                  setUserId("");
-                  setPassword("");
-                }}
-                className={`flex-1 py-2.5 text-center text-xs font-bold rounded-md transition-all ${
-                  role === "Admin" ? "bg-white text-[#6c7df7] shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setRole("Teacher");
-                  setUserId("");
-                  setPassword("");
-                }}
-                className={`flex-1 py-2.5 text-center text-xs font-bold rounded-md transition-all ${
-                  role === "Teacher" ? "bg-white text-[#6c7df7] shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                Teacher
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setRole("Student");
-                  setUserId("");
-                  setPassword("");
-                }}
-                className={`flex-1 py-2.5 text-center text-xs font-bold rounded-md transition-all ${
-                  role === "Student" ? "bg-white text-[#6c7df7] shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                Student
-              </button>
-            </div>
-          )}
+          {/* Role selector tabs removed to serve distinct role pages */}
 
           {!isSignUp && role === "Teacher" && (
             <div className="mb-6">
@@ -154,9 +155,15 @@ export const LoginPage = () => {
                 onChange={(e) => setSubject(e.target.value)}
                 className="h-12 w-full rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-primary-500"
               >
-                <option value="Mathematics">Mathematics</option>
-                <option value="Physics">Physics</option>
-                <option value="Chemistry">Chemistry</option>
+                {registeredSubjects.length > 0 ? (
+                  registeredSubjects.map((sub) => (
+                    <option key={sub.id} value={sub.name}>
+                      {sub.name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">No registered subjects</option>
+                )}
               </select>
             </div>
           )}

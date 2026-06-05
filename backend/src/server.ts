@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { connectDB } from "./db/index.js";
 import { handleRequest } from "./app.js";
+import { startAutoShareJob } from "./services/autoShareService.js";
 
 // Tiny dependency-free .env loader helper
 const loadEnv = () => {
@@ -33,6 +34,9 @@ const mongoUri = process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017/preproute
 
 // Connect to MongoDB
 connectDB(mongoUri)
+  .then(() => {
+    startAutoShareJob();
+  })
   .catch(err => {
     console.error("MongoDB Connection Error:", err);
   });

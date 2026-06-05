@@ -39,6 +39,7 @@ export const DashboardPage = () => {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [roleFilter, setRoleFilter] = useState("all");
   const [subjectFilter, setSubjectFilter] = useState("all");
+  const [classFilter, setClassFilter] = useState("all");
   const [isSubjectOpen, setIsSubjectOpen] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState("");
   const [subjectFormError, setSubjectFormError] = useState("");
@@ -50,7 +51,7 @@ export const DashboardPage = () => {
   const [regDob, setRegDob] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regSubject, setRegSubject] = useState("");
-
+  const [regClass, setRegClass] = useState("Class 10");
   const [formError, setFormError] = useState("");
 
   // Fetch admin users
@@ -125,6 +126,7 @@ export const DashboardPage = () => {
       setRegDob("");
       setRegPassword("");
       setRegSubject("");
+      setRegClass("Class 10");
       setFormError("");
       await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
@@ -171,6 +173,10 @@ export const DashboardPage = () => {
       setFormError("Please select a subject for the teacher.");
       return;
     }
+    if (regRole === "Student" && !regClass) {
+      setFormError("Please select a class for the student.");
+      return;
+    }
 
     registerMutation.mutate({
       role: regRole,
@@ -178,7 +184,8 @@ export const DashboardPage = () => {
       email: regEmail,
       dob: regDob,
       password: regPassword,
-      subject: regRole === "Teacher" ? regSubject : undefined
+      subject: regRole === "Teacher" ? regSubject : undefined,
+      class: regRole === "Student" ? regClass : undefined
     });
   };
 
@@ -194,10 +201,13 @@ export const DashboardPage = () => {
         roleFilter !== "Teacher" ||
         subjectFilter === "all" ||
         u.subject === subjectFilter;
+      const matchesClass =
+        classFilter === "all" ||
+        (u.role === "Student" && u.class === classFilter);
 
-      return matchesSearch && matchesRole && matchesSubject;
+      return matchesSearch && matchesRole && matchesSubject && matchesClass;
     });
-  }, [adminUsers, userSearch, roleFilter, subjectFilter]);
+  }, [adminUsers, userSearch, roleFilter, subjectFilter, classFilter]);
 
   return (
     <AppShell>
@@ -392,10 +402,7 @@ export const DashboardPage = () => {
               </Button>
             </div>
 
-            <div className={`mb-5 grid gap-3 rounded-md border border-slate-200 bg-white p-4 ${roleFilter === "Teacher"
-              ? "md:grid-cols-[1fr_200px_200px]"
-              : "md:grid-cols-[1fr_200px]"
-              }`}>
+            <div className="mb-5 grid gap-3 rounded-md border border-slate-200 bg-white p-4 md:grid-cols-[1fr_200px_200px]">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
@@ -422,7 +429,7 @@ export const DashboardPage = () => {
                 <option value="Teacher">Teacher</option>
               </select>
 
-              {roleFilter === "Teacher" && (
+              {roleFilter === "Teacher" ? (
                 <select
                   value={subjectFilter}
                   onChange={(event) => setSubjectFilter(event.target.value)}
@@ -435,6 +442,18 @@ export const DashboardPage = () => {
                     </option>
                   ))}
                 </select>
+              ) : (
+                <select
+                  value={classFilter}
+                  onChange={(event) => setClassFilter(event.target.value)}
+                  className="h-12 rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-[#6c7df7]"
+                >
+                  <option value="all">All Classes</option>
+                  <option value="Class 9">Class 9</option>
+                  <option value="Class 10">Class 10</option>
+                  <option value="Class 11">Class 11</option>
+                  <option value="Class 12">Class 12</option>
+                </select>
               )}
             </div>
 
@@ -446,7 +465,7 @@ export const DashboardPage = () => {
                     <th className="px-5 py-4">Email</th>
                     <th className="px-5 py-4">Date of Birth</th>
                     <th className="px-5 py-4">Role</th>
-                    <th className="px-5 py-4">Subject</th>
+                    <th className="px-5 py-4">Class / Subject</th>
                     <th className="px-5 py-4">Status</th>
                   </tr>
                 </thead>
@@ -484,6 +503,10 @@ export const DashboardPage = () => {
                           {usr.role === "Teacher" ? (
                             <span className="font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md text-xs border border-indigo-100">
                               {usr.subject}
+                            </span>
+                          ) : usr.role === "Student" && usr.class ? (
+                            <span className="font-semibold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-md text-xs border border-teal-100">
+                              {usr.class}
                             </span>
                           ) : (
                             <span className="text-slate-400">-</span>
@@ -630,6 +653,27 @@ export const DashboardPage = () => {
                 required
               />
             </div>
+
+            {/* Class field (Student only) */}
+            {regRole === "Student" && (
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                  Student Class
+                </label>
+                <select
+                  value={regClass}
+                  onChange={(e) => setRegClass(e.target.value)}
+                  required
+                  className="w-full h-12 rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-[#6c7df7]"
+                >
+                  <option value="">Select Class</option>
+                  <option value="Class 9">Class 9</option>
+                  <option value="Class 10">Class 10</option>
+                  <option value="Class 11">Class 11</option>
+                  <option value="Class 12">Class 12</option>
+                </select>
+              </div>
+            )}
 
             {/* Subject field (Teacher only) */}
             {regRole === "Teacher" && (

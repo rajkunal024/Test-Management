@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuthStore } from "../../store/authStore";
-import { logout as apiLogout, getNotifications, markNotificationsRead } from "../../services/api";
+import { logout as apiLogout, getNotifications, markNotificationsRead, clearAllNotifications } from "../../services/api";
 
 const sidebarItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
@@ -45,6 +45,17 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
     },
   });
 
+  const clearNotificationsMutation = useMutation({
+    mutationFn: clearAllNotifications,
+    onSuccess: () => {
+      refetchNotifications();
+    },
+    onError: (err) => {
+      alert("Error clearing notifications. Please try again.");
+      console.error(err);
+    }
+  });
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const logout = async () => {
@@ -54,7 +65,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
       console.error("Logout API failed", e);
     }
     clearAuth();
-    navigate("/login");
+    navigate("/");
   };
 
   return (
@@ -147,17 +158,28 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
             </button>
             
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl z-50 max-h-[380px] overflow-y-auto">
+              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl z-50 max-h-[380px] overflow-y-auto transform origin-top-right transition-all duration-200 ease-out">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
                   <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Notifications</span>
-                  {unreadCount > 0 && (
-                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                      {unreadCount} new
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {notifications.length > 0 && (
+                      <button 
+                        onClick={() => clearNotificationsMutation.mutate()}
+                        disabled={clearNotificationsMutation.isPending}
+                        className="text-[10px] font-bold text-rose-500 hover:text-rose-700 transition-colors duration-200 lowercase cursor-pointer"
+                      >
+                        {clearNotificationsMutation.isPending ? "clearing..." : "clear all"}
+                      </button>
+                    )}
+                    {unreadCount > 0 && (
+                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
                 </div>
                 
-                <div className="space-y-2">
+                <div className={`space-y-2 transition-all duration-300 ease-in-out ${clearNotificationsMutation.isPending ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100"}`}>
                   {notifications.length === 0 ? (
                     <p className="text-xs text-slate-400 py-6 text-center">No notifications yet</p>
                   ) : (

@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from "node:http";
 import { json, readBody } from "../middlewares/utils.js";
-import { TestModel, ResultModel, QuestionModel } from "../models/index.js";
+import { TestModel, ResultModel, QuestionModel, TeacherModel, NotificationModel } from "../models/index.js";
 
 const seedRandom = (seedStr: string) => {
   let h = 2166136261 >>> 0;
@@ -47,7 +47,7 @@ export const getAttempts = async (request: IncomingMessage, response: ServerResp
 export const createAttempt = async (request: IncomingMessage, response: ServerResponse) => {
   try {
     const payload = JSON.parse(await readBody(request));
-    const { test_id, user_id, answers = {}, time_spent = 0 } = payload;
+    const { test_id, user_id, answers = {}, time_spent = 0, tab_switches = 0 } = payload;
     
     const test = await TestModel.findOne({ id: test_id });
     if (!test) {
@@ -55,12 +55,13 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
       return;
     }
 
-    // Enforce slot validation
+    // Enforce slot validation with a 5-minute submission grace period
     if (test.start_time && test.end_time) {
       const now = new Date().getTime();
       const start = new Date(test.start_time).getTime();
       const end = new Date(test.end_time).getTime();
-      if (now < start || now > end) {
+      // Allow 10 minutes grace period for auto-submit network latency/processing
+      if (now < start || now > end + 10 * 60 * 1000) {
         json(response, 400, { success: false, message: "This test is not currently active. You can only attempt it within its scheduled time slot." });
         return;
       }
@@ -121,6 +122,7 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
       unattempted,
       answers,
       time_spent,
+      tab_switches,
       test_copy,
       submitted_at: new Date()
     });
@@ -135,3 +137,114 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
     json(response, 400, { success: false, message: "Invalid JSON body" });
   }
 };
+
+export interface ActiveStreamState {
+  test_id: string;
+  user_id: string;
+  username: string;
+  frame: string;
+  hasVideo: boolean;
+  hasAudio: boolean;
+  lastSeen: number;
+}
+
+export const activeStreams = new Map<string, ActiveStreamState>();
+
+export const saveStreamFrame = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const payload = JSON.parse(await readBody(request));
+    const { test_id, user_id, username, frame, hasVideo, hasAudio } = payload;
+    if (!test_id || !user_id) {
+      json(response, 400, { success: false, message: "test_id and user_id are required" });
+      return;
+    }
+    const key = `${test_id}-${user_id}`;
+    const isNewStream = !activeStreams.has(key);
+
+    activeStreams.set(key, {
+      test_id,
+      user_id,
+      username: username || user_id,
+      frame: frame || "",
+      hasVideo: !!hasVideo,
+      hasAudio: !!hasAudio,
+      lastSeen: Date.now()
+    });
+
+    if (isNewStream) {
+      try {
+        const testObj = await TestModel.findOne({ id: test_id });
+        if (testObj) {
+          const studentName = username || user_id;
+          const msg = `Student '${studentName}' (${user_id}) has started attempting the test '${testObj.name}' with live video proctoring active.`;
+          
+          // Check if notification already exists for this specific student and test
+          const alreadyNotified = await NotificationModel.findOne({
+            type: "student_attempt_started",
+            test_id: test_id,
+            message: { $regex: `\\(${user_id}\\)` }
+          });
+
+          if (!alreadyNotified) {
+            const testSubjects = Array.isArray(testObj.subject) ? testObj.subject : [testObj.subject];
+            const teachers = await TeacherModel.find({
+              subject: { $in: testSubjects }
+            });
+            const targetTeachers = teachers.length > 0 ? teachers : await TeacherModel.find({});
+            
+            for (const t of targetTeachers) {
+              await NotificationModel.create({
+                user_id: t.userId,
+                message: msg,
+                type: "student_attempt_started",
+                test_id: testObj.id,
+                test_name: testObj.name
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to trigger teacher notification on stream start:", err);
+      }
+    }
+
+    json(response, 200, { success: true });
+  } catch (e) {
+    json(response, 400, { success: false, message: "Invalid JSON body" });
+  }
+};
+
+export const getActiveStreams = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const requestUrl = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
+    const test_id = requestUrl.searchParams.get("test_id");
+    if (!test_id) {
+      json(response, 400, { success: false, message: "test_id is required" });
+      return;
+    }
+
+    const now = Date.now();
+    const result = [];
+    for (const [key, val] of activeStreams.entries()) {
+      if (now - val.lastSeen > 10000) {
+        activeStreams.delete(key);
+        continue;
+      }
+      if (val.test_id === test_id) {
+        result.push({
+          user_id: val.user_id,
+          username: val.username,
+          frame: val.frame,
+          hasVideo: val.hasVideo,
+          hasAudio: val.hasAudio,
+          lastSeen: val.lastSeen
+        });
+      }
+    }
+
+    json(response, 200, { success: true, data: result });
+  } catch (e) {
+    json(response, 500, { success: false, message: "Server error" });
+  }
+};
+

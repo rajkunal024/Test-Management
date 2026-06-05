@@ -31,6 +31,9 @@ import {
   getAllQuestions,
   getSubjects,
   getErrorMessage,
+  getAllTests,
+  getActiveStreams,
+  ActiveStream,
 } from "../services/api";
 import { useSubTopics, useTopics } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
@@ -50,6 +53,7 @@ const emptyQuestion = {
   new_topic_name: "",
   new_sub_topic_name: "",
   media_url: "",
+  class: "Class 10",
 };
 
 export const TeacherDashboard = () => {
@@ -70,11 +74,29 @@ export const TeacherDashboard = () => {
   const [search, setSearch] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("all");
   const [topicFilter, setTopicFilter] = useState("all");
+  const [classFilter, setClassFilter] = useState("all");
   const [toast, setToast] = useState("");
   const [formError, setFormError] = useState("");
   const [csvText, setCsvText] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
+
+  // Live Test Monitoring States
+  const [activeTab, setActiveTab] = useState<"questions" | "monitoring">("questions");
+  const [selectedTestIdForMonitoring, setSelectedTestIdForMonitoring] = useState<string | null>(null);
+
+  // Queries for monitoring
+  const { data: tests = [], isLoading: isLoadingTests } = useQuery({
+    queryKey: ["tests"],
+    queryFn: getAllTests,
+  });
+
+  const { data: activeStreamsList = [] } = useQuery({
+    queryKey: ["activeStreams", selectedTestIdForMonitoring],
+    queryFn: () => getActiveStreams(selectedTestIdForMonitoring || ""),
+    enabled: !!selectedTestIdForMonitoring,
+    refetchInterval: 3000,
+  });
 
   // Determine current teacher subject details
   const teacherSubject = useMemo(() => {
@@ -144,29 +166,65 @@ export const TeacherDashboard = () => {
     });
   }, [allQuestions, selectedTopicIds]);
 
-  // Apply search/difficulty/topic filters on questions list
+  const filteredTopics = useMemo(() => {
+    if (classFilter === "all") {
+      return topics;
+    }
+    const activeTopicIds = new Set(
+      subjectQuestions
+        .filter(q => q.class === classFilter)
+        .map(q => q.topic_id)
+        .filter(Boolean)
+    );
+    return topics.filter(t => activeTopicIds.has(t.id));
+  }, [topics, subjectQuestions, classFilter]);
+
+  useEffect(() => {
+    if (topicFilter !== "all" && classFilter !== "all") {
+      const isValid = filteredTopics.some(t => t.id === topicFilter);
+      if (!isValid) {
+        setTopicFilter("all");
+      }
+    }
+  }, [classFilter, filteredTopics, topicFilter]);
+
+  // Apply search/difficulty/topic/class filters on questions list
   const filteredQuestions = useMemo(() => {
     return subjectQuestions.filter(q => {
       const matchesSearch = q.question.toLowerCase().includes(search.toLowerCase());
       const qDiff = (q.difficulty || "").toLowerCase().trim();
       const filterDiff = difficultyFilter.toLowerCase().trim();
-      const matchesDiff = difficultyFilter === "all" || qDiff === filterDiff;
+      const matchesDiff =
+        difficultyFilter === "all" ||
+        qDiff === filterDiff ||
+        (filterDiff === "hard" && qDiff === "difficult") ||
+        (filterDiff === "difficult" && qDiff === "hard");
       const matchesTopic = topicFilter === "all" || q.topic_id === topicFilter;
-      return matchesSearch && matchesDiff && matchesTopic;
+      const matchesClass = classFilter === "all" || q.class === classFilter;
+      return matchesSearch && matchesDiff && matchesTopic && matchesClass;
     });
-  }, [subjectQuestions, search, difficultyFilter, topicFilter]);
+  }, [subjectQuestions, search, difficultyFilter, topicFilter, classFilter]);
 
   // Statistics
+  const questionsFilteredExceptDifficulty = useMemo(() => {
+    return subjectQuestions.filter(q => {
+      const matchesSearch = q.question.toLowerCase().includes(search.toLowerCase());
+      const matchesTopic = topicFilter === "all" || q.topic_id === topicFilter;
+      const matchesClass = classFilter === "all" || q.class === classFilter;
+      return matchesSearch && matchesTopic && matchesClass;
+    });
+  }, [subjectQuestions, search, topicFilter, classFilter]);
+
   const stats = useMemo(() => {
-    const total = subjectQuestions.length;
-    const easy = subjectQuestions.filter(q => (q.difficulty || "").toLowerCase().trim() === "easy").length;
-    const medium = subjectQuestions.filter(q => (q.difficulty || "").toLowerCase().trim() === "medium").length;
-    const hard = subjectQuestions.filter(q => {
+    const total = questionsFilteredExceptDifficulty.length;
+    const easy = questionsFilteredExceptDifficulty.filter(q => (q.difficulty || "").toLowerCase().trim() === "easy").length;
+    const medium = questionsFilteredExceptDifficulty.filter(q => (q.difficulty || "").toLowerCase().trim() === "medium").length;
+    const hard = questionsFilteredExceptDifficulty.filter(q => {
       const diff = (q.difficulty || "").toLowerCase().trim();
       return diff === "hard" || diff === "difficult";
     }).length;
     return { total, easy, medium, hard };
-  }, [subjectQuestions]);
+  }, [questionsFilteredExceptDifficulty]);
 
   // Mutations
   const createMutation = useMutation({
@@ -279,6 +337,7 @@ export const TeacherDashboard = () => {
           option4: row.option4 || "",
           correct_option: correct_option as any,
           difficulty: row.difficulty || "easy",
+          class: row.class || "Class 10",
           topic_id: topic_id || undefined,
           sub_topic_id: sub_topic_id || undefined,
           topic_name: topic_name || undefined,
@@ -340,6 +399,7 @@ export const TeacherDashboard = () => {
       new_topic_name: "",
       new_sub_topic_name: "",
       media_url: question.media_url ?? "",
+      class: question.class ?? "Class 10",
     });
     setModalOpen(true);
   };
@@ -413,150 +473,331 @@ export const TeacherDashboard = () => {
           <div className="absolute -bottom-8 -right-8 h-40 w-40 rounded-full bg-white/5" />
         </div>
 
-        {/* Stats Grid */}
-        <section className="mb-8 grid gap-4 grid-cols-2 sm:grid-cols-4">
-          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Total Pool</p>
-            <h3 className="text-2xl font-black text-slate-800 mt-1">{stats.total} Qs</h3>
-          </article>
-          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Easy Level</p>
-            <h3 className="text-2xl font-black text-emerald-600 mt-1">{stats.easy} Qs</h3>
-          </article>
-          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">Medium Level</p>
-            <h3 className="text-2xl font-black text-amber-600 mt-1">{stats.medium} Qs</h3>
-          </article>
-          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide">Difficult Level</p>
-            <h3 className="text-2xl font-black text-rose-600 mt-1">{stats.hard} Qs</h3>
-          </article>
-        </section>
-
-        {/* Search & Filters */}
-        <div className="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_200px_200px]">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              className="pl-10 h-11"
-              placeholder="Search questions..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <div className="relative">
-            <select
-              value={topicFilter}
-              onChange={(e) => setTopicFilter(e.target.value)}
-              className="h-11 w-full rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="all">All Topics</option>
-              {topics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="relative">
-            <select
-              value={difficultyFilter}
-              onChange={(e) => setDifficultyFilter(e.target.value)}
-              className="h-11 w-full rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="all">All Difficulties</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Difficult</option>
-            </select>
-          </div>
+        {/* Navigation Tabs */}
+        <div className="mb-6 flex border-b border-slate-200">
+          <button
+            onClick={() => {
+              setActiveTab("questions");
+              setSelectedTestIdForMonitoring(null);
+            }}
+            className={`pb-3 pt-1 px-4 font-bold text-sm border-b-2 transition-colors ${
+              activeTab === "questions"
+                ? "border-emerald-600 text-emerald-600 font-extrabold"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Questions Bank ({subjectQuestions.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("monitoring")}
+            className={`pb-3 pt-1 px-4 font-bold text-sm border-b-2 transition-colors ${
+              activeTab === "monitoring"
+                ? "border-emerald-600 text-emerald-600 font-extrabold"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Live Test Monitoring
+          </button>
         </div>
 
-        {/* Questions Table */}
-        <h2 className="mb-4 text-base font-bold text-slate-800 flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-emerald-500" />
-          Manage Subject Questions
-        </h2>
+        {activeTab === "questions" ? (
+          <>
+            {/* Stats Grid */}
+            <section className="mb-8 grid gap-4 grid-cols-2 sm:grid-cols-4">
+              <article 
+                onClick={() => setDifficultyFilter("all")}
+                className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
+                  difficultyFilter === "all" 
+                    ? "border-slate-500 bg-slate-50/50 ring-2 ring-slate-500/20" 
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Total Pool</p>
+                <h3 className="text-2xl font-black text-slate-800 mt-1">{stats.total} Qs</h3>
+              </article>
+              <article 
+                onClick={() => setDifficultyFilter("easy")}
+                className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
+                  difficultyFilter === "easy" 
+                    ? "border-emerald-500 bg-emerald-50/10 ring-2 ring-emerald-500/20" 
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Easy Level</p>
+                <h3 className="text-2xl font-black text-emerald-600 mt-1">{stats.easy} Qs</h3>
+              </article>
+              <article 
+                onClick={() => setDifficultyFilter("medium")}
+                className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
+                  difficultyFilter === "medium" 
+                    ? "border-amber-500 bg-amber-50/10 ring-2 ring-amber-500/20" 
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">Medium Level</p>
+                <h3 className="text-2xl font-black text-amber-600 mt-1">{stats.medium} Qs</h3>
+              </article>
+              <article 
+                onClick={() => setDifficultyFilter("hard")}
+                className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
+                  difficultyFilter === "hard" 
+                    ? "border-rose-500 bg-rose-50/10 ring-2 ring-rose-500/20" 
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide">Difficult Level</p>
+                <h3 className="text-2xl font-black text-rose-600 mt-1">{stats.hard} Qs</h3>
+              </article>
+            </section>
 
-        {isLoadingQuestions ? (
-          <div className="flex h-64 items-center justify-center text-slate-500 bg-white rounded-xl border border-slate-200">
-            <Spinner /> <span className="ml-2">Loading question pool...</span>
-          </div>
-        ) : filteredQuestions.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center text-slate-500">
-            <p className="text-lg font-semibold text-slate-700">No questions found</p>
-            <p className="mt-1 text-sm text-slate-400">Add questions or adjust your search filters.</p>
-          </div>
+            {/* Search & Filters */}
+            <div className="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_160px_160px]">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  className="pl-10 h-11"
+                  placeholder="Search questions..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              <div className="relative">
+                <select
+                  value={classFilter}
+                  onChange={(e) => setClassFilter(e.target.value)}
+                  className="h-11 w-full rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="all">All Classes</option>
+                  <option value="Class 9">Class 9</option>
+                  <option value="Class 10">Class 10</option>
+                  <option value="Class 11">Class 11</option>
+                  <option value="Class 12">Class 12</option>
+                </select>
+              </div>
+
+              <div className="relative">
+                <select
+                  value={topicFilter}
+                  onChange={(e) => setTopicFilter(e.target.value)}
+                  className="h-11 w-full rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="all">All Topics</option>
+                  {filteredTopics.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Questions Table */}
+            <h2 className="mb-4 text-base font-bold text-slate-800 flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-emerald-500" />
+              Manage Subject Questions
+            </h2>
+
+            {isLoadingQuestions ? (
+              <div className="flex h-64 items-center justify-center text-slate-500 bg-white rounded-xl border border-slate-200">
+                <Spinner /> <span className="ml-2">Loading question pool...</span>
+              </div>
+            ) : filteredQuestions.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center text-slate-500">
+                <p className="text-lg font-semibold text-slate-700">No questions found</p>
+                <p className="mt-1 text-sm text-slate-400">Add questions or adjust your search filters.</p>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
+                    <tr>
+                      <th className="px-6 py-4 w-12 text-center">#</th>
+                      <th className="px-6 py-4">Question Prompt</th>
+                      <th className="px-6 py-4 w-44">Topic</th>
+                      <th className="px-6 py-4 w-32">Class</th>
+                      <th className="px-6 py-4 w-32">Difficulty</th>
+                      <th className="px-6 py-4 w-40 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredQuestions.map((q, index) => {
+                      const topicName = topics.find(t => t.id === q.topic_id)?.name ?? "General";
+                      const diffLower = (q.difficulty || "").toLowerCase().trim();
+                      const difficultyColor =
+                        diffLower === "easy" ? "green" :
+                        diffLower === "medium" ? "yellow" : 
+                        (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
+
+                      return (
+                        <tr key={q.id ?? index} className="hover:bg-slate-50/40">
+                          <td className="px-6 py-4 text-center font-bold text-slate-400">{index + 1}</td>
+                          <td className="px-6 py-4">
+                            <div className="font-semibold text-slate-800 line-clamp-2">{q.question}</div>
+                            <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
+                              <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Ans: {q.correct_option.replace("option", "Option ")}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 font-medium">
+                            <Badge tone="blue">{topicName}</Badge>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 font-medium">
+                            <Badge tone="slate">{q.class ?? "Class 10"}</Badge>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge tone={difficultyColor}>{q.difficulty ?? "easy"}</Badge>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="secondary"
+                                className="h-8 px-2.5 text-xs"
+                                onClick={() => handleOpenEditModal(q, index)}
+                                icon={<Pencil className="h-3.5 w-3.5" />}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="h-8 px-2.5 text-xs text-rose-600 hover:bg-rose-50"
+                                onClick={() => {
+                                  if (confirm("Delete this question from pool?")) {
+                                    deleteMutation.mutate(q.id ?? "");
+                                  }
+                                }}
+                                icon={<Trash2 className="h-3.5 w-3.5" />}
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                <tr>
-                  <th className="px-6 py-4 w-12 text-center">#</th>
-                  <th className="px-6 py-4">Question Prompt</th>
-                  <th className="px-6 py-4 w-44">Topic</th>
-                  <th className="px-6 py-4 w-32">Difficulty</th>
-                  <th className="px-6 py-4 w-40 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredQuestions.map((q, index) => {
-                  const topicName = topics.find(t => t.id === q.topic_id)?.name ?? "General";
-                  const diffLower = (q.difficulty || "").toLowerCase().trim();
-                  const difficultyColor =
-                    diffLower === "easy" ? "green" :
-                    diffLower === "medium" ? "yellow" : 
-                    (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            {!selectedTestIdForMonitoring ? (
+              <div>
+                <h2 className="text-lg font-bold text-slate-800 mb-4">Select Live Test to Monitor</h2>
+                {isLoadingTests ? (
+                  <div className="flex h-40 items-center justify-center text-slate-500">
+                    <Spinner /> <span className="ml-2">Loading tests...</span>
+                  </div>
+                ) : tests.filter(t => t.status === "live").length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-slate-500 bg-slate-50/50">
+                    <p className="text-sm font-semibold mb-1 text-slate-700">No Active Tests Found</p>
+                    <p className="text-xs">There are no scheduled tests currently live/running.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {tests.filter(t => t.status === "live").map((test) => (
+                      <div key={test.id} className="rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition bg-slate-50/50">
+                        <div className="mb-2 flex items-center justify-between">
+                          <Badge tone="green">Live Now</Badge>
+                          <span className="text-xs font-semibold text-slate-500">{test.class || "All Classes"}</span>
+                        </div>
+                        <h3 className="font-bold text-slate-800 text-sm mb-1">{test.name}</h3>
+                        <p className="text-xs text-slate-500 mb-4">Subject: {Array.isArray(test.subject) ? test.subject.join(", ") : test.subject}</p>
+                        <Button
+                          onClick={() => setSelectedTestIdForMonitoring(test.id)}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9 text-xs"
+                        >
+                          Monitor Live Feeds
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                {/* Header for monitoring a specific test */}
+                <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                  <div>
+                    <button
+                      onClick={() => setSelectedTestIdForMonitoring(null)}
+                      className="mb-1 text-xs font-bold text-emerald-600 hover:underline uppercase flex items-center gap-1"
+                    >
+                      ← Back to Test List
+                    </button>
+                    <h2 className="text-lg font-extrabold text-slate-800">
+                      Monitoring: {tests.find(t => t.id === selectedTestIdForMonitoring)?.name || "Live Test"}
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Class: {tests.find(t => t.id === selectedTestIdForMonitoring)?.class || "All"} | Subject: {
+                        (() => {
+                          const test = tests.find(t => t.id === selectedTestIdForMonitoring);
+                          return test ? (Array.isArray(test.subject) ? test.subject.join(", ") : test.subject) : "";
+                        })()
+                      }
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                    <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                    <span>Real-time polling active (every 3s)</span>
+                  </div>
+                </div>
 
-                  return (
-                    <tr key={q.id ?? index} className="hover:bg-slate-50/40">
-                      <td className="px-6 py-4 text-center font-bold text-slate-400">{index + 1}</td>
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-800 line-clamp-2">{q.question}</div>
-                        <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
-                          <span className="text-emerald-600 font-semibold flex items-center gap-1">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Ans: {q.correct_option.replace("option", "Option ")}
+                {/* Grid of student feeds */}
+                {activeStreamsList.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 p-12 text-center text-slate-500">
+                    <p className="text-sm font-semibold mb-1">Waiting for students to join...</p>
+                    <p className="text-xs">No active students have started the test attempt with proctoring stream yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    {activeStreamsList.map((stream) => (
+                      <div key={stream.user_id} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-900 shadow-sm relative aspect-video flex flex-col justify-end text-white">
+                        {/* Stream Image / Fallback */}
+                        {stream.frame ? (
+                          <img
+                            src={stream.frame}
+                            alt={`${stream.username}'s webcam`}
+                            className="w-full h-full object-cover absolute inset-0"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 text-slate-400">
+                            <span className="text-4xl font-extrabold mb-1">👤</span>
+                            <span className="text-xs font-semibold uppercase tracking-wider">Camera Inactive</span>
+                          </div>
+                        )}
+
+                        {/* Top corner indicators */}
+                        <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                            stream.hasVideo ? "bg-emerald-500/90 text-white" : "bg-red-500/90 text-white"
+                          }`}>
+                            Video: {stream.hasVideo ? "ON" : "OFF"}
+                          </span>
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                            stream.hasAudio ? "bg-emerald-500/90 text-white animate-pulse" : "bg-red-500/90 text-white"
+                          }`}>
+                            Mic: {stream.hasAudio ? "ON" : "OFF"}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-500 font-medium">
-                        <Badge tone="blue">{topicName}</Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge tone={difficultyColor}>{q.difficulty ?? "easy"}</Badge>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="secondary"
-                            className="h-8 px-2.5 text-xs"
-                            onClick={() => handleOpenEditModal(q, index)}
-                            icon={<Pencil className="h-3.5 w-3.5" />}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            className="h-8 px-2.5 text-xs text-rose-600 hover:bg-rose-50"
-                            onClick={() => {
-                              if (confirm("Delete this question from pool?")) {
-                                deleteMutation.mutate(q.id ?? "");
-                              }
-                            }}
-                            icon={<Trash2 className="h-3.5 w-3.5" />}
-                          >
-                            Delete
-                          </Button>
+
+                        {/* Bottom Info Overlay */}
+                        <div className="relative z-10 bg-slate-950/80 p-2.5 backdrop-blur-[2px] flex items-center justify-between gap-2 border-t border-white/5">
+                          <div className="truncate">
+                            <div className="text-xs font-extrabold truncate text-white">{stream.username}</div>
+                            <div className="text-[9px] text-slate-400 truncate">{stream.user_id}</div>
+                          </div>
+                          <span className="shrink-0 flex h-2 w-2 rounded-full bg-emerald-400" title="Connected" />
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -634,7 +875,17 @@ export const TeacherDashboard = () => {
 
 
             {/* Classification */}
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-4">
+              <Select
+                label="Class"
+                options={[
+                  { label: "Class 9", value: "Class 9" },
+                  { label: "Class 10", value: "Class 10" },
+                  { label: "Class 11", value: "Class 11" },
+                  { label: "Class 12", value: "Class 12" },
+                ]}
+                {...register("class")}
+              />
               <Select
                 label="Difficulty Level"
                 options={[
@@ -741,7 +992,7 @@ export const TeacherDashboard = () => {
               <textarea
                 value={csvText}
                 onChange={(e) => setCsvText(e.target.value)}
-                placeholder="question,option1,option2,option3,option4,correct_option,difficulty,topic,sub_topic&#10;What is 1+1?,2,3,4,5,option1,easy,Algebra,Addition"
+                placeholder="question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic&#10;What is 1+1?,2,3,4,5,option1,easy,Class 10,Algebra,Addition"
                 className="h-28 w-full resize-none rounded border border-slate-300 p-2.5 text-xs font-mono outline-none focus:border-emerald-500"
               />
             </div>
@@ -761,6 +1012,7 @@ export const TeacherDashboard = () => {
                       </div>
                       <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
                         <span className="font-semibold text-emerald-600">Correct: {q.correct_option || "-"}</span>
+                        <span className="text-slate-400">Class: {q.class || "Class 10"}</span>
                         <span className="text-slate-400">Difficulty: {q.difficulty || "-"}</span>
                         <span className="text-slate-400">Topic: {q.topic || "-"}</span>
                         <span className="text-slate-400">Sub-topic: {q.sub_topic || "-"}</span>
@@ -777,7 +1029,7 @@ export const TeacherDashboard = () => {
                 <HelpCircle className="h-3.5 w-3.5 shrink-0" /> Expected CSV Headers:
               </h4>
               <p className="font-mono bg-white/70 p-1.5 rounded mb-1.5 text-[9px] overflow-x-auto whitespace-nowrap">
-                question,option1,option2,option3,option4,correct_option,difficulty,topic,sub_topic
+                question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic
               </p>
               <span>* Correct option should match A, B, C, D or option1, option2, option3, option4.</span>
               <br />

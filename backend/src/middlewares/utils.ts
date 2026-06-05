@@ -8,9 +8,19 @@ export const json = (
   body: unknown,
   additionalHeaders?: Record<string, string | string[]>
 ) => {
+  const request = (response as any).req;
+  const origin = request?.headers?.origin;
+  const allowedOrigins = [
+    process.env.FRONTEND_ORIGIN,
+    "http://127.0.0.1:5173",
+    "http://localhost:5173"
+  ].filter(Boolean);
+  
+  const corsOrigin = (origin && allowedOrigins.includes(origin)) ? origin : frontendOrigin;
+
   response.writeHead(statusCode, {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": frontendOrigin,
+    "Access-Control-Allow-Origin": corsOrigin,
     "Access-Control-Allow-Credentials": "true",
     ...additionalHeaders
   });

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -13,11 +13,12 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useTest } from "../hooks/useTests";
-import { fetchBulkQuestions, submitAttempt, getAllAttempts } from "../services/api";
+import { fetchBulkQuestions, submitAttempt, getAllAttempts, uploadStreamFrame } from "../services/api";
 import { Button } from "../components/ui/Button";
 import { Spinner } from "../components/ui/Spinner";
 import { Badge } from "../components/ui/Badge";
 import { Modal } from "../components/ui/Modal";
+import { Toast } from "../components/ui/Toast";
 import { Logo } from "../components/layout/Logo";
 import { useAuthStore } from "../store/authStore";
 
@@ -55,6 +56,166 @@ export const AttemptTestPage = () => {
   const user = useAuthStore((state) => state.user);
   const { id = "" } = useParams();
   const navigate = useNavigate();
+
+  // Proctoring States and Refs
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [hasVideo, setHasVideo] = useState(false);
+  const [hasAudio, setHasAudio] = useState(false);
+  const [streamError, setStreamError] = useState(false);
+
+  useEffect(() => {
+    let activeStream: MediaStream | null = null;
+
+    const startProctoring = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 320, height: 240 },
+          audio: true,
+        });
+        activeStream = stream;
+        setCameraStream(stream);
+        setHasVideo(stream.getVideoTracks().length > 0);
+        setHasAudio(stream.getAudioTracks().length > 0);
+        setStreamError(false);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.error("Proctoring connection error:", err);
+        setStreamError(true);
+      }
+    };
+
+    startProctoring();
+
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream]);
+
+  // Periodic stream frame upload
+  useEffect(() => {
+    if (!cameraStream || !user) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const video = videoRef.current;
+        if (video && video.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+          const canvas = document.createElement("canvas");
+          canvas.width = 160;
+          canvas.height = 120;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
+            
+            // Upload to API
+            await uploadStreamFrame({
+              test_id: id || "",
+              user_id: user.userId || "",
+              username: user.name || user.userId || "",
+              frame: dataUrl,
+              hasVideo: hasVideo,
+              hasAudio: hasAudio
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error capturing and uploading stream frame:", err);
+      }
+    }, 3000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [cameraStream, id, user, hasVideo, hasAudio]);
+
+  // Disable copy, cut, paste, and context menu on the test screen
+  useEffect(() => {
+    const preventAction = (e: Event) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener("copy", preventAction);
+    document.addEventListener("cut", preventAction);
+    document.addEventListener("paste", preventAction);
+    document.addEventListener("contextmenu", preventAction);
+
+    return () => {
+      document.removeEventListener("copy", preventAction);
+      document.removeEventListener("cut", preventAction);
+      document.removeEventListener("paste", preventAction);
+      document.removeEventListener("contextmenu", preventAction);
+    };
+  }, []);
+
+  // Monitor tab switching / window blurring (visibility changes and window focus/blur)
+  const tabSwitchesRef = useRef(0);
+  const isTabOutRef = useRef(false);
+  const [tabSwitches, setTabSwitches] = useState(0);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleTabAway = () => {
+      if (!isTabOutRef.current) {
+        isTabOutRef.current = true;
+        tabSwitchesRef.current += 1;
+        setTabSwitches(tabSwitchesRef.current);
+      }
+    };
+
+    const handleTabBack = () => {
+      if (isTabOutRef.current) {
+        isTabOutRef.current = false;
+        setWarningMessage(`Warning: You switched tabs! This activity has been recorded and reported to the administrator. (Tab switch count: ${tabSwitchesRef.current})`);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        handleTabAway();
+      } else if (document.visibilityState === "visible") {
+        handleTabBack();
+      }
+    };
+
+    const handleWindowBlur = () => {
+      handleTabAway();
+    };
+
+    const handleWindowFocus = () => {
+      handleTabBack();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+    window.addEventListener("focus", handleWindowFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+      window.removeEventListener("focus", handleWindowFocus);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (warningMessage) {
+      const timer = setTimeout(() => {
+        setWarningMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [warningMessage]);
 
   useEffect(() => {
     if (user && user.role !== "Student") {
@@ -96,6 +257,11 @@ export const AttemptTestPage = () => {
   const [marked, setMarked] = useState<Record<string, boolean>>({});
   const [visited, setVisited] = useState<Record<string, boolean>>({ "0": true });
   
+  // Refs to always hold latest values (avoid stale closures in timer callbacks)
+  const answersRef = useRef<Record<string, string>>({});
+  const timeSpentRef = useRef(0);
+  const hasSubmittedRef = useRef(false);
+
   // Timer State
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [timeSpent, setTimeSpent] = useState(0);
@@ -119,23 +285,37 @@ export const AttemptTestPage = () => {
     }
   }, [test, timeLeft]);
 
-  // Timer Tick
+  // Timer Tick — uses a single persistent interval, not one per tick
   useEffect(() => {
-    if (timeLeft === null || confirmOpen) return;
+    if (timeLeft === null) return;
 
+    // If timer already expired when effect runs (e.g. page load with 0s left)
     if (timeLeft <= 0) {
-      // Auto submit
-      handleAutoSubmit();
+      triggerAutoSubmit();
       return;
     }
 
     const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev !== null ? prev - 1 : null));
-      setTimeSpent((prev) => prev + 1);
+      setTimeLeft((prev) => {
+        if (prev === null) return null;
+        const next = prev - 1;
+        if (next <= 0) {
+          // Use setTimeout to trigger submit outside of setState call
+          setTimeout(() => triggerAutoSubmit(), 0);
+          return 0;
+        }
+        return next;
+      });
+      setTimeSpent((prev) => {
+        const updated = prev + 1;
+        timeSpentRef.current = updated;
+        return updated;
+      });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, confirmOpen]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft === null]);
 
   // Mutation to submit the attempt
   const submitMutation = useMutation({
@@ -151,13 +331,18 @@ export const AttemptTestPage = () => {
 
   // Handlers
   const handleSelectOption = (questionId: string, option: string) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: option }));
+    setAnswers((prev) => {
+      const updated = { ...prev, [questionId]: option };
+      answersRef.current = updated;
+      return updated;
+    });
   };
 
   const handleClearResponse = (questionId: string) => {
     setAnswers((prev) => {
       const copy = { ...prev };
       delete copy[questionId];
+      answersRef.current = copy;
       return copy;
     });
   };
@@ -196,22 +381,28 @@ export const AttemptTestPage = () => {
   };
 
   const executeSubmission = () => {
-    if (!test) return;
+    if (!test || hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
     submitMutation.mutate({
       test_id: test.id,
       user_id: user?.userId,
-      answers,
-      time_spent: timeSpent,
+      answers: answersRef.current,
+      time_spent: timeSpentRef.current,
+      tab_switches: tabSwitchesRef.current,
     });
   };
 
-  const handleAutoSubmit = () => {
-    if (!test) return;
+  // Auto-submit: reads from refs so it always gets the latest answers even
+  // when called from inside a stale closure (e.g. the interval callback).
+  const triggerAutoSubmit = () => {
+    if (!test || hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
     submitMutation.mutate({
       test_id: test.id,
       user_id: user?.userId,
-      answers,
-      time_spent: timeSpent,
+      answers: answersRef.current,       // always latest
+      time_spent: timeSpentRef.current,  // always latest
+      tab_switches: tabSwitchesRef.current,
     });
   };
 
@@ -309,7 +500,7 @@ export const AttemptTestPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col select-none">
       {/* Distraction-Free Header */}
       <header className="h-[72px] bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-3">
@@ -483,6 +674,50 @@ export const AttemptTestPage = () => {
         {/* Right Column: Question Navigator Sidebar */}
         <aside className="w-full lg:w-[320px] flex flex-col gap-6 shrink-0">
           
+          {/* Proctoring Card */}
+          <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col">
+            <h3 className="text-sm font-bold text-slate-800 mb-3 pb-2 border-b border-slate-100 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
+              Live Proctoring Feed
+            </h3>
+            <div className="relative aspect-video rounded-lg bg-slate-950 overflow-hidden shadow-inner border border-slate-200 flex items-center justify-center">
+              {streamError ? (
+                <div className="text-center p-3 text-rose-500">
+                  <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-rose-500" />
+                  <p className="text-[10px] font-semibold uppercase tracking-wider">Permission Denied</p>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                    Camera & microphone access is required for proctoring.
+                  </p>
+                </div>
+              ) : !cameraStream ? (
+                <div className="text-center text-slate-400">
+                  <div className="h-6 w-6 mx-auto mb-2 text-indigo-500 flex items-center justify-center">
+                    <Spinner />
+                  </div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider">Connecting Devices...</p>
+                </div>
+              ) : (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover scale-x-[-1]"
+                />
+              )}
+            </div>
+            <div className="mt-3 flex items-center justify-between text-[11px] font-semibold">
+              <div className="flex items-center gap-1.5 text-slate-600">
+                <span className={`h-2 w-2 rounded-full ${cameraStream && hasVideo ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                <span>Camera: {cameraStream && hasVideo ? 'Active' : 'Inactive'}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-slate-600">
+                <span className={`h-2 w-2 rounded-full ${cameraStream && hasAudio ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                <span>Microphone: {cameraStream && hasAudio ? 'Active' : 'Inactive'}</span>
+              </div>
+            </div>
+          </section>
+
           {/* Palette Card */}
           <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col">
             <h3 className="text-sm font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">
@@ -601,6 +836,7 @@ export const AttemptTestPage = () => {
           </div>
         </div>
       </Modal>
+      {warningMessage && <Toast tone="error">{warningMessage}</Toast>}
     </div>
   );
 };

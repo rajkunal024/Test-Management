@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
+import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CreateEditTestPage } from "./pages/CreateEditTestPage";
@@ -11,7 +12,8 @@ import { MonitorTestPage } from "./pages/MonitorTestPage";
 
 export const App = () => (
   <Routes>
-    <Route path="/login" element={<LoginPage />} />
+    <Route path="/" element={<LandingPage />} />
+    <Route path="/login/:role" element={<LoginPage />} />
     <Route element={<ProtectedRoute />}>
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/tests/create" element={<CreateEditTestPage />} />
@@ -22,6 +24,6 @@ export const App = () => (
       <Route path="/tests/:id/attempt" element={<AttemptTestPage />} />
       <Route path="/tests/:id/result" element={<TestResultPage />} />
     </Route>
-    <Route path="*" element={<Navigate to="/login" replace />} />
+    <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
 );

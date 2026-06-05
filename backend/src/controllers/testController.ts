@@ -2,6 +2,7 @@ import { IncomingMessage, ServerResponse } from "node:http";
 import { json, readBody } from "../middlewares/utils.js";
 import { checkRole } from "../middlewares/auth.js";
 import { TestModel, ResultModel, StudentModel, QuestionModel, NotificationModel } from "../models/index.js";
+import { performShareResults } from "../services/shareService.js";
 
 export const getTests = async (request: IncomingMessage, response: ServerResponse) => {
   try {
@@ -46,13 +47,17 @@ export const createTest = async (request: IncomingMessage, response: ServerRespo
     await newTest.save();
     if (newTest.status === "live") {
       try {
-        await NotificationModel.create({
-          user_id: "all",
-          message: `A new test '${newTest.name}' is now live! Attempt it before it ends.`,
-          type: "test_live",
-          test_id: newTest.id,
-          test_name: newTest.name
-        });
+        const query = newTest.class ? { class: newTest.class } : {};
+        const students = await StudentModel.find(query);
+        for (const student of students) {
+          await NotificationModel.create({
+            user_id: student.userId,
+            message: `A new test '${newTest.name}' is now live! Attempt it before it ends.`,
+            type: "test_live",
+            test_id: newTest.id,
+            test_name: newTest.name
+          });
+        }
       } catch (err) {
         console.error("Failed to create live test notification:", err);
       }
@@ -109,13 +114,17 @@ export const updateTest = async (request: IncomingMessage, response: ServerRespo
     if (test) {
       if (isNowLive) {
         try {
-          await NotificationModel.create({
-            user_id: "all",
-            message: `A new test '${test.name}' is now live! Attempt it before it ends.`,
-            type: "test_live",
-            test_id: test.id,
-            test_name: test.name
-          });
+          const query = test.class ? { class: test.class } : {};
+          const students = await StudentModel.find(query);
+          for (const student of students) {
+            await NotificationModel.create({
+              user_id: student.userId,
+              message: `A new test '${test.name}' is now live! Attempt it before it ends.`,
+              type: "test_live",
+              test_id: test.id,
+              test_name: test.name
+            });
+          }
         } catch (err) {
           console.error("Failed to create live test notification:", err);
         }
@@ -167,46 +176,20 @@ export const shareResults = async (request: IncomingMessage, response: ServerRes
   }
   try {
     const test = await TestModel.findOne({ id });
-    if (test) {
-      test.results_shared = true;
-      await test.save();
-
-      try {
-        await NotificationModel.create({
-          user_id: "all",
-          message: `Results for test '${test.name}' have been declared. Check your scorecard.`,
-          type: "result_declared",
-          test_id: test.id,
-          test_name: test.name
-        });
-      } catch (err) {
-        console.error("Failed to create result declaration notification:", err);
-      }
-
-      const attempts = await ResultModel.find({ test_id: id });
-      for (const result of attempts) {
-        await StudentModel.findOneAndUpdate(
-          { userId: result.user_id },
-          {
-            $push: {
-              results: {
-                test_id: test.id,
-                test_name: test.name,
-                score: result.score,
-                total_marks: test.total_marks,
-                submitted_at: result.submitted_at
-              }
-            }
-          }
-        );
-      }
-
-      await QuestionModel.deleteMany({ test_id: id });
-
-      json(response, 200, { success: true, data: test });
-    } else {
+    if (!test) {
       json(response, 404, { success: false, message: "Test not found" });
+      return;
     }
+
+    if (test.results_shared) {
+      json(response, 400, { success: false, message: "Results already shared" });
+      return;
+    }
+
+    await performShareResults(id);
+    const updatedTest = await TestModel.findOne({ id });
+
+    json(response, 200, { success: true, data: updatedTest });
   } catch (e) {
     json(response, 500, { success: false, message: "Server error sharing results" });
   }

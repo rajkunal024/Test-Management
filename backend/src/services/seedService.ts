@@ -1,9 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
 import {
-  SubjectModel,
-  TopicModel,
-  SubTopicModel,
   QuestionModel,
   StudentModel,
   TeacherModel,
@@ -15,70 +10,7 @@ import { hashPassword } from "../utils/crypto.js";
 
 export const seedDatabase = async () => {
   try {
-    const dbPath = join(process.cwd(), "src", "db.json");
-    let seedData: any = { subjects: [], topics: [], sub_topics: [], tests: [], questions: [] };
-    if (existsSync(dbPath)) {
-      seedData = JSON.parse(readFileSync(dbPath, "utf-8"));
-    }
 
-    const subjectsCount = await SubjectModel.countDocuments();
-    if (subjectsCount === 0 && seedData.subjects?.length > 0) {
-      await SubjectModel.insertMany(seedData.subjects);
-      console.log("Seeded subjects.");
-    }
-
-    const topicsCount = await TopicModel.countDocuments();
-    if (topicsCount === 0 && seedData.topics?.length > 0) {
-      await TopicModel.insertMany(seedData.topics);
-      console.log("Seeded topics.");
-    }
-
-    const subTopicsCount = await SubTopicModel.countDocuments();
-    if (subTopicsCount === 0 && seedData.sub_topics?.length > 0) {
-      await SubTopicModel.insertMany(seedData.sub_topics);
-      console.log("Seeded sub-topics.");
-    }
-
-    const questionsCount = await QuestionModel.countDocuments();
-    if (questionsCount === 0 && seedData.questions?.length > 0) {
-      await QuestionModel.insertMany(seedData.questions);
-      console.log("Seeded questions.");
-    }
-
-    const studentCount = await StudentModel.countDocuments();
-    if (studentCount === 0) {
-      await StudentModel.create({
-        userId: "student",
-        password: hashPassword("student"),
-        name: "Student User",
-        role: "Student",
-        email: "student@preproute.com",
-        dob: "2005-01-01",
-        results: []
-      });
-      console.log("Seeded student account.");
-    }
-
-    const teacherCount = await TeacherModel.countDocuments();
-    if (teacherCount === 0) {
-      await TeacherModel.insertMany([
-        { userId: "math_teacher", password: hashPassword("teacher"), name: "Math Teacher", role: "Teacher", subject: "Mathematics", email: "math_teacher@preproute.com", dob: "1985-05-15" },
-        { userId: "physics_teacher", password: hashPassword("teacher"), name: "Physics Teacher", role: "Teacher", subject: "Physics", email: "physics_teacher@preproute.com", dob: "1988-08-20" },
-        { userId: "chemistry_teacher", password: hashPassword("teacher"), name: "Chemistry Teacher", role: "Teacher", subject: "Chemistry", email: "chemistry_teacher@preproute.com", dob: "1990-10-10" }
-      ]);
-      console.log("Seeded teacher accounts.");
-    }
-
-    const adminCount = await AdminModel.countDocuments();
-    if (adminCount === 0) {
-      await AdminModel.create({
-        userId: "vedant-admin",
-        password: hashPassword("vedant123"),
-        name: "Vedant Admin",
-        role: "Admin"
-      });
-      console.log("Seeded default admin account.");
-    }
 
     // Migrate existing users with plain-text passwords to hashed passwords
     const admins = await AdminModel.find({});
@@ -101,10 +33,36 @@ export const seedDatabase = async () => {
 
     const students = await StudentModel.find({});
     for (const student of students) {
+      let updated = false;
       if (student.password && !student.password.includes(":")) {
         student.password = hashPassword(student.password);
-        await student.save();
+        updated = true;
         console.log(`Migrated Student ${student.userId} password to hash.`);
+      }
+      if (!student.class) {
+        student.class = "Class 10";
+        updated = true;
+        console.log(`Migrated Student ${student.userId} class to Class 10.`);
+      }
+      if (updated) {
+        await student.save();
+      }
+    }
+
+    const testsToMigrate = await TestModel.find({});
+    for (const test of testsToMigrate) {
+      if (!test.class) {
+        test.class = "Class 10";
+        await test.save();
+        console.log(`Migrated Test ${test.name} class to Class 10.`);
+      }
+    }
+
+    const questionsToMigrate = await QuestionModel.find({});
+    for (const q of questionsToMigrate) {
+      if (!q.class) {
+        q.class = "Class 10";
+        await q.save();
       }
     }
 
@@ -152,6 +110,15 @@ export const seedDatabase = async () => {
         await attempt.save();
         console.log(`Successfully migrated attempt database record.`);
       }
+    }
+
+    // Initialize tab_switches for legacy attempts
+    const result = await ResultModel.updateMany(
+      { tab_switches: { $exists: false } },
+      { $set: { tab_switches: 0 } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`Initialized tab_switches field for ${result.modifiedCount} legacy attempts.`);
     }
   } catch (err) {
     console.error("Seeding error:", err);

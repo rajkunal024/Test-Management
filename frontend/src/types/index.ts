@@ -7,6 +7,7 @@ export interface User {
   avatarUrl?: string;
   subject?: string;
   dob?: string;
+  class?: string;
 }
 
 export interface LoginRequest {
@@ -65,6 +66,7 @@ export interface Test {
   start_time?: string;
   end_time?: string;
   results_shared?: boolean;
+  class?: string;
 }
 
 export interface Question {
@@ -87,6 +89,7 @@ export interface Question {
   topic_name?: string;
   sub_topic_name?: string;
   subject_id?: string;
+  class?: string;
 }
 
 export interface TestPayload {
@@ -109,6 +112,7 @@ export interface TestPayload {
   start_time?: string;
   end_time?: string;
   results_shared?: boolean;
+  class?: string;
 }
 
 export interface ApiEnvelope<T> {
@@ -129,6 +133,7 @@ export interface Attempt {
   unattempted: number;
   answers: Record<string, string>;
   time_spent: number;
+  tab_switches?: number;
   submitted_at: string;
   test_copy?: Array<{
     id?: string;
@@ -147,6 +152,7 @@ export interface AttemptPayload {
   user_id?: string;
   answers: Record<string, string>;
   time_spent: number;
+  tab_switches?: number;
 }
 
 export interface AppNotification {

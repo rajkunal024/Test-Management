@@ -11,9 +11,7 @@ export const getNotifications = async (request: IncomingMessage, response: Serve
   }
 
   try {
-    const notifications = await NotificationModel.find({
-      $or: [{ user_id: "all" }, { user_id: user.userId }]
-    }).sort({ created_at: -1 });
+    const notifications = await NotificationModel.find({ user_id: user.userId }).sort({ created_at: -1 });
 
     const mapped = notifications.map((n: any) => ({
       id: n._id,
@@ -39,9 +37,7 @@ export const markAllNotificationsRead = async (request: IncomingMessage, respons
   }
 
   try {
-    const notifications = await NotificationModel.find({
-      $or: [{ user_id: "all" }, { user_id: user.userId }]
-    });
+    const notifications = await NotificationModel.find({ user_id: user.userId });
 
     for (const n of notifications) {
       if (!n.read_by.includes(user.userId)) {
@@ -53,5 +49,22 @@ export const markAllNotificationsRead = async (request: IncomingMessage, respons
     json(response, 200, { success: true, message: "All notifications marked read" });
   } catch (e) {
     json(response, 500, { success: false, message: "Server error marking notifications read" });
+  }
+};
+
+export const clearAllNotifications = async (request: IncomingMessage, response: ServerResponse) => {
+  const user = getUserFromRequest(request);
+  if (!user) {
+    json(response, 401, { success: false, message: "Unauthorized" });
+    return;
+  }
+
+  try {
+    // Physically delete all notification documents for this user
+    await NotificationModel.deleteMany({ user_id: user.userId });
+
+    json(response, 200, { success: true, message: "All notifications cleared and deleted" });
+  } catch (e) {
+    json(response, 500, { success: false, message: "Server error clearing notifications" });
   }
 };
