@@ -168,7 +168,7 @@ Create a file at `backend/.env`:
 ```env
 PORT=4000
 FRONTEND_ORIGIN=http://127.0.0.1:5173
-MONGODB_URI=mongodb://127.0.0.1:27017/preproute
+MONGODB_URI=your_mongodb_uri
 ADMIN_SIGNUP_KEY=your_secret_admin_registration_passkey
 JWT_SECRET=your_jwt_signing_key_secret_string
 ```
