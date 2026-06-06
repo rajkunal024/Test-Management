@@ -1,57 +1,272 @@
-# PrepRoute Test Management
+# PrepRoute Test Management System
 
-A separated React frontend and native Node.js HTTP backend (zero external web framework dependencies) for test management, persisting data in MongoDB.
+A high-performance, workspace-driven web application featuring a native **Node.js HTTP backend** (built completely from scratch with zero external framework dependencies like Express) and a modern, glassmorphic **React SPA frontend**. Designed for real-time exam administration, multi-role workspace management, automated proctoring with live teacher monitoring, and automatic result sharing.
 
-## Setup
+---
 
-```bash
-npm install
-npm run dev
-```
+## 🏗️ Folder Structure
 
-Frontend:
+The project is structured as an NPM workspaces monorepo containing distinct frontend and backend directories. Below is the directory tree:
 
 ```text
-http://127.0.0.1:5173
+Test-Management/
+├── package.json              # Monorepo configuration & workspace run scripts
+├── package-lock.json         # Lockfile for overall workspace dependencies
+├── README.md                 # Project documentation
+├── backend/
+│   ├── package.json          # Backend package specifications
+│   ├── tsconfig.json         # TypeScript compiler configurations
+│   └── src/
+│       ├── server.ts         # Bootstraps database and native HTTP server
+│       ├── app.ts            # Native HTTP request parser and router handler
+│       ├── db/
+│       │   └── index.ts      # Mongoose MongoDB connection client setup
+│       ├── models/
+│       │   └── index.ts      # Central Mongoose schemas (User, Test, Result, Notification, etc.)
+│       ├── controllers/
+│       │   ├── authController.ts         # Handlers for Register, Login, Logout, and Token Verification
+│       │   ├── testController.ts         # Handlers for Test planning, updates, list, and manual sharing
+│       │   ├── attemptController.ts      # Handlers for Test starts, submits, and proctoring streams
+│       │   ├── questionController.ts     # Handlers for Question creation, updates, and CSV imports
+│       │   ├── subjectController.ts      # Handlers for Subject, Topic, and Subtopic catalogs
+│       │   ├── notificationController.ts  # Handlers for user notifications (alerts, read/clear states)
+│       │   └── userController.ts         # Handlers for Admin user lists and CRUD
+│       ├── routes/
+│       │   ├── index.ts                  # Root router forwarding matching path handlers
+│       │   ├── authRoutes.ts             # Auth routes mappings
+│       │   ├── testRoutes.ts             # Test management routes mappings
+│       │   ├── attemptRoutes.ts          # Exam attempts and streaming routes mappings
+│       │   ├── questionRoutes.ts         # Question and CSV imports routes mappings
+│       │   ├── subjectRoutes.ts          # Syllabus subjects routes mappings
+│       │   ├── notificationRoutes.ts     # User notification management routes mappings
+│       │   └── userRoutes.ts             # Users management routes mappings
+│       ├── middlewares/
+│       │   ├── auth.ts                   # JWT token parser and Role authorization checks
+│       │   └── utils.ts                  # CORS headers and Request payload handlers
+│       ├── services/
+│       │   ├── seedService.ts            # Database seeder and startup plaintext-to-hash migrations
+│       │   ├── shareService.ts           # Result score-calculators and email notification triggers
+│       │   └── autoShareService.ts       # Auto-share polling daemon (30s checker interval)
+│       └── utils/
+│           └── crypto.ts                 # PBKDF2 cryptography helpers for passwords
+└── frontend/
+    ├── package.json          # Frontend package specifications
+    ├── vite.config.ts        # Vite configuration script
+    ├── tailwind.config.js    # TailwindCSS styling configuration
+    ├── postcss.config.js     # PostCSS configurations
+    ├── tsconfig.json         # TypeScript compiler configurations
+    └── src/
+        ├── main.tsx          # React application mounting file
+        ├── App.tsx           # React Router and query client configuration
+        ├── index.css         # Global Tailwind CSS imports & custom styles
+        ├── assets/           # Dynamic icons and image assets
+        ├── components/
+        │   ├── layout/
+        │   │   ├── AppShell.tsx          # Navigation wrapper, header, and notification drawer
+        │   │   ├── Logo.tsx              # Brand visual identity logo SVG
+        │   │   ├── PageWrapper.tsx       # Standard page layout spacing block
+        │   │   └── ProtectedRoute.tsx    # Role-based route guard component
+        │   └── ui/
+        │       ├── Badge.tsx             # Interactive UI status badges
+        │       ├── Button.tsx            # Styled utility button components
+        │       ├── Input.tsx             # Accessible inputs wrapper
+        │       ├── Modal.tsx             # Overlay dialog boxes
+        │       ├── Select.tsx            # Dropdown options selectors
+        │       ├── Spinner.tsx           # Asynchronous loading animations
+        │       └── Toast.tsx             # Dismissible alert banner notifications
+        ├── pages/
+        │   ├── LandingPage.tsx           # Premium portal gateway selector
+        │   ├── LoginPage.tsx             # Customized login portals for each role
+        │   ├── DashboardPage.tsx         # Universal redirect page based on user role
+        │   ├── StudentDashboard.tsx      # Student profile view, notifications, and scheduled exams
+        │   ├── TeacherDashboard.tsx      # Teacher workspace (Question bank, live monitoring panel)
+        │   ├── CreateEditTestPage.tsx    # Test compiler (Subjects, Checkboxes, scoring grid)
+        │   ├── AddQuestionsPage.tsx      # Manual forms & CSV batch imports
+        │   ├── PreviewPublishPage.tsx    # Final checklist review and publication control
+        │   ├── AttemptTestPage.tsx       # Strict exam workspace with proctoring stream & tab monitoring
+        │   ├── MonitorTestPage.tsx       # Real-time administrator panel for tab violations and status
+        │   └── TestResultPage.tsx        # Personalized feedback view displaying correct and selected choices
+        ├── hooks/
+        │   ├── useAuth.ts                # Client Authentication lifecycle hook
+        │   └── useTests.ts               # Test cache and retrieval hooks
+        ├── services/
+        │   └── api.ts                    # Customized Axios client instance with CORS credentials
+        ├── store/
+        │   ├── authStore.ts              # Zustand login-session storage
+        │   └── testStore.ts              # Zustand question and test planner storage
+        ├── types/
+        │   └── index.ts                  # Type definitions for schemas and payloads
+        └── utils/
+            └── validators.ts             # Client input form schema validations (Zod definitions)
 ```
 
-Backend:
+---
 
-```text
-http://127.0.0.1:4000
-```
+## 🛠️ Tech Stack & Dependencies
 
-## Environment
+### Backend
+* **Runtime Platform:** Node.js (Native HTTP server via `node:http`, **no Express** or other framework dependencies).
+* **Database Client:** Mongoose / MongoDB.
+* **Programming Language:** TypeScript.
 
-Create the following `.env` configuration files (these are ignored by Git):
+#### Backend Dependency List
+| Package Name | Version | Type | Purpose |
+| :--- | :---: | :---: | :--- |
+| **`mongoose`** | `^8.24.0` | Production | MongoDB object modeling and schema structure. |
+| **`typescript`** | `^5.7.2` | Development | Static compilation and typing checks. |
+| **`@types/node`** | `^25.9.1` | Development | Native Type declarations for Node.js modules. |
 
-**Frontend (`frontend/.env`)**:
+---
+
+### Frontend
+* **UI Library:** React 18 (Single Page App).
+* **Bundler & Dev Server:** Vite.
+* **Styling Framework:** TailwindCSS + PostCSS + Autoprefixer.
+* **State Management:** Zustand.
+* **Server State Management:** React Query (TanStack Query v5).
+* **Network Requests:** Axios.
+* **Forms & Validation:** React Hook Form + Zod Resolvers.
+* **Icons:** Lucide React.
+
+#### Frontend Dependency List
+| Package Name | Version | Type | Purpose |
+| :--- | :---: | :---: | :--- |
+| **`react`** | `^18.3.1` | Production | Core view rendering engine. |
+| **`react-dom`** | `^18.3.1` | Production | React framework entry points for DOM targets. |
+| **`react-router-dom`** | `^6.28.2` | Production | Client-side routing management. |
+| **`@tanstack/react-query`** | `^5.66.0` | Production | Data-fetching, queries caching, and mutation state management. |
+| **`axios`** | `^1.7.9` | Production | HTTP requests client with global interceptors. |
+| **`zustand`** | `^5.0.3` | Production | Local authentication state manager. |
+| **`react-hook-form`** | `^7.54.2` | Production | React form control management. |
+| **`@hookform/resolvers`** | `^5.0.1` | Production | React Hook Form wrapper adapters for third-party validation engines. |
+| **`zod`** | `^3.24.1` | Production | Dynamic schema validator for form inputs. |
+| **`lucide-react`** | `^0.468.0` | Production | Premium SVG vector icons pack. |
+| **`vite`** | `^6.0.7` | Development | Project compiler and Hot-Module-Replacement server. |
+| **`@vitejs/plugin-react`** | `^4.3.4` | Development | React framework integration support inside Vite compiler. |
+| **`typescript`** | `^5.7.2` | Development | TypeScript scripting compiler environment. |
+| **`tailwindcss`** | `^3.4.17` | Development | Tailwind CSS styling builder tool. |
+| **`postcss`** | `^8.4.49` | Development | Styles processing engine. |
+| **`autoprefixer`** | `^10.4.20` | Development | Browser prefixes utility provider. |
+| **`@types/react`** | `^18.3.18` | Development | Type specifications for React. |
+| **`@types/react-dom`** | `^18.3.5` | Development | Type specifications for React DOM. |
+| **`@types/node`** | `^25.9.1` | Development | Node type mappings helper. |
+
+---
+
+## ⚙️ Environment Configuration
+
+You must define separate `.env` files for both frontend and backend directories. Create them under their respective folders (both files are ignored by git).
+
+### 1. Frontend Configuration
+Create a file at `frontend/.env`:
 ```env
 VITE_API_BASE_URL=http://127.0.0.1:4000/api
 ```
 
-**Backend (`backend/.env`)**:
+### 2. Backend Configuration
+Create a file at `backend/.env`:
 ```env
 PORT=4000
 FRONTEND_ORIGIN=http://127.0.0.1:5173
-MONGODB_URI=your_own_key
-ADMIN_SIGNUP_KEY=your_own_key
-JWT_SECRET=your_own_key
+MONGODB_URI=mongodb://127.0.0.1:27017/preproute
+ADMIN_SIGNUP_KEY=your_secret_admin_registration_passkey
+JWT_SECRET=your_jwt_signing_key_secret_string
 ```
 
-## Architecture & Core Features
+---
 
-- **Frontend (`frontend/`)**: React 18 + TypeScript + Zustand + React Query app.
-  - Interceptors automatically enable `withCredentials: true` to forward HTTP-only session cookies.
-  - App Shell includes an interactive, glassmorphic notifications panel polling every 15s.
-- **Backend (`backend/`)**: Native Node.js `node:http` server with MongoDB persistence via Mongoose.
-  - **Secure Cryptography**: Password hashing using pbkdf2Sync (with hex salt), incorporating dynamic database migration of legacy plain-text passwords to hashed passwords on startup.
-  - **Cookie-Based Authentication**: Secure HS256 JSON Web Tokens (JWT) signed with `JWT_SECRET` and transmitted via secure, cross-origin `HttpOnly; SameSite=Lax` cookies.
-  - **Randomized Question Slices**: Deterministic Fisher-Yates shuffle & Mulberry32 pseudo-random slice based on `studentId-testId` seed, ensuring students receive unique question combinations while maintaining consistent pages on refresh.
-  - **Result Filtering**: Strict question filters on results page ensuring students only see their assigned questions.
-  - **Notification Feed**: Live feed alerts generated when a test goes live or when results are declared.
+## 🚀 How to Run the Project
 
-## Author
+You can run the frontend and backend services either together (using NPM workspaces) or as separate runtime processes.
 
-- **Kunal Raj**
+### Prerequisite Checklist
+1. Make sure Node.js (v18 or higher) is installed on your local computer.
+2. Confirm your MongoDB database service is up and running.
 
+---
+
+### Option A: Unified Execution (Recommended)
+This starts both the backend and frontend servers concurrently using root-level scripts.
+
+1. **Install workspace dependencies:**
+   ```bash
+   npm install
+   ```
+2. **Launch both servers in Development Mode:**
+   ```bash
+   npm run dev
+   ```
+   * *Backend Server URI:* `http://127.0.0.1:4000`
+   * *Frontend Application URI:* `http://127.0.0.1:5173`
+
+---
+
+### Option B: Separate Process Execution
+If you prefer running or debugging them in separate terminal tabs.
+
+#### 1. Running the Backend Server
+```bash
+cd backend
+npm install
+npm run dev
+```
+* **Production Build & Run:**
+  ```bash
+  npm run build
+  npm start
+  ```
+
+#### 2. Running the Frontend Server
+```bash
+cd frontend
+npm install
+npm run dev
+```
+* **Production Build & Preview:**
+  ```bash
+  npm run build
+  npm start
+  ```
+
+---
+
+## 🔍 Feature Walkthrough
+
+### 🔑 1. Landing Page & Role-Specific Authentication
+* **Unified Portal Selector:** The root route `/` features a modern glassmorphic Landing Page with three interactive selection cards tailored to User Roles (**Admin**, **Teacher**, and **Student**).
+* **Role-Based Logins:** Selecting a role routes users to `/login/:role` (e.g., `/login/student`). The login page dynamically customizes its text and visual theme depending on the role.
+* **Token Cookie Security:** Utilizes Secure `HttpOnly; SameSite=Lax` cookies with signature encryption (`JWT_SECRET`) to maintain sessions safely without risking client-side exposure.
+* **Startup Legacy Migration:** Upon database boot-up, the system automatically checks for legacy plain-text user passwords and hashes them transparently using the **PBKDF2-HMAC** algorithm with unique salt keys.
+
+### 📝 2. Test Management & Automatic Layouts (Admin Workspace)
+* **Custom Scoring Specifications:** Admin specifies positive scores, negative deductions, and unattempted penalties during exam creation.
+* **Topic Selection:** Subtopic selection is fully automated based on Class and Topics checkboxes, reducing layout complexity. Topics are managed via checkboxes.
+* **Question Bank Management:** Allows manual creation of questions or bulk uploading via standard CSV documents.
+* **Preview and Launch Checklist:** Admins can preview tests and verify accuracy before publishing.
+
+### ⏰ 3. Real-Time Exams & Proctoring (Student Workspace)
+* **Active Testing Client:** Features a dedicated screen displaying the active question, choices selection matrix, status progress indicator, and a running test-timer clock.
+* **Deterministic Question Shuffling:** Questions are dynamically shuffled using a Mulberry32 and Fisher-Yates random generator seeded with a unique compound key `studentId-testId`. This ensures each student gets a unique, randomized question order while preserving their specific order when the page is refreshed.
+* **Auto-Submission on Timeout:** If the timer reaches `00:00`, the exam instantly triggers an automated save request, collecting and submitting the current attempted questions to ensure progress is not lost.
+* **Tab-Switch Proctoring Warning:** Includes tab blur detectors. If the student exits the browser window or opens a new tab, a dismissible alert flashes on the screen showing the current violation count. This value is recorded and saved inside the exam session schema.
+* **Webcam Proctoring Stream:** The active testing client captures a webcam thumbnail snapshot every 3 seconds and streams it to the backend database to prove user presence.
+
+### 📊 4. Live Proctoring & Result Declarations (Teacher Workspace)
+* **Live Surveillance Feed:** The Teacher Dashboard contains a "Live Test Monitoring" tab that displays active student attempts in real-time, showing active status markers and warning badges for tab-switches.
+* **Interactive Live Grid:** Teachers can monitor active student video feeds in a responsive grid, verifying who is taking the exam in real-time.
+* **Automated Sharing Daemon:** A background scheduler runs every 30 seconds to check for completed exams. Once the scheduled `end_time` passes, it:
+  1. Sets `results_shared = true`.
+  2. Compiles student grades and injects individual scores into student profiles.
+  3. Generates personalized notification feed alerts for each student.
+  4. Deletes active question sets from the public registry for security.
+
+### 🔔 5. Notification Panel
+* **Live Toast Panel:** The global app header displays a notification bell polling the backend server every 15 seconds.
+* **Direct Notifications:** Students receive immediate alerts when tests are scheduled/published and when final grades are shared. Teachers receive real-time notifications as soon as a student starts an exam attempt.
+* **Permanent DB Cleanup:** Selecting `clear all` inside the notification drawer initiates a physical database removal (`deleteMany`) to keep database storage lightweight.
+
+---
+
+## 👥 Authors
+
+* **Kunal Raj**
