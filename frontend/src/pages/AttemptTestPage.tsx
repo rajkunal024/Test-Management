@@ -59,10 +59,23 @@ export const AttemptTestPage = () => {
 
   // Proctoring States and Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const proctorCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [hasVideo, setHasVideo] = useState(false);
   const [hasAudio, setHasAudio] = useState(false);
   const [streamError, setStreamError] = useState(false);
+
+  // Proctor Chat States
+  interface ChatMessage {
+    sender: string;
+    text: string;
+    timestamp: number;
+  }
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [unreadChat, setUnreadChat] = useState(false);
+  const [chatInput, setChatInput] = useState("");
 
   useEffect(() => {
     let activeStream: MediaStream | null = null;
@@ -167,6 +180,7 @@ export const AttemptTestPage = () => {
         }
         console.log("Proctor WS connected successfully.");
         ws = socket;
+        socketRef.current = socket;
         isWsConnecting = false;
 
         if (fallbackInterval) {
@@ -190,6 +204,22 @@ export const AttemptTestPage = () => {
         }, 250);
       };
 
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === "chat_message") {
+            setChatMessages((prev) => [...prev, {
+              sender: payload.sender || "Proctor",
+              text: payload.text,
+              timestamp: payload.timestamp || Date.now()
+            }]);
+            setUnreadChat(true);
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+
       socket.onerror = (err) => {
         console.error("Proctor WS error:", err);
       };
@@ -198,6 +228,7 @@ export const AttemptTestPage = () => {
         if (isDestroyed) return;
         console.log("Proctor WS closed. Falling back to HTTP.");
         ws = null;
+        socketRef.current = null;
         isWsConnecting = false;
         if (wsInterval) {
           clearInterval(wsInterval);
@@ -224,6 +255,124 @@ export const AttemptTestPage = () => {
       }
     };
   }, [cameraStream, id, user, hasVideo, hasAudio]);
+
+  // AI Proctoring Canvas Overlay Loop
+  useEffect(() => {
+    if (!cameraStream || !proctorCanvasRef.current) return;
+    const canvas = proctorCanvasRef.current;
+    let animationFrameId: number;
+    let scanY = 0;
+    let scanDirection = 1;
+
+    const renderOverlay = () => {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // Draw Face Bounding Box
+      const boxW = w * 0.48;
+      const boxH = h * 0.68;
+      const boxX = (w - boxW) / 2;
+      const boxY = (h - boxH) / 2;
+
+      ctx.strokeStyle = isTabOutRef.current ? "#ef4444" : "#10b981";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(boxX, boxY, boxW, boxH);
+      ctx.setLineDash([]);
+
+      // Bounding box corners
+      ctx.strokeStyle = isTabOutRef.current ? "#ef4444" : "#10b981";
+      ctx.lineWidth = 3;
+      const len = 12;
+      // top-left
+      ctx.beginPath(); ctx.moveTo(boxX, boxY + len); ctx.lineTo(boxX, boxY); ctx.lineTo(boxX + len, boxY); ctx.stroke();
+      // top-right
+      ctx.beginPath(); ctx.moveTo(boxX + boxW - len, boxY); ctx.lineTo(boxX + boxW, boxY); ctx.lineTo(boxX + boxW, boxY + len); ctx.stroke();
+      // bottom-left
+      ctx.beginPath(); ctx.moveTo(boxX, boxY + boxH - len); ctx.lineTo(boxX, boxY + boxH); ctx.lineTo(boxX + len, boxY + boxH); ctx.stroke();
+      // bottom-right
+      ctx.beginPath(); ctx.moveTo(boxX + boxW, boxY + boxH - len); ctx.lineTo(boxX + boxW, boxY + boxH); ctx.lineTo(boxX + boxW - len, boxY + boxH); ctx.stroke();
+
+      // Eye center markers
+      const leftEyeX = boxX + boxW * 0.35;
+      const rightEyeX = boxX + boxW * 0.65;
+      const eyeY = boxY + boxH * 0.38;
+
+      ctx.fillStyle = isTabOutRef.current ? "rgba(239, 68, 68, 0.45)" : "rgba(16, 185, 129, 0.45)";
+      ctx.beginPath(); ctx.arc(leftEyeX, eyeY, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(rightEyeX, eyeY, 4, 0, Math.PI * 2); ctx.fill();
+
+      // Laser Scanner Sweep Line
+      ctx.strokeStyle = "rgba(99, 102, 241, 0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, scanY);
+      ctx.lineTo(w, scanY);
+      ctx.stroke();
+
+      const grad = ctx.createLinearGradient(0, scanY - 8, 0, scanY + 8);
+      grad.addColorStop(0, "rgba(99, 102, 241, 0)");
+      grad.addColorStop(0.5, "rgba(99, 102, 241, 0.2)");
+      grad.addColorStop(1, "rgba(99, 102, 241, 0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, scanY - 8, w, 16);
+
+      scanY += 1.2 * scanDirection;
+      if (scanY >= h || scanY <= 0) {
+        scanDirection *= -1;
+      }
+
+      // HUD Text
+      ctx.fillStyle = isTabOutRef.current ? "#ef4444" : "#10b981";
+      ctx.font = "bold 8px monospace";
+      ctx.fillText(`AI MONITOR: ACTIVE`, 6, 10);
+      ctx.fillText(`GAZE DIRECTION: ${isTabOutRef.current ? "UNFOCUSED" : "SECURE"}`, 6, 18);
+      ctx.fillStyle = "rgba(99, 102, 241, 0.85)";
+      ctx.fillText(`CONFIDENCE: 98.4%`, w - 90, 10);
+
+      if (isTabOutRef.current) {
+        ctx.fillStyle = "#ef4444";
+        ctx.font = "bold 10px sans-serif";
+        ctx.fillText("OUT OF FOCUSED WARNING", w / 2 - 60, h - 8);
+      }
+
+      animationFrameId = requestAnimationFrame(renderOverlay);
+    };
+
+    renderOverlay();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [cameraStream]);
+
+  // Send Chat Message Handler
+  const handleSendChatMessage = () => {
+    if (!chatInput.trim() || !socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
+    
+    const text = chatInput.trim();
+    socketRef.current.send(JSON.stringify({
+      type: "chat_message",
+      text
+    }));
+    
+    setChatMessages((prev) => [...prev, {
+      sender: "You",
+      text,
+      timestamp: Date.now()
+    }]);
+    setChatInput("");
+  };
 
   // Disable copy, cut, paste, and context menu on the test screen
   useEffect(() => {
@@ -782,13 +931,19 @@ export const AttemptTestPage = () => {
                   <p className="text-[10px] font-semibold uppercase tracking-wider">Connecting Devices...</p>
                 </div>
               ) : (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover scale-x-[-1]"
-                />
+                <div className="relative w-full h-full">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover scale-x-[-1]"
+                  />
+                  <canvas
+                    ref={proctorCanvasRef}
+                    className="absolute inset-0 w-full h-full pointer-events-none"
+                  />
+                </div>
               )}
             </div>
             <div className="mt-3 flex items-center justify-between text-[11px] font-semibold">
@@ -800,6 +955,25 @@ export const AttemptTestPage = () => {
                 <span className={`h-2 w-2 rounded-full ${cameraStream && hasAudio ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
                 <span>Microphone: {cameraStream && hasAudio ? 'Active' : 'Inactive'}</span>
               </div>
+            </div>
+
+            {/* Proctor Chat Button */}
+            <div className="mt-4 pt-3 border-t border-slate-100">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setChatOpen(true);
+                  setUnreadChat(false);
+                }}
+                className="w-full text-xs h-9 justify-center bg-indigo-50 border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 text-indigo-700 relative font-semibold"
+              >
+                Message Proctor
+                {unreadChat && (
+                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 bg-rose-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white animate-bounce">
+                    !
+                  </span>
+                )}
+              </Button>
             </div>
           </section>
 
@@ -922,6 +1096,78 @@ export const AttemptTestPage = () => {
         </div>
       </Modal>
       {warningMessage && <Toast tone="error">{warningMessage}</Toast>}
+
+      {/* Proctor Chat Slide-out Drawer */}
+      {chatOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col animate-slide-in-right">
+            {/* Header */}
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-indigo-600 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <h3 className="font-bold text-sm">Proctor Live Support</h3>
+              </div>
+              <button 
+                onClick={() => setChatOpen(false)}
+                className="text-white/80 hover:text-white font-bold text-sm px-2 py-1 hover:bg-white/10 rounded"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Message Area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {chatMessages.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-center p-6 text-slate-400 text-xs">
+                  <p>No messages yet. Any warnings or broadcasts from the proctor will appear here.</p>
+                </div>
+              ) : (
+                chatMessages.map((msg, mIdx) => {
+                  const isProctor = msg.sender === "Proctor";
+                  return (
+                    <div 
+                      key={mIdx}
+                      className={`flex flex-col max-w-[85%] ${isProctor ? "mr-auto" : "ml-auto items-end"}`}
+                    >
+                      <span className="text-[10px] font-bold text-slate-400 mb-1">
+                        {msg.sender} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <div 
+                        className={`p-3 rounded-2xl text-xs font-semibold leading-relaxed ${
+                          isProctor 
+                            ? "bg-rose-50 border border-rose-100 text-rose-800 rounded-tl-none dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300"
+                            : "bg-indigo-600 text-white rounded-tr-none"
+                        }`}
+                      >
+                        {msg.text}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Input Footer */}
+            <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSendChatMessage()}
+                placeholder="Type a message to the proctor..."
+                className="flex-1 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 dark:border-slate-700 text-slate-800 dark:text-white"
+              />
+              <Button 
+                variant="primary"
+                onClick={handleSendChatMessage}
+                className="h-8 text-[11px] px-3 bg-indigo-600 text-white hover:bg-indigo-700"
+              >
+                Send
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

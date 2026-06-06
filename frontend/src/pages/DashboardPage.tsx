@@ -97,16 +97,42 @@ export const DashboardPage = () => {
     return currentTime >= start;
   };
 
-  const filteredTests = useMemo(
-    () =>
-      tests.filter((test) => {
-        const matchesName = test.name.toLowerCase().includes(search.toLowerCase());
-        const statusVal = getTestStatus(test);
-        const matchesStatus = status === "all" || statusVal === status;
-        return matchesName && matchesStatus;
-      }),
-    [tests, search, status, currentTime],
-  );
+  const filteredTests = useMemo(() => {
+    const filtered = tests.filter((test) => {
+      const matchesName = test.name.toLowerCase().includes(search.toLowerCase());
+      const statusVal = getTestStatus(test);
+      const matchesStatus = status === "all" || statusVal === status;
+      return matchesName && matchesStatus;
+    });
+
+    const getTestCreationTime = (test: typeof tests[0]) => {
+      if (test.created_at) {
+        return new Date(test.created_at).getTime();
+      }
+      if (test.id && test.id.startsWith("test-")) {
+        const tsStr = test.id.substring(5);
+        const ts = parseInt(tsStr, 10);
+        if (!isNaN(ts)) return ts;
+      }
+      return 0;
+    };
+
+    const timestamps = filtered.map((t) => getTestCreationTime(t));
+    const maxTime = timestamps.length > 0 ? Math.max(...timestamps) : 0;
+
+    return filtered.sort((a, b) => {
+      const timeA = getTestCreationTime(a);
+      const timeB = getTestCreationTime(b);
+
+      const isA_Newest = timeA === maxTime && maxTime > 0;
+      const isB_Newest = timeB === maxTime && maxTime > 0;
+
+      if (isA_Newest && !isB_Newest) return -1;
+      if (!isA_Newest && isB_Newest) return 1;
+
+      return timeA - timeB;
+    });
+  }, [tests, search, status, currentTime]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteTest(id),

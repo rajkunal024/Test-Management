@@ -68,6 +68,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
     if (user?.role === "Student") {
       return [
         { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
+        { label: "Analytics", icon: BarChart3, to: "/analytics" },
       ];
     }
     return sidebarItems;

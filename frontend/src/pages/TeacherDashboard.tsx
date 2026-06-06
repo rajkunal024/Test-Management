@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -112,6 +112,17 @@ export const TeacherDashboard = () => {
 
   const [wsStreams, setWsStreams] = useState<Record<string, any>>({});
   const [isWsConnected, setIsWsConnected] = useState(false);
+  const teacherSocketRef = useRef<WebSocket | null>(null);
+  
+  interface ChatMessage {
+    sender: string;
+    text: string;
+    timestamp: number;
+  }
+  const [chatHistory, setChatHistory] = useState<Record<string, ChatMessage[]>>({});
+  const [activeChatStudentId, setActiveChatStudentId] = useState<string | null>(null);
+  const [chatInputMap, setChatInputMap] = useState<Record<string, string>>({});
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   // WebSocket manager for live streams feed
   useEffect(() => {
@@ -143,6 +154,7 @@ export const TeacherDashboard = () => {
         }
         console.log("Teacher Proctor WS connected successfully.");
         ws = socket;
+        teacherSocketRef.current = socket;
         setIsWsConnected(true);
         isConnecting = false;
       };
@@ -174,6 +186,25 @@ export const TeacherDashboard = () => {
               delete updated[message.user_id];
               return updated;
             });
+          } else if (message.type === "chat_message") {
+            const studentId = message.sender_id;
+            setChatHistory((prev) => {
+              const currentChats = prev[studentId] || [];
+              return {
+                ...prev,
+                [studentId]: [...currentChats, {
+                  sender: message.sender_name || studentId,
+                  text: message.text,
+                  timestamp: message.timestamp
+                }]
+              };
+            });
+            if (activeChatStudentIdRef.current !== studentId) {
+              setUnreadCounts((prev) => ({
+                ...prev,
+                [studentId]: (prev[studentId] || 0) + 1
+              }));
+            }
           }
         } catch (err) {
           console.error("Error parsing message on teacher WS:", err);
@@ -188,6 +219,7 @@ export const TeacherDashboard = () => {
         if (isDestroyed) return;
         console.log("Teacher Proctor WS closed. Falling back to HTTP polling.");
         ws = null;
+        teacherSocketRef.current = null;
         setIsWsConnected(false);
         isConnecting = false;
         // Reconnect after 5 seconds
@@ -202,8 +234,50 @@ export const TeacherDashboard = () => {
       if (ws) {
         ws.close();
       }
+      teacherSocketRef.current = null;
     };
   }, [selectedTestIdForMonitoring]);
+
+  const activeChatStudentIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    activeChatStudentIdRef.current = activeChatStudentId;
+    if (activeChatStudentId) {
+      setUnreadCounts((prev) => ({
+        ...prev,
+        [activeChatStudentId]: 0
+      }));
+    }
+  }, [activeChatStudentId]);
+
+  const handleSendTeacherChatMessage = (studentId: string) => {
+    const input = chatInputMap[studentId] || "";
+    if (!input.trim() || !teacherSocketRef.current || teacherSocketRef.current.readyState !== WebSocket.OPEN) return;
+    
+    const text = input.trim();
+    teacherSocketRef.current.send(JSON.stringify({
+      type: "chat_message",
+      target_user_id: studentId,
+      text
+    }));
+    
+    setChatHistory((prev) => {
+      const current = prev[studentId] || [];
+      return {
+        ...prev,
+        [studentId]: [...current, {
+          sender: "You (Proctor)",
+          text,
+          timestamp: Date.now()
+        }]
+      };
+    });
+    
+    setChatInputMap((prev) => ({
+      ...prev,
+      [studentId]: ""
+    }));
+  };
+
 
   const { data: httpStreamsList = [] } = useQuery({
     queryKey: ["activeStreams", selectedTestIdForMonitoring],
@@ -1326,12 +1400,25 @@ export const TeacherDashboard = () => {
                         </div>
 
                         {/* Bottom Info Overlay */}
-                        <div className="relative z-10 bg-slate-950/80 p-2.5 backdrop-blur-[2px] flex items-center justify-between gap-2 border-t border-white/5">
-                          <div className="truncate">
+                        <div className="relative z-10 bg-slate-950/80 p-2 border-t border-white/5 backdrop-blur-[2px] flex items-center justify-between gap-2">
+                          <div className="truncate flex-1">
                             <div className="text-xs font-extrabold truncate text-white">{stream.username}</div>
                             <div className="text-[9px] text-slate-400 truncate">{stream.user_id}</div>
                           </div>
-                          <span className="shrink-0 flex h-2 w-2 rounded-full bg-emerald-400" title="Connected" />
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => setActiveChatStudentId(stream.user_id)}
+                              className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-[9px] font-bold text-white uppercase tracking-wider relative flex items-center gap-1"
+                            >
+                              Chat
+                              {unreadCounts[stream.user_id] > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 bg-rose-500 rounded-full flex items-center justify-center text-[8px] font-extrabold text-white animate-bounce">
+                                  {unreadCounts[stream.user_id]}
+                                </span>
+                              )}
+                            </button>
+                            <span className="flex h-2 w-2 rounded-full bg-emerald-400" title="Connected" />
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1482,6 +1569,74 @@ export const TeacherDashboard = () => {
             {formError ? <p className="text-xs font-bold text-rose-500">{formError}</p> : null}
           </form>
         </Modal>
+
+      {/* Proctor Chat Modal / Drawer for Teachers */}
+      {activeChatStudentId && (
+        <Modal
+          open={Boolean(activeChatStudentId)}
+          title={`Chat with Student (${activeChatStudentId})`}
+          onClose={() => setActiveChatStudentId(null)}
+          footer={
+            <div className="flex w-full gap-2">
+              <input
+                type="text"
+                value={chatInputMap[activeChatStudentId] || ""}
+                onChange={(e) => setChatInputMap((prev) => ({
+                  ...prev,
+                  [activeChatStudentId]: e.target.value
+                }))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSendTeacherChatMessage(activeChatStudentId);
+                  }
+                }}
+                placeholder="Type a warning/message to the student..."
+                className="flex-1 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 dark:border-slate-700 text-slate-800 dark:text-white"
+              />
+              <Button
+                variant="primary"
+                onClick={() => handleSendTeacherChatMessage(activeChatStudentId)}
+                className="bg-indigo-600 text-white hover:bg-indigo-700 h-9"
+              >
+                Send
+              </Button>
+            </div>
+          }
+        >
+          <div className="flex flex-col h-[350px]">
+            <div className="flex-1 overflow-y-auto space-y-3 p-2 mb-4 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-100 dark:border-slate-800">
+              {(!chatHistory[activeChatStudentId] || chatHistory[activeChatStudentId].length === 0) ? (
+                <div className="h-full flex items-center justify-center text-center p-6 text-slate-400 text-xs">
+                  <p>No chat history. Send a warning message to warn the student of any rules switches or suspicious movements.</p>
+                </div>
+              ) : (
+                chatHistory[activeChatStudentId].map((msg, mIdx) => {
+                  const isTeacher = msg.sender.includes("Proctor") || msg.sender === "You (Proctor)";
+                  return (
+                    <div 
+                      key={mIdx}
+                      className={`flex flex-col max-w-[85%] ${isTeacher ? "ml-auto items-end" : "mr-auto"}`}
+                    >
+                      <span className="text-[10px] font-bold text-slate-400 mb-0.5">
+                        {msg.sender} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <div 
+                        className={`p-2.5 rounded-xl text-xs font-semibold leading-relaxed ${
+                          isTeacher 
+                            ? "bg-indigo-600 text-white rounded-tr-none"
+                            : "bg-rose-50 border border-rose-100 text-rose-800 rounded-tl-none dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300"
+                        }`}
+                      >
+                        {msg.text}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
 
         {toast ? <Toast>{toast}</Toast> : null}
       </PageWrapper>

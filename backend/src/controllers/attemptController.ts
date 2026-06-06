@@ -1,6 +1,7 @@
 import { IncomingMessage, ServerResponse } from "node:http";
 import { json, readBody } from "../middlewares/utils.js";
-import { TestModel, ResultModel, QuestionModel, TeacherModel, NotificationModel } from "../models/index.js";
+import { TestModel, ResultModel, QuestionModel, TeacherModel, NotificationModel, StudentModel } from "../models/index.js";
+import { getUserFromRequest } from "../middlewares/auth.js";
 
 const seedRandom = (seedStr: string) => {
   let h = 2166136261 >>> 0;
@@ -34,7 +35,26 @@ const getDeterministicSubset = <T,>(array: T[], count: number, seed: string): T[
 
 export const getAttempts = async (request: IncomingMessage, response: ServerResponse) => {
   try {
-    const attempts = await ResultModel.find({});
+    const user = getUserFromRequest(request);
+    if (!user) {
+      json(response, 401, { success: false, message: "Unauthorized" });
+      return;
+    }
+    let filter = {};
+    if (user.role === "Student") {
+      const studentDoc = await StudentModel.findOne({ userId: user.userId });
+      if (studentDoc && studentDoc.class) {
+        const classTests = await TestModel.find({ class: studentDoc.class });
+        const classTestIds = classTests.map((t: any) => t.id);
+        filter = {
+          user_id: user.userId,
+          test_id: { $in: classTestIds }
+        };
+      } else {
+        filter = { user_id: user.userId };
+      }
+    }
+    const attempts = await ResultModel.find(filter);
     json(response, 200, {
       success: true,
       data: attempts

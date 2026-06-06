@@ -9,6 +9,7 @@ import { PreviewPublishPage } from "./pages/PreviewPublishPage";
 import { AttemptTestPage } from "./pages/AttemptTestPage";
 import { TestResultPage } from "./pages/TestResultPage";
 import { MonitorTestPage } from "./pages/MonitorTestPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 
 export const App = () => (
   <Routes>
@@ -16,6 +17,7 @@ export const App = () => (
     <Route path="/login/:role" element={<LoginPage />} />
     <Route element={<ProtectedRoute />}>
       <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/analytics" element={<AnalyticsPage />} />
       <Route path="/tests/create" element={<CreateEditTestPage />} />
       <Route path="/tests/:id/edit" element={<CreateEditTestPage />} />
       <Route path="/tests/:id/questions" element={<AddQuestionsPage />} />

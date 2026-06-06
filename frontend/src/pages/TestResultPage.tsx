@@ -21,31 +21,35 @@ import { Spinner } from "../components/ui/Spinner";
 import { Badge } from "../components/ui/Badge";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
+import { useAuthStore } from "../store/authStore";
 
 export const TestResultPage = () => {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const user = useAuthStore((state) => state.user);
 
   const { data: test, isLoading: isLoadingTest } = useTest(id);
 
-  // Fetch attempts as fallback if location state is missing
+  const isAttemptFromStateValid = Boolean(location.state?.attempt && location.state.attempt.test_id === id);
+
+  // Fetch attempts as fallback if location state is missing or invalid for this test
   const { data: attempts = [], isLoading: isLoadingAttempts } = useQuery({
     queryKey: ["attempts"],
     queryFn: getAllAttempts,
-    enabled: !location.state?.attempt,
+    enabled: !isAttemptFromStateValid && Boolean(user?.userId),
   });
 
   // Extract attempt
   const attempt = useMemo(() => {
-    if (location.state?.attempt) {
+    if (isAttemptFromStateValid) {
       return location.state.attempt;
     }
-    // Find latest attempt for this test
-    const testAttempts = attempts.filter((att) => att.test_id === id);
+    // Find latest attempt for this test belonging to the current user
+    const testAttempts = attempts.filter((att) => att.test_id === id && att.user_id === user?.userId);
     if (testAttempts.length === 0) return null;
     return testAttempts.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())[0];
-  }, [location.state?.attempt, attempts, id]);
+  }, [isAttemptFromStateValid, location.state?.attempt, attempts, id, user?.userId]);
 
   const hasTestCopy = Boolean(attempt?.test_copy && attempt.test_copy.length > 0);
 
@@ -151,7 +155,7 @@ export const TestResultPage = () => {
     return { score, maxMarks, pct, accuracy, timeStr, heading, desc, gradient, iconColor };
   }, [attempt, test, questions]);
 
-  const isLoading = isLoadingTest || isLoadingQuestions || (isLoadingAttempts && !location.state?.attempt);
+  const isLoading = isLoadingTest || isLoadingQuestions || (isLoadingAttempts && !isAttemptFromStateValid);
 
   if (isLoading) {
     return (
@@ -226,7 +230,7 @@ export const TestResultPage = () => {
     <AppShell>
       <PageWrapper>
         {/* Back Link */}
-        <div className="mb-6">
+        <div className="mb-6 print:hidden">
           <Link to="/dashboard" className="inline-flex items-center gap-1 text-xs font-bold text-[#6c7df7] hover:underline uppercase">
             <ArrowLeft className="h-4 w-4" /> Back to Dashboard
           </Link>
@@ -393,11 +397,34 @@ export const TestResultPage = () => {
         </section>
 
         {/* Footer Actions */}
-        <div className="flex justify-center gap-4 mt-8 border-t border-slate-200 pt-6">
+        <div className="flex justify-center gap-4 mt-8 border-t border-slate-200 pt-6 print:hidden">
           <Link to="/dashboard">
             <Button variant="secondary">Go to Dashboard</Button>
           </Link>
+          <Button 
+            onClick={() => window.print()}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold inline-flex items-center gap-2"
+          >
+            Print Report Card
+          </Button>
         </div>
+
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            aside, header, .print\\:hidden {
+              display: none !important;
+            }
+            main {
+              padding-top: 0 !important;
+              padding-left: 0 !important;
+              margin: 0 !important;
+            }
+            body {
+              background: white !important;
+              color: black !important;
+            }
+          }
+        `}} />
       </PageWrapper>
     </AppShell>
   );

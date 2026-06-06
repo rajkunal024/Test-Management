@@ -12,6 +12,7 @@ import {
   Sparkles,
   BookOpenCheck,
   Calendar,
+  TrendingUp,
 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -62,24 +63,6 @@ export const StudentDashboard = () => {
     return Array.from(subs);
   }, [liveTests]);
 
-  // Filter tests based on user search and subject selection
-  const filteredTests = useMemo(() => {
-    return liveTests.filter((test) => {
-      const matchesSearch = test.name.toLowerCase().includes(search.toLowerCase());
-      
-      let matchesSubject = subjectFilter === "all";
-      if (!matchesSubject && test.subject) {
-        if (Array.isArray(test.subject)) {
-          matchesSubject = test.subject.includes(subjectFilter);
-        } else {
-          matchesSubject = test.subject === subjectFilter;
-        }
-      }
-      
-      return matchesSearch && matchesSubject;
-    });
-  }, [liveTests, search, subjectFilter]);
-
   // Find the latest attempt for each test
   const testAttemptsMap = useMemo(() => {
     const map: Record<string, typeof attempts[0]> = {};
@@ -93,6 +76,56 @@ export const StudentDashboard = () => {
     });
     return map;
   }, [attempts, user]);
+
+  // Filter and sort tests based on user search, subject selection, and attempt status
+  const filteredTests = useMemo(() => {
+    const filtered = liveTests.filter((test) => {
+      const matchesSearch = test.name.toLowerCase().includes(search.toLowerCase());
+      
+      let matchesSubject = subjectFilter === "all";
+      if (!matchesSubject && test.subject) {
+        if (Array.isArray(test.subject)) {
+          matchesSubject = test.subject.includes(subjectFilter);
+        } else {
+          matchesSubject = test.subject === subjectFilter;
+        }
+      }
+      
+      return matchesSearch && matchesSubject;
+    });
+
+    const getTestCreationTime = (test: typeof liveTests[0]) => {
+      if (test.created_at) {
+        return new Date(test.created_at).getTime();
+      }
+      if (test.id && test.id.startsWith("test-")) {
+        const tsStr = test.id.substring(5);
+        const ts = parseInt(tsStr, 10);
+        if (!isNaN(ts)) return ts;
+      }
+      return 0;
+    };
+
+    return filtered.sort((a, b) => {
+      const attemptA = testAttemptsMap[a.id] !== undefined;
+      const attemptB = testAttemptsMap[b.id] !== undefined;
+
+      // Unattempted tests come before attempted ones
+      if (!attemptA && attemptB) return -1;
+      if (attemptA && !attemptB) return 1;
+
+      const timeA = getTestCreationTime(a);
+      const timeB = b ? getTestCreationTime(b) : 0; // standard type safety
+
+      if (!attemptA && !attemptB) {
+        // Both unattempted: descending order (newest first)
+        return timeB - timeA;
+      } else {
+        // Both attempted: ascending order (older first)
+        return timeA - timeB;
+      }
+    });
+  }, [liveTests, search, subjectFilter, testAttemptsMap]);
 
   // Calculate student statistics
   const stats = useMemo(() => {
@@ -148,6 +181,14 @@ export const StudentDashboard = () => {
               <p className="mt-2 text-sm text-indigo-100 max-w-xl">
                 Boost your exam prep! Test your knowledge on live topics, track your detailed progress, and review your performance analysis instantly.
               </p>
+              <div className="mt-4 flex gap-3">
+                <Link
+                  to="/analytics"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-indigo-600 hover:bg-slate-50 text-xs font-bold shadow-sm transition"
+                >
+                  <TrendingUp className="h-4 w-4 text-indigo-500" /> View Analytics & Charts
+                </Link>
+              </div>
             </div>
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-4xl">
               🙂
@@ -389,9 +430,40 @@ export const StudentDashboard = () => {
               </div>
             ) : (
               <div className="grid gap-6 md:grid-cols-2">
-                {attempts
-                  .filter((a) => a.user_id === user?.userId)
-                  .map((attempt) => {
+                {(() => {
+                  const studentAttempts = attempts.filter((a) => a.user_id === user?.userId);
+
+                  const getTestCreationTime = (testId: string) => {
+                    const test = tests.find((t) => t.id === testId);
+                    if (!test) return 0;
+                    if (test.created_at) {
+                      return new Date(test.created_at).getTime();
+                    }
+                    if (test.id && test.id.startsWith("test-")) {
+                      const tsStr = test.id.substring(5);
+                      const ts = parseInt(tsStr, 10);
+                      if (!isNaN(ts)) return ts;
+                    }
+                    return 0;
+                  };
+
+                  const timestamps = studentAttempts.map((a) => getTestCreationTime(a.test_id));
+                  const maxTime = timestamps.length > 0 ? Math.max(...timestamps) : 0;
+
+                  const sortedAttempts = [...studentAttempts].sort((a, b) => {
+                    const timeA = getTestCreationTime(a.test_id);
+                    const timeB = getTestCreationTime(b.test_id);
+
+                    const isA_Newest = timeA === maxTime && maxTime > 0;
+                    const isB_Newest = timeB === maxTime && maxTime > 0;
+
+                    if (isA_Newest && !isB_Newest) return -1;
+                    if (!isA_Newest && isB_Newest) return 1;
+
+                    return timeA - timeB;
+                  });
+
+                  return sortedAttempts.map((attempt) => {
                     const test = tests.find((t) => t.id === attempt.test_id);
                     const totalMarks = test?.total_marks ?? attempt.total_marks ?? attempt.score;
                     const subjectsName = test ? (Array.isArray(test.subject) ? test.subject.join(", ") : test.subject) : "General";
@@ -436,7 +508,8 @@ export const StudentDashboard = () => {
                         </div>
                       </article>
                     );
-                  })}
+                  });
+                })()}
               </div>
             )}
           </div>

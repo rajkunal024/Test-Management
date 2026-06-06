@@ -251,7 +251,18 @@ npm run dev
 * **Tab-Switch Proctoring Warning:** Includes tab blur detectors. If the student exits the browser window or opens a new tab, a dismissible alert flashes on the screen showing the current violation count. This value is recorded and saved inside the exam session schema.
 * **Webcam Proctoring Stream:** The active testing client captures a webcam thumbnail snapshot every 3 seconds and streams it to the backend database to prove user presence.
 
-### 📊 4. Live Proctoring & Result Declarations (Teacher Workspace)
+### 📊 4. Interactive Performance Analytics & AI Study Coach (Student Workspace)
+* **High-Tech Interactive SVG Charts**:
+  * **Performance Timeline**: Custom SVG line chart illustrating chronological test scores. Features interactive hover tooltip overlays showing test name, score, and correct/incorrect breakdown, and a green glowing 80% goal reference line.
+  * **Subject Benchmarking**: Custom SVG bar chart displaying average scores by subject with a faint 100% possible score background track guide, alternating color gradients, and hover lifts.
+  * **Accuracy Breakdown**: Concentric circular progress ring depicting the ratio of correct, incorrect, and unattempted questions with rounded cap strokes, central text rating, and drop-shadow styling.
+  * **Marks Leak Analysis**: SVG donut ring representing total marks secured vs. lost to wrong answers (penalties) or unattempted questions (skips).
+  * **Multilateral Subject Radar**: Web concentric level grid tracking subject averages in a radar graph with pulsating node vertices and glowing linear gradient area fills.
+* **Dynamic Analytics Filtering**: Users can filter stats and charts on-the-fly by specific Subjects (automatically restricted to subjects they have attempted) and Time Periods (All History, Last 5 Tests, Last 10 Tests).
+* **AI Study Coach Diagnostic Recommendations**: Automatically diagnoses metrics and prints tailored study suggestions highlighting peak performance, focus subjects, high penalty alerts, and skip recovery suggestions.
+* **Gamified Milestones & Achievements**: Unlocks virtual credentials (Bullseye Accuracy, Test Scholar, Pacing Expert, Penalty Shield) dynamically when student scores meet criteria (remaining locked and semi-transparent otherwise).
+
+### 👁️ 5. Live Proctoring & Result Declarations (Teacher Workspace)
 * **Live Surveillance Feed:** The Teacher Dashboard contains a "Live Test Monitoring" tab that displays active student attempts in real-time, showing active status markers and warning badges for tab-switches.
 * **Interactive Live Grid:** Teachers can monitor active student video feeds in a responsive grid, verifying who is taking the exam in real-time.
 * **Automated Sharing Daemon:** A background scheduler runs every 30 seconds to check for completed exams. Once the scheduled `end_time` passes, it:
@@ -260,12 +271,12 @@ npm run dev
   3. Generates personalized notification feed alerts for each student.
   4. Deletes active question sets from the public registry for security.
 
-### 🔔 5. Notification Panel
+### 🔔 6. Notification Panel
 * **Live Toast Panel:** The global app header displays a notification bell polling the backend server every 15 seconds.
 * **Direct Notifications:** Students receive immediate alerts when tests are scheduled/published and when final grades are shared. Teachers receive real-time notifications as soon as a student starts an exam attempt.
 * **Permanent DB Cleanup:** Selecting `clear all` inside the notification drawer initiates a physical database removal (`deleteMany`) to keep database storage lightweight.
 
-### 🌗 6. Premium Theme Customization & UI Controls
+### 🌗 7. Premium Theme Customization & UI Controls
 * **Integrated Dark Mode:** Includes full native Dark Mode support for the public Landing Page, Login Page, and internal dashboards, featuring dynamic CSS theme toggling and customized illustrations matching the active dark/light environment.
 * **Collapsible Sidebar Layout:** Features a toggleable sidebar navigation, collapsible via a modern hamburger menu control in the global header, which saves screen estate for a cleaner testing workspace.
 

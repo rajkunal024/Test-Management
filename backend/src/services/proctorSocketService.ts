@@ -116,9 +116,24 @@ export const setupProctorWebSocketServer = (wss: WebSocketServer) => {
                   t.ws.send(broadcastPayload);
                 }
               }
+            } else if (message.type === "chat_message") {
+              const { text } = message;
+              const chatPayload = JSON.stringify({
+                type: "chat_message",
+                sender_id: user_id,
+                sender_name: username,
+                text,
+                timestamp: Date.now()
+              });
+
+              for (const t of teachers) {
+                if (t.test_id === test_id && t.ws.readyState === WebSocket.OPEN) {
+                  t.ws.send(chatPayload);
+                }
+              }
             }
           } catch (e) {
-            // Silently ignore malformed frames
+            // Silently ignore errors
           }
         });
 
@@ -166,6 +181,53 @@ export const setupProctorWebSocketServer = (wss: WebSocketServer) => {
           type: "initial_streams",
           streams: initialStreams
         }));
+
+        ws.on("message", (data) => {
+          try {
+            const message = JSON.parse(data.toString());
+            if (message.type === "chat_message") {
+              const { target_user_id, text } = message;
+              const chatPayload = JSON.stringify({
+                type: "chat_message",
+                sender: "Proctor",
+                text,
+                timestamp: Date.now()
+              });
+
+              if (target_user_id === "broadcast") {
+                for (const s of students) {
+                  if (s.test_id === test_id && s.ws.readyState === WebSocket.OPEN) {
+                    s.ws.send(chatPayload);
+                  }
+                }
+              } else {
+                for (const s of students) {
+                  if (s.test_id === test_id && s.user_id === target_user_id && s.ws.readyState === WebSocket.OPEN) {
+                    s.ws.send(chatPayload);
+                  }
+                }
+              }
+
+              // Relay to other teachers monitoring this test
+              if (target_user_id !== "broadcast") {
+                const teacherRelayPayload = JSON.stringify({
+                  type: "chat_message",
+                  sender_id: target_user_id,
+                  sender_name: "Proctor",
+                  text,
+                  timestamp: Date.now()
+                });
+                for (const t of teachers) {
+                  if (t.test_id === test_id && t.ws !== ws && t.ws.readyState === WebSocket.OPEN) {
+                    t.ws.send(teacherRelayPayload);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore
+          }
+        });
 
         ws.on("close", () => {
           teachers.delete(teacherConn);
