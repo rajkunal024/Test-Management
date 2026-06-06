@@ -1,4 +1,4 @@
-# PrepRoute Test Management System
+# Parikshya Test Management System
 
 A high-performance, workspace-driven web application featuring a native **Node.js HTTP backend** (built completely from scratch with zero external framework dependencies like Express) and a modern, glassmorphic **React SPA frontend**. Designed for real-time exam administration, multi-role workspace management, automated proctoring with live teacher monitoring, and automatic result sharing.
 
@@ -63,7 +63,7 @@ Test-Management/
         ├── components/
         │   ├── layout/
         │   │   ├── AppShell.tsx          # Navigation wrapper, header, and notification drawer
-        │   │   ├── Logo.tsx              # Brand visual identity logo SVG
+        │   │   ├── Logo.tsx              # Brand visual identity logo image
         │   │   ├── PageWrapper.tsx       # Standard page layout spacing block
         │   │   └── ProtectedRoute.tsx    # Role-based route guard component
         │   └── ui/
@@ -264,6 +264,10 @@ npm run dev
 * **Live Toast Panel:** The global app header displays a notification bell polling the backend server every 15 seconds.
 * **Direct Notifications:** Students receive immediate alerts when tests are scheduled/published and when final grades are shared. Teachers receive real-time notifications as soon as a student starts an exam attempt.
 * **Permanent DB Cleanup:** Selecting `clear all` inside the notification drawer initiates a physical database removal (`deleteMany`) to keep database storage lightweight.
+
+### 🌗 6. Premium Theme Customization & UI Controls
+* **Integrated Dark Mode:** Includes full native Dark Mode support for the public Landing Page, Login Page, and internal dashboards, featuring dynamic CSS theme toggling and customized illustrations matching the active dark/light environment.
+* **Collapsible Sidebar Layout:** Features a toggleable sidebar navigation, collapsible via a modern hamburger menu control in the global header, which saves screen estate for a cleaner testing workspace.
 
 ---
 

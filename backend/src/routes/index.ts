@@ -10,7 +10,7 @@ import { json } from "../middlewares/utils.js";
 
 export const routeRequest = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
   if (path === "/api/health") {
-    json(response, 200, { success: true, service: "preproute-backend" });
+    json(response, 200, { success: true, service: "parikshya-backend" });
     return;
   }
 

@@ -1,9 +1,29 @@
 import { IncomingMessage, ServerResponse } from "node:http";
 import { json, readBody } from "../middlewares/utils.js";
-import { QuestionModel, TestModel, TopicModel, SubTopicModel } from "../models/index.js";
+import { QuestionModel, TestModel, TopicModel, SubTopicModel, SubjectModel, TeacherModel } from "../models/index.js";
+import { getUserFromRequest } from "../middlewares/auth.js";
 
 const escapeRegex = (string: string) => {
   return string.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+};
+
+const isTeacherAuthorizedForSubject = async (teacherSubject: string, topicId?: string, subjectId?: string) => {
+  if (topicId && topicId !== "new") {
+    const topic = await TopicModel.findOne({ id: topicId });
+    if (topic) {
+      const subject = await SubjectModel.findOne({ id: topic.subject_id });
+      if (subject && subject.name.toLowerCase() === teacherSubject.toLowerCase()) {
+        return true;
+      }
+    }
+  }
+  if (subjectId) {
+    const subject = await SubjectModel.findOne({ id: subjectId });
+    if (subject && subject.name.toLowerCase() === teacherSubject.toLowerCase()) {
+      return true;
+    }
+  }
+  return false;
 };
 
 const resolveTopicAndSubTopic = async (payload: any) => {
@@ -73,7 +93,26 @@ const resolveTopicAndSubTopic = async (payload: any) => {
 
 export const getQuestions = async (request: IncomingMessage, response: ServerResponse) => {
   try {
-    const questions = await QuestionModel.find({});
+    const user = getUserFromRequest(request);
+    const query: any = {};
+
+    if (user && user.role === "Teacher") {
+      const teacher = await TeacherModel.findOne({ userId: user.userId });
+      if (teacher) {
+        const subject = await SubjectModel.findOne({ name: { $regex: new RegExp(`^${escapeRegex(teacher.subject)}$`, "i") } });
+        if (subject) {
+          const topics = await TopicModel.find({ subject_id: subject.id });
+          const topicIds = topics.map(t => t.id);
+          query.topic_id = { $in: topicIds };
+        } else {
+          query.topic_id = { $in: [] };
+        }
+      } else {
+        query.topic_id = { $in: [] };
+      }
+    }
+
+    const questions = await QuestionModel.find(query);
     json(response, 200, { success: true, data: questions });
   } catch (e) {
     json(response, 500, { success: false, message: "Server error" });
@@ -82,10 +121,32 @@ export const getQuestions = async (request: IncomingMessage, response: ServerRes
 
 export const createQuestion = async (request: IncomingMessage, response: ServerResponse) => {
   try {
+    const user = getUserFromRequest(request);
     const rawPayload = JSON.parse(await readBody(request));
+
+    if (user && user.role === "Teacher") {
+      const teacher = await TeacherModel.findOne({ userId: user.userId });
+      if (!teacher) {
+        json(response, 403, { success: false, message: "Teacher account not found." });
+        return;
+      }
+
+      const authorized = await isTeacherAuthorizedForSubject(
+        teacher.subject,
+        rawPayload.topic_id,
+        rawPayload.subject_id
+      );
+
+      if (!authorized) {
+        json(response, 403, { success: false, message: `You are not allowed to upload/create questions for a subject other than ${teacher.subject}.` });
+        return;
+      }
+    }
+
     const payload = await resolveTopicAndSubTopic(rawPayload);
     const newQuestion = new QuestionModel({
       id: `q-pool-${Date.now()}`,
+      created_by: user ? user.userId : undefined,
       ...payload,
     });
     await newQuestion.save();
@@ -97,7 +158,45 @@ export const createQuestion = async (request: IncomingMessage, response: ServerR
 
 export const updateQuestion = async (request: IncomingMessage, response: ServerResponse, id: string) => {
   try {
+    const user = getUserFromRequest(request);
     const rawPayload = JSON.parse(await readBody(request));
+
+    const existingQuestion = await QuestionModel.findOne({ id });
+    if (!existingQuestion) {
+      json(response, 404, { success: false, message: "Question not found" });
+      return;
+    }
+
+    if (user && user.role === "Teacher") {
+      if (existingQuestion.created_by && existingQuestion.created_by !== user.userId) {
+        json(response, 403, { success: false, message: "You cannot update questions created by other teachers." });
+        return;
+      }
+      if (!existingQuestion.created_by) {
+        json(response, 403, { success: false, message: "Only administrators can edit legacy system questions." });
+        return;
+      }
+
+      const teacher = await TeacherModel.findOne({ userId: user.userId });
+      if (!teacher) {
+        json(response, 403, { success: false, message: "Teacher account not found." });
+        return;
+      }
+
+      const targetTopic = rawPayload.topic_id || existingQuestion.topic_id;
+      const targetSubject = rawPayload.subject_id;
+      const authorized = await isTeacherAuthorizedForSubject(
+        teacher.subject,
+        targetTopic,
+        targetSubject
+      );
+
+      if (!authorized) {
+        json(response, 403, { success: false, message: `You are not allowed to set questions to a subject other than ${teacher.subject}.` });
+        return;
+      }
+    }
+
     const payload = await resolveTopicAndSubTopic(rawPayload);
     const question = await QuestionModel.findOneAndUpdate({ id }, payload, { new: true });
     if (question) {
@@ -112,6 +211,24 @@ export const updateQuestion = async (request: IncomingMessage, response: ServerR
 
 export const deleteQuestion = async (request: IncomingMessage, response: ServerResponse, id: string) => {
   try {
+    const user = getUserFromRequest(request);
+    const existingQuestion = await QuestionModel.findOne({ id });
+    if (!existingQuestion) {
+      json(response, 404, { success: false, message: "Question not found" });
+      return;
+    }
+
+    if (user && user.role === "Teacher") {
+      if (existingQuestion.created_by && existingQuestion.created_by !== user.userId) {
+        json(response, 403, { success: false, message: "You cannot delete questions created by other teachers." });
+        return;
+      }
+      if (!existingQuestion.created_by) {
+        json(response, 403, { success: false, message: "Only administrators can delete legacy system questions." });
+        return;
+      }
+    }
+
     const result = await QuestionModel.deleteOne({ id });
     if (result.deletedCount > 0) {
       json(response, 200, { success: true, message: "Question deleted successfully" });
@@ -125,12 +242,36 @@ export const deleteQuestion = async (request: IncomingMessage, response: ServerR
 
 export const bulkQuestions = async (request: IncomingMessage, response: ServerResponse) => {
   try {
+    const user = getUserFromRequest(request);
     const { test_id, questions } = JSON.parse(await readBody(request));
+
+    const test = await TestModel.findOne({ id: test_id });
+    if (!test) {
+      json(response, 404, { success: false, message: "Test not found" });
+      return;
+    }
+
+    if (user && user.role === "Teacher") {
+      const teacher = await TeacherModel.findOne({ userId: user.userId });
+      if (!teacher) {
+        json(response, 403, { success: false, message: "Teacher account not found." });
+        return;
+      }
+
+      const testSubjects = Array.isArray(test.subject) ? test.subject : [test.subject];
+      const matchesSubject = testSubjects.some(s => s.toLowerCase() === teacher.subject.toLowerCase());
+
+      if (!matchesSubject) {
+        json(response, 403, { success: false, message: `You are not authorized to manage questions for a test of subject ${test.subject}.` });
+        return;
+      }
+    }
     
     await QuestionModel.deleteMany({ test_id });
     
     const newQuestions = questions.map((q: any, i: number) => ({
       id: q.id || `q-${test_id}-${Date.now()}-${i}`,
+      created_by: user ? user.userId : undefined,
       ...q,
       test_id
     }));

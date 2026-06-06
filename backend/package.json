@@ -1,5 +1,5 @@
 {
-  "name": "@preproute/backend",
+  "name": "@parikshya/backend",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -10,9 +10,11 @@
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
+    "@types/ws": "^8.18.1",
     "typescript": "^5.7.2"
   },
   "dependencies": {
-    "mongoose": "^8.24.0"
+    "mongoose": "^8.24.0",
+    "ws": "^8.21.0"
   }
 }

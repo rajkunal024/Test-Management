@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -74,16 +75,34 @@ export const TeacherDashboard = () => {
   const [search, setSearch] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("all");
   const [topicFilter, setTopicFilter] = useState("all");
-  const [classFilter, setClassFilter] = useState("all");
   const [toast, setToast] = useState("");
   const [formError, setFormError] = useState("");
   const [csvText, setCsvText] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
 
+  // URL routing tab parameters and local view states
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "add";
+  const selectedClass = searchParams.get("class") || "all";
+  const [addSubTab, setAddSubTab] = useState<"manual" | "csv" | null>(null);
+
   // Live Test Monitoring States
-  const [activeTab, setActiveTab] = useState<"questions" | "monitoring">("questions");
   const [selectedTestIdForMonitoring, setSelectedTestIdForMonitoring] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "add") {
+      setAddSubTab(null);
+    }
+  }, [activeTab]);
 
   // Queries for monitoring
   const { data: tests = [], isLoading: isLoadingTests } = useQuery({
@@ -91,12 +110,117 @@ export const TeacherDashboard = () => {
     queryFn: getAllTests,
   });
 
-  const { data: activeStreamsList = [] } = useQuery({
+  const [wsStreams, setWsStreams] = useState<Record<string, any>>({});
+  const [isWsConnected, setIsWsConnected] = useState(false);
+
+  // WebSocket manager for live streams feed
+  useEffect(() => {
+    if (!selectedTestIdForMonitoring) {
+      setWsStreams({});
+      setIsWsConnected(false);
+      return;
+    }
+
+    let ws: WebSocket | null = null;
+    let isConnecting = false;
+    let isDestroyed = false;
+
+    const connect = () => {
+      if (isDestroyed || ws || isConnecting) return;
+      isConnecting = true;
+
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      // Connect to backend port 4000
+      const wsUrl = `${protocol}//127.0.0.1:4000/api/proctor/stream?role=teacher&test_id=${selectedTestIdForMonitoring}`;
+
+      console.log("Teacher connecting to proctor WS:", wsUrl);
+      const socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => {
+        if (isDestroyed) {
+          socket.close();
+          return;
+        }
+        console.log("Teacher Proctor WS connected successfully.");
+        ws = socket;
+        setIsWsConnected(true);
+        isConnecting = false;
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === "initial_streams") {
+            const initialMap: Record<string, any> = {};
+            message.streams.forEach((s: any) => {
+              initialMap[s.user_id] = s;
+            });
+            setWsStreams(initialMap);
+          } else if (message.type === "frame_update") {
+            setWsStreams((prev) => ({
+              ...prev,
+              [message.user_id]: {
+                user_id: message.user_id,
+                username: message.username,
+                frame: message.frame,
+                hasVideo: message.hasVideo,
+                hasAudio: message.hasAudio,
+                lastSeen: message.lastSeen
+              }
+            }));
+          } else if (message.type === "student_disconnected") {
+            setWsStreams((prev) => {
+              const updated = { ...prev };
+              delete updated[message.user_id];
+              return updated;
+            });
+          }
+        } catch (err) {
+          console.error("Error parsing message on teacher WS:", err);
+        }
+      };
+
+      socket.onerror = (err) => {
+        console.error("Teacher Proctor WS error:", err);
+      };
+
+      socket.onclose = () => {
+        if (isDestroyed) return;
+        console.log("Teacher Proctor WS closed. Falling back to HTTP polling.");
+        ws = null;
+        setIsWsConnected(false);
+        isConnecting = false;
+        // Reconnect after 5 seconds
+        setTimeout(connect, 5000);
+      };
+    };
+
+    connect();
+
+    return () => {
+      isDestroyed = true;
+      if (ws) {
+        ws.close();
+      }
+    };
+  }, [selectedTestIdForMonitoring]);
+
+  const { data: httpStreamsList = [] } = useQuery({
     queryKey: ["activeStreams", selectedTestIdForMonitoring],
     queryFn: () => getActiveStreams(selectedTestIdForMonitoring || ""),
-    enabled: !!selectedTestIdForMonitoring,
+    enabled: !!selectedTestIdForMonitoring && !isWsConnected,
     refetchInterval: 3000,
   });
+
+  const activeStreamsList = useMemo(() => {
+    if (isWsConnected) {
+      const now = Date.now();
+      return Object.values(wsStreams).filter(
+        (s: any) => now - s.lastSeen <= 10000
+      );
+    }
+    return httpStreamsList;
+  }, [isWsConnected, wsStreams, httpStreamsList]);
 
   // Determine current teacher subject details
   const teacherSubject = useMemo(() => {
@@ -166,27 +290,29 @@ export const TeacherDashboard = () => {
     });
   }, [allQuestions, selectedTopicIds]);
 
+  const effectiveClassFilter = selectedClass;
+
   const filteredTopics = useMemo(() => {
-    if (classFilter === "all") {
+    if (effectiveClassFilter === "all") {
       return topics;
     }
     const activeTopicIds = new Set(
       subjectQuestions
-        .filter(q => q.class === classFilter)
+        .filter(q => q.class === effectiveClassFilter)
         .map(q => q.topic_id)
         .filter(Boolean)
     );
     return topics.filter(t => activeTopicIds.has(t.id));
-  }, [topics, subjectQuestions, classFilter]);
+  }, [topics, subjectQuestions, effectiveClassFilter]);
 
   useEffect(() => {
-    if (topicFilter !== "all" && classFilter !== "all") {
+    if (topicFilter !== "all" && effectiveClassFilter !== "all") {
       const isValid = filteredTopics.some(t => t.id === topicFilter);
       if (!isValid) {
         setTopicFilter("all");
       }
     }
-  }, [classFilter, filteredTopics, topicFilter]);
+  }, [effectiveClassFilter, filteredTopics, topicFilter]);
 
   // Apply search/difficulty/topic/class filters on questions list
   const filteredQuestions = useMemo(() => {
@@ -200,20 +326,20 @@ export const TeacherDashboard = () => {
         (filterDiff === "hard" && qDiff === "difficult") ||
         (filterDiff === "difficult" && qDiff === "hard");
       const matchesTopic = topicFilter === "all" || q.topic_id === topicFilter;
-      const matchesClass = classFilter === "all" || q.class === classFilter;
+      const matchesClass = effectiveClassFilter === "all" || q.class === effectiveClassFilter;
       return matchesSearch && matchesDiff && matchesTopic && matchesClass;
     });
-  }, [subjectQuestions, search, difficultyFilter, topicFilter, classFilter]);
+  }, [subjectQuestions, search, difficultyFilter, topicFilter, effectiveClassFilter]);
 
   // Statistics
   const questionsFilteredExceptDifficulty = useMemo(() => {
     return subjectQuestions.filter(q => {
       const matchesSearch = q.question.toLowerCase().includes(search.toLowerCase());
       const matchesTopic = topicFilter === "all" || q.topic_id === topicFilter;
-      const matchesClass = classFilter === "all" || q.class === classFilter;
+      const matchesClass = effectiveClassFilter === "all" || q.class === effectiveClassFilter;
       return matchesSearch && matchesTopic && matchesClass;
     });
-  }, [subjectQuestions, search, topicFilter, classFilter]);
+  }, [subjectQuestions, search, topicFilter, effectiveClassFilter]);
 
   const stats = useMemo(() => {
     const total = questionsFilteredExceptDifficulty.length;
@@ -233,6 +359,7 @@ export const TeacherDashboard = () => {
       await queryClient.invalidateQueries({ queryKey: ["questions"] });
       setToast("Question created successfully");
       setModalOpen(false);
+      setAddSubTab(null);
       reset(emptyQuestion);
       window.setTimeout(() => setToast(""), 1800);
     },
@@ -357,6 +484,7 @@ export const TeacherDashboard = () => {
         await queryClient.invalidateQueries({ queryKey: ["questions"] });
         setCsvText("");
         setCsvModalOpen(false);
+        setAddSubTab(null);
         setToast(`Successfully imported ${createdCount} questions!`);
         window.setTimeout(() => setToast(""), 2000);
       } else {
@@ -438,89 +566,459 @@ export const TeacherDashboard = () => {
   return (
     <AppShell>
       <PageWrapper>
-        {/* Welcome Header */}
-        <div className="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-emerald-600 p-6 text-white shadow-lg md:p-8">
-          <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-100">
-                <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
-                PrepRoute Teacher Portal
+        {activeTab === "add" && addSubTab === null && (
+          <div className="space-y-8 animate-fade-in">
+            {/* Header Banner */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-teal-500 via-[#10b981] to-[#047857] p-6 text-white shadow-lg md:p-8">
+              <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                <div>
+                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-100">
+                    <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+                    Parikshya Teacher Portal
+                  </div>
+                  <h1 className="text-3xl font-black tracking-tight">
+                    {teacherSubject.name} Question Bank Hub
+                  </h1>
+                  <p className="mt-2 text-sm text-teal-50 max-w-xl">
+                    Create and manage your question pool for <strong>{teacherSubject.name}</strong>. Monitor class distribution, perform bulk spreadsheet uploads, or add single questions manually.
+                  </p>
+                  <p className="mt-4 text-xs text-emerald-800 bg-white/95 rounded-full px-4 py-1.5 inline-block font-bold shadow-sm dark:bg-slate-900/90 dark:text-emerald-450">
+                    Active Teacher: {user?.name || "Teacher"} ({teacherSubject.name} Specialist)
+                  </p>
+                </div>
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-4xl border border-white/20 shadow-inner">
+                  📚
+                </div>
               </div>
-              <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                {teacherSubject.name} Question Bank
-              </h1>
-              <p className="mt-2 text-sm text-teal-500 bg-white/90 rounded-md px-3 py-1.5 inline-block font-semibold">
-                Logged in as: {user?.name || "Teacher"} ({teacherSubject.name} Expert)
-              </p>
+              <div className="absolute -bottom-8 -right-8 h-40 w-40 rounded-full bg-white/5 pointer-events-none" />
+              <div className="absolute -top-8 -left-8 h-40 w-40 rounded-full bg-white/5 pointer-events-none" />
             </div>
-            <div className="flex gap-2.5">
-              <Button
-                onClick={() => setCsvModalOpen(true)}
-                className="h-11 bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-2 border border-emerald-500/25 shadow-sm"
-                icon={<Upload className="h-4 w-4 text-white" />}
-              >
-                Import via CSV
-              </Button>
-              <Button
-                onClick={handleOpenAddModal}
-                className="h-11 bg-white text-emerald-700 hover:bg-teal-50 flex items-center gap-2 border-transparent"
-                icon={<Plus className="h-4 w-4 text-emerald-700" />}
-              >
-                Add New Question
-              </Button>
+
+            {/* Stats Breakdown Grid */}
+            <div>
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4">Class Pool Distribution</h2>
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                {["Class 9", "Class 10", "Class 11", "Class 12"].map((cls) => {
+                  const count = subjectQuestions.filter((q) => q.class === cls).length;
+                  return (
+                    <div
+                      key={cls}
+                      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm flex flex-col justify-between"
+                    >
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wide">Class Level</span>
+                        <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{cls}</h4>
+                      </div>
+                      <div className="mt-4 flex items-baseline gap-1">
+                        <span className="text-2xl font-black text-emerald-600 dark:text-emerald-450">{count}</span>
+                        <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Questions</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Actions Grid */}
+            <div>
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4">Add Questions to Pool</h2>
+              <div className="grid gap-6 md:grid-cols-2">
+                <article
+                  onClick={() => setAddSubTab("manual")}
+                  className="group cursor-pointer rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm hover:shadow-md dark:hover:shadow-slate-950/40 hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-emerald-500"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
+                    <Plus className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    Manual Question Entry
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                    Type a new question manually. You can set the question prompt, define options, specify the correct answer, choose class levels, and select topics/subtopics.
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    Add Question Manually →
+                  </span>
+                </article>
+
+                <article
+                  onClick={() => setAddSubTab("csv")}
+                  className="group cursor-pointer rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm hover:shadow-md dark:hover:shadow-slate-950/40 hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-teal-500"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 mb-4 group-hover:scale-110 transition-transform">
+                    <Upload className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                    CSV Spreadsheet Import
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                    Import multiple multiple-choice questions in one go. Upload a standard CSV file or paste raw comma-separated text formatted with headers.
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
+                    Import CSV file →
+                  </span>
+                </article>
+              </div>
+            </div>
+
+            {/* Recent Questions Panel */}
+            <div>
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4">Recently Added Questions</h2>
+              {subjectQuestions.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center text-slate-400 dark:text-slate-500">
+                  <p className="text-sm font-semibold">No questions added yet to this subject.</p>
+                  <p className="text-xs mt-1">Use the actions above to populate your question pool.</p>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
+                  {subjectQuestions.slice(-3).reverse().map((q, idx) => {
+                    const diffLower = (q.difficulty || "").toLowerCase().trim();
+                    const difficultyColor = 
+                      diffLower === "easy" ? "green" : 
+                      diffLower === "medium" ? "yellow" : 
+                      (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
+                    return (
+                      <div key={q.id || idx} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">{q.question}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge tone="blue">{q.class}</Badge>
+                            <Badge tone={difficultyColor}>{q.difficulty}</Badge>
+                            {q.topic_name && <span className="text-xs text-slate-400 dark:text-slate-550">{q.topic_name}</span>}
+                          </div>
+                        </div>
+                        <div className="text-xs text-slate-450 dark:text-slate-500 shrink-0 font-medium">
+                          Option 1: <span className="text-slate-600 dark:text-slate-300 font-semibold">{q.option1}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
-          <div className="absolute -bottom-8 -right-8 h-40 w-40 rounded-full bg-white/5" />
-        </div>
+        )}
 
-        {/* Navigation Tabs */}
-        <div className="mb-6 flex border-b border-slate-200">
-          <button
-            onClick={() => {
-              setActiveTab("questions");
-              setSelectedTestIdForMonitoring(null);
-            }}
-            className={`pb-3 pt-1 px-4 font-bold text-sm border-b-2 transition-colors ${
-              activeTab === "questions"
-                ? "border-emerald-600 text-emerald-600 font-extrabold"
-                : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            Questions Bank ({subjectQuestions.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("monitoring")}
-            className={`pb-3 pt-1 px-4 font-bold text-sm border-b-2 transition-colors ${
-              activeTab === "monitoring"
-                ? "border-emerald-600 text-emerald-600 font-extrabold"
-                : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            Live Test Monitoring
-          </button>
-        </div>
+        {activeTab === "add" && addSubTab !== null && (
+          <div className="space-y-6">
+            {/* Centered card becomes a top header card */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-emerald-600 p-6 text-white shadow-lg md:p-8">
+              <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                <div>
+                  <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-100">
+                    <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+                    Parikshya Teacher Portal
+                  </div>
+                  <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                    {teacherSubject.name} Question Bank
+                  </h1>
+                  <p className="mt-2 text-xs text-emerald-700 bg-white/90 rounded-md px-2.5 py-1 inline-block font-semibold">
+                    Logged in as: {user?.name || "Teacher"} ({teacherSubject.name} Expert)
+                  </p>
+                </div>
+                <div className="flex gap-2.5">
+                  <Button
+                    onClick={() => setAddSubTab("csv")}
+                    className={`h-10 text-xs font-bold flex items-center gap-1.5 shadow-sm transition ${
+                      addSubTab === "csv"
+                        ? "bg-white text-emerald-700 hover:bg-teal-50 border-transparent"
+                        : "bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-500/25"
+                    }`}
+                    icon={<Upload className={`h-3.5 w-3.5 ${addSubTab === "csv" ? "text-emerald-700" : "text-white"}`} />}
+                  >
+                    Import via CSV
+                  </Button>
+                  <Button
+                    onClick={() => setAddSubTab("manual")}
+                    className={`h-10 text-xs font-bold flex items-center gap-1.5 shadow-sm transition ${
+                      addSubTab === "manual"
+                        ? "bg-white text-emerald-700 hover:bg-teal-50 border-transparent"
+                        : "bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-500/25"
+                    }`}
+                    icon={<Plus className={`h-3.5 w-3.5 ${addSubTab === "manual" ? "text-emerald-700" : "text-white"}`} />}
+                  >
+                    Add New Question
+                  </Button>
+                </div>
+              </div>
+              <div className="absolute -bottom-8 -right-8 h-40 w-40 rounded-full bg-white/5 pointer-events-none" />
+            </div>
 
-        {activeTab === "questions" ? (
-          <>
+            {/* Manual Form */}
+            {addSubTab === "manual" && (
+              <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-850 dark:bg-slate-900 p-6 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-6">
+                  <h2 className="text-base font-bold text-slate-800 dark:text-slate-200">Add MCQ Question to Pool</h2>
+                  <button
+                    onClick={() => setAddSubTab(null)}
+                    className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition uppercase cursor-pointer"
+                  >
+                    Close Form ×
+                  </button>
+                </div>
+                <form onSubmit={handleSubmit(handleSaveQuestion)} className="space-y-4">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-slate-700">Question Prompt</span>
+                    <textarea
+                      className="h-24 w-full resize-none rounded-md border border-slate-300 px-4 py-3 text-sm outline-none placeholder:text-slate-300 focus:border-emerald-500"
+                      placeholder="Type the question details here..."
+                      {...register("question")}
+                    />
+                    {errors.question?.message ? (
+                      <span className="mt-1 block text-xs text-rose-500">{errors.question.message}</span>
+                    ) : null}
+                  </label>
+
+                  <div>
+                    <span className="mb-2 block text-sm font-semibold text-slate-700">Options (Select the correct one)</span>
+                    {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => (
+                      <div key={opt} className="mb-2.5 flex items-center gap-3">
+                        <Controller
+                          name="correct_option"
+                          control={control}
+                          render={({ field }) => (
+                            <input
+                              type="radio"
+                              className="h-5 w-5 accent-emerald-500 shrink-0"
+                              checked={field.value === opt}
+                              onChange={() => field.onChange(opt)}
+                            />
+                          )}
+                        />
+                        <div className="flex-1">
+                          <Input
+                            placeholder={`Option ${idx + 1}`}
+                            className="h-10 border-slate-300"
+                            error={errors[opt]?.message}
+                            {...register(opt)}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-4">
+                    <Select
+                      label="Class"
+                      options={[
+                        { label: "Class 9", value: "Class 9" },
+                        { label: "Class 10", value: "Class 10" },
+                        { label: "Class 11", value: "Class 11" },
+                        { label: "Class 12", value: "Class 12" },
+                      ]}
+                      {...register("class")}
+                    />
+                    <Select
+                      label="Difficulty Level"
+                      options={[
+                        { label: "Easy", value: "easy" },
+                        { label: "Medium", value: "medium" },
+                        { label: "Difficult", value: "hard" },
+                      ]}
+                      {...register("difficulty")}
+                    />
+                    <Select
+                      label="Topic"
+                      options={[
+                        { label: "Select Topic", value: "" },
+                        ...topics.map((t) => ({ label: t.name, value: t.id })),
+                        { label: "+ Add New Topic", value: "new" },
+                      ]}
+                      {...register("topic_id")}
+                    />
+                    <Select
+                      label="Sub-topic"
+                      options={[
+                        { label: "Select Sub-topic", value: "" },
+                        ...filteredSubTopics.map((st) => ({ label: st.name, value: st.id })),
+                        { label: "+ Add New Sub-topic", value: "new" },
+                      ]}
+                      {...register("sub_topic_id")}
+                    />
+                  </div>
+
+                  {selectedTopicId === "new" && (
+                    <Input
+                      label="New Topic Name"
+                      placeholder="Enter new topic name"
+                      error={errors.new_topic_name?.message}
+                      {...register("new_topic_name")}
+                    />
+                  )}
+
+                  {(selectedTopicId === "new" || selectedSubTopicId === "new") && (
+                    <Input
+                      label="New Sub-topic Name"
+                      placeholder="Enter new sub-topic name"
+                      error={errors.new_sub_topic_name?.message}
+                      {...register("new_sub_topic_name")}
+                    />
+                  )}
+
+                  <Input
+                    label="Media URL (Optional)"
+                    placeholder="https://example.com/image.png"
+                    error={errors.media_url?.message}
+                    {...register("media_url")}
+                  />
+
+                  {formError ? <p className="text-xs font-bold text-rose-500">{formError}</p> : null}
+
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setAddSubTab(null)}
+                      type="button"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      {createMutation.isPending || updateMutation.isPending ? "Saving..." : "Add to Pool"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* CSV Form */}
+            {addSubTab === "csv" && (
+              <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-850 dark:bg-slate-900 p-6 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-6">
+                  <h2 className="text-base font-bold text-slate-800 dark:text-slate-200">Import Questions via CSV</h2>
+                  <button
+                    onClick={() => setAddSubTab(null)}
+                    className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition uppercase cursor-pointer"
+                  >
+                    Close Form ×
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal">
+                    Upload a `.csv` file or paste CSV text directly. The imported questions will be added to the global pool for your subject (<strong>{teacherSubject.name}</strong>).
+                  </p>
+
+                  {/* CSV File Input */}
+                  <label className="block border border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-5 hover:border-slate-400 dark:hover:border-slate-600 text-center cursor-pointer transition bg-slate-50/50 dark:bg-slate-950/20">
+                    <input
+                      type="file"
+                      accept=".csv"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                    <FileSpreadsheet className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                    <span className="text-xs font-semibold text-emerald-600 block">Click to upload .csv file</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-1">UTF-8 comma-separated format</span>
+                  </label>
+
+                  {/* Textarea for Paste CSV */}
+                  <div>
+                    <span className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-350">Or Paste CSV Text:</span>
+                    <textarea
+                      value={csvText}
+                      onChange={(e) => setCsvText(e.target.value)}
+                      placeholder="question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic&#10;What is 1+1?,2,3,4,5,option1,easy,Class 10,Algebra,Addition"
+                      className="h-28 w-full resize-none rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 p-2.5 text-xs font-mono text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  {parsedPreviewQuestions.length > 0 && (
+                    <div>
+                      <span className="mb-2 block text-xs font-bold text-slate-600">CSV Preview ({parsedPreviewQuestions.length} Questions):</span>
+                      <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-2">
+                        {parsedPreviewQuestions.map((q, idx) => (
+                          <div key={idx} className="rounded border border-slate-100 bg-white p-3 text-xs shadow-sm">
+                            <div className="font-bold text-slate-800">Q{idx + 1}: {q.question}</div>
+                            <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[11px] text-slate-500">
+                              <div>Option 1: {q.option1 || "-"}</div>
+                              <div>Option 2: {q.option2 || "-"}</div>
+                              <div>Option 3: {q.option3 || "-"}</div>
+                              <div>Option 4: {q.option4 || "-"}</div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                              <span className="font-semibold text-emerald-600">Correct: {q.correct_option || "-"}</span>
+                              <span className="text-slate-400">Class: {q.class || "Class 10"}</span>
+                              <span className="text-slate-400">Difficulty: {q.difficulty || "-"}</span>
+                              <span className="text-slate-400">Topic: {q.topic || "-"}</span>
+                              <span className="text-slate-400">Sub-topic: {q.sub_topic || "-"}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Format Help Details */}
+                  <div className="rounded bg-amber-50 border border-amber-100 p-3 text-[10px] text-amber-800 leading-relaxed">
+                    <h4 className="font-bold flex items-center gap-1 mb-1">
+                      <HelpCircle className="h-3.5 w-3.5 shrink-0" /> Expected CSV Headers:
+                    </h4>
+                    <p className="font-mono bg-white/70 p-1.5 rounded mb-1.5 text-[9px] overflow-x-auto whitespace-nowrap">
+                      question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic
+                    </p>
+                    <span>* Correct option should match A, B, C, D or option1, option2, option3, option4.</span>
+                    <br />
+                    <span>* If the topic name doesn't match any subject topics, the first topic will be auto-assigned.</span>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setAddSubTab(null)}
+                      disabled={isImporting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      disabled={!csvText.trim() || isImporting}
+                      onClick={handleCsvImport}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      {isImporting ? "Importing..." : "Import Questions"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "view" && (
+          <div>
+            <div className="mb-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                  {selectedClass === "all" ? "All Questions Bank" : `${selectedClass} Questions Bank`}
+                </h1>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold mt-0.5">
+                  Subject: {teacherSubject.name}
+                </p>
+              </div>
+            </div>
+
             {/* Stats Grid */}
             <section className="mb-8 grid gap-4 grid-cols-2 sm:grid-cols-4">
               <article 
                 onClick={() => setDifficultyFilter("all")}
                 className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
                   difficultyFilter === "all" 
-                    ? "border-slate-500 bg-slate-50/50 ring-2 ring-slate-500/20" 
-                    : "border-slate-200 bg-white"
+                    ? "border-slate-500 bg-slate-50/50 dark:border-slate-650 dark:bg-slate-800/30 ring-2 ring-slate-500/20" 
+                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                 }`}
               >
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Total Pool</p>
-                <h3 className="text-2xl font-black text-slate-800 mt-1">{stats.total} Qs</h3>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Total Pool</p>
+                <h3 className="text-2xl font-black text-slate-800 dark:text-slate-200 mt-1">{stats.total} Qs</h3>
               </article>
               <article 
                 onClick={() => setDifficultyFilter("easy")}
                 className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
                   difficultyFilter === "easy" 
-                    ? "border-emerald-500 bg-emerald-50/10 ring-2 ring-emerald-500/20" 
-                    : "border-slate-200 bg-white"
+                    ? "border-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/20 ring-2 ring-emerald-500/20" 
+                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                 }`}
               >
                 <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Easy Level</p>
@@ -530,8 +1028,8 @@ export const TeacherDashboard = () => {
                 onClick={() => setDifficultyFilter("medium")}
                 className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
                   difficultyFilter === "medium" 
-                    ? "border-amber-500 bg-amber-50/10 ring-2 ring-amber-500/20" 
-                    : "border-slate-200 bg-white"
+                    ? "border-amber-500 bg-amber-50/10 dark:bg-amber-950/20 ring-2 ring-amber-500/20" 
+                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                 }`}
               >
                 <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">Medium Level</p>
@@ -541,8 +1039,8 @@ export const TeacherDashboard = () => {
                 onClick={() => setDifficultyFilter("hard")}
                 className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
                   difficultyFilter === "hard" 
-                    ? "border-rose-500 bg-rose-50/10 ring-2 ring-rose-500/20" 
-                    : "border-slate-200 bg-white"
+                    ? "border-rose-500 bg-rose-50/10 dark:bg-rose-950/20 ring-2 ring-rose-500/20" 
+                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                 }`}
               >
                 <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide">Difficult Level</p>
@@ -550,12 +1048,12 @@ export const TeacherDashboard = () => {
               </article>
             </section>
 
-            {/* Search & Filters */}
-            <div className="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_160px_160px]">
+            {/* Search & Topic Filters */}
+            <div className="mb-6 grid gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm md:grid-cols-[1fr_240px]">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
-                  className="pl-10 h-11"
+                  className="pl-10 h-11 border-slate-200"
                   placeholder="Search questions..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -564,27 +1062,13 @@ export const TeacherDashboard = () => {
 
               <div className="relative">
                 <select
-                  value={classFilter}
-                  onChange={(e) => setClassFilter(e.target.value)}
-                  className="h-11 w-full rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                >
-                  <option value="all">All Classes</option>
-                  <option value="Class 9">Class 9</option>
-                  <option value="Class 10">Class 10</option>
-                  <option value="Class 11">Class 11</option>
-                  <option value="Class 12">Class 12</option>
-                </select>
-              </div>
-
-              <div className="relative">
-                <select
                   value={topicFilter}
                   onChange={(e) => setTopicFilter(e.target.value)}
-                  className="h-11 w-full rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="h-11 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm text-slate-750 dark:text-slate-200 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 >
                   <option value="all">All Topics</option>
                   {filteredTopics.map((t) => (
-                    <option key={t.id} value={t.id}>
+                    <option key={t.id} value={t.id} className="dark:bg-slate-900 dark:text-slate-200">
                       {t.name}
                     </option>
                   ))}
@@ -593,34 +1077,33 @@ export const TeacherDashboard = () => {
             </div>
 
             {/* Questions Table */}
-            <h2 className="mb-4 text-base font-bold text-slate-800 flex items-center gap-2">
+            <h2 className="mb-4 text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-emerald-500" />
               Manage Subject Questions
             </h2>
 
             {isLoadingQuestions ? (
-              <div className="flex h-64 items-center justify-center text-slate-500 bg-white rounded-xl border border-slate-200">
+              <div className="flex h-64 items-center justify-center text-slate-500 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
                 <Spinner /> <span className="ml-2">Loading question pool...</span>
               </div>
             ) : filteredQuestions.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center text-slate-500">
-                <p className="text-lg font-semibold text-slate-700">No questions found</p>
+              <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 py-16 text-center text-slate-500 dark:text-slate-400">
+                <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">No questions found</p>
                 <p className="mt-1 text-sm text-slate-400">Add questions or adjust your search filters.</p>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
+                  <thead className="bg-slate-50 dark:bg-slate-950/20 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-850">
                     <tr>
                       <th className="px-6 py-4 w-12 text-center">#</th>
                       <th className="px-6 py-4">Question Prompt</th>
                       <th className="px-6 py-4 w-44">Topic</th>
-                      <th className="px-6 py-4 w-32">Class</th>
                       <th className="px-6 py-4 w-32">Difficulty</th>
                       <th className="px-6 py-4 w-40 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredQuestions.map((q, index) => {
                       const topicName = topics.find(t => t.id === q.topic_id)?.name ?? "General";
                       const diffLower = (q.difficulty || "").toLowerCase().trim();
@@ -630,10 +1113,10 @@ export const TeacherDashboard = () => {
                         (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
 
                       return (
-                        <tr key={q.id ?? index} className="hover:bg-slate-50/40">
+                        <tr key={q.id ?? index} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/40">
                           <td className="px-6 py-4 text-center font-bold text-slate-400">{index + 1}</td>
                           <td className="px-6 py-4">
-                            <div className="font-semibold text-slate-800 line-clamp-2">{q.question}</div>
+                            <div className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-2">{q.question}</div>
                             <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
                               <span className="text-emerald-600 font-semibold flex items-center gap-1">
                                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -641,37 +1124,42 @@ export const TeacherDashboard = () => {
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-slate-500 font-medium">
+                          <td className="px-6 py-4 text-slate-500 dark:text-slate-400 font-medium">
                             <Badge tone="blue">{topicName}</Badge>
-                          </td>
-                          <td className="px-6 py-4 text-slate-500 font-medium">
-                            <Badge tone="slate">{q.class ?? "Class 10"}</Badge>
                           </td>
                           <td className="px-6 py-4">
                             <Badge tone={difficultyColor}>{q.difficulty ?? "easy"}</Badge>
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
-                              <Button
-                                variant="secondary"
-                                className="h-8 px-2.5 text-xs"
-                                onClick={() => handleOpenEditModal(q, index)}
-                                icon={<Pencil className="h-3.5 w-3.5" />}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="h-8 px-2.5 text-xs text-rose-600 hover:bg-rose-50"
-                                onClick={() => {
-                                  if (confirm("Delete this question from pool?")) {
-                                    deleteMutation.mutate(q.id ?? "");
-                                  }
-                                }}
-                                icon={<Trash2 className="h-3.5 w-3.5" />}
-                              >
-                                Delete
-                              </Button>
+                              {(user?.role === "Admin" || q.created_by === user?.userId) ? (
+                                <>
+                                  <Button
+                                    variant="secondary"
+                                    className="h-8 px-2.5 text-xs"
+                                    onClick={() => handleOpenEditModal(q, index)}
+                                    icon={<Pencil className="h-3.5 w-3.5" />}
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    className="h-8 px-2.5 text-xs text-rose-600 hover:bg-rose-50 cursor-pointer"
+                                    onClick={() => {
+                                      if (confirm("Delete this question from pool?")) {
+                                        deleteMutation.mutate(q.id ?? "");
+                                      }
+                                    }}
+                                    icon={<Trash2 className="h-3.5 w-3.5" />}
+                                  >
+                                    Delete
+                                  </Button>
+                                </>
+                              ) : (
+                                <span className="text-xs font-semibold text-slate-400 italic bg-slate-50 dark:bg-slate-950 px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
+                                  View Only
+                                </span>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -681,57 +1169,100 @@ export const TeacherDashboard = () => {
                 </table>
               </div>
             )}
-          </>
-        ) : (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          </div>
+        )}
+
+        {activeTab === "monitoring" && (
+          <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-850 dark:bg-slate-900 p-6 shadow-sm">
             {!selectedTestIdForMonitoring ? (
               <div>
-                <h2 className="text-lg font-bold text-slate-800 mb-4">Select Live Test to Monitor</h2>
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Select Live Test to Monitor</h2>
                 {isLoadingTests ? (
                   <div className="flex h-40 items-center justify-center text-slate-500">
                     <Spinner /> <span className="ml-2">Loading tests...</span>
                   </div>
-                ) : tests.filter(t => t.status === "live").length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-slate-500 bg-slate-50/50">
-                    <p className="text-sm font-semibold mb-1 text-slate-700">No Active Tests Found</p>
-                    <p className="text-xs">There are no scheduled tests currently live/running.</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {tests.filter(t => t.status === "live").map((test) => (
-                      <div key={test.id} className="rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition bg-slate-50/50">
-                        <div className="mb-2 flex items-center justify-between">
-                          <Badge tone="green">Live Now</Badge>
-                          <span className="text-xs font-semibold text-slate-500">{test.class || "All Classes"}</span>
-                        </div>
-                        <h3 className="font-bold text-slate-800 text-sm mb-1">{test.name}</h3>
-                        <p className="text-xs text-slate-500 mb-4">Subject: {Array.isArray(test.subject) ? test.subject.join(", ") : test.subject}</p>
-                        <Button
-                          onClick={() => setSelectedTestIdForMonitoring(test.id)}
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9 text-xs"
-                        >
-                          Monitor Live Feeds
-                        </Button>
+                ) : (() => {
+                  const liveAndScheduledTests = tests.filter((test) => {
+                    if (test.status !== "live") return false;
+                    // Filter out tests that are fully completed (time slot has finished)
+                    if (test.end_time && new Date(test.end_time).getTime() < now) {
+                      return false;
+                    }
+                    return true;
+                  });
+
+                  if (liveAndScheduledTests.length === 0) {
+                    return (
+                      <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-950/20">
+                        <p className="text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">No Active or Scheduled Tests Found</p>
+                        <p className="text-xs">There are no upcoming or currently live tests to monitor.</p>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    );
+                  }
+
+                  return (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {liveAndScheduledTests.map((test) => {
+                        const isFuture = test.start_time && new Date(test.start_time).getTime() > now;
+                        
+                        const getRemainingTimeStr = (startTime: string) => {
+                          const diff = new Date(startTime).getTime() - now;
+                          if (diff <= 0) return "00h 00m 00s";
+                          const hours = Math.floor(diff / (1000 * 60 * 60));
+                          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                          return `${hours.toString().padStart(2, "0")}h ${minutes.toString().padStart(2, "0")}m ${seconds.toString().padStart(2, "0")}s`;
+                        };
+
+                        return (
+                          <div key={test.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:shadow-md dark:hover:shadow-slate-950/45 transition bg-slate-50/50 dark:bg-slate-950/20">
+                            <div className="mb-2 flex items-center justify-between">
+                              {isFuture ? (
+                                <Badge tone="yellow">Upcoming</Badge>
+                              ) : (
+                                <Badge tone="green">Live Now</Badge>
+                              )}
+                              <span className="text-xs font-semibold text-slate-500 dark:text-slate-450">{test.class || "All Classes"}</span>
+                            </div>
+                            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm mb-1">{test.name}</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Subject: {Array.isArray(test.subject) ? test.subject.join(", ") : test.subject}</p>
+                            {isFuture ? (
+                              <Button
+                                disabled
+                                className="w-full bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-550 font-bold h-9 text-xs border border-slate-200 dark:border-slate-850 cursor-not-allowed"
+                              >
+                                Starts in {getRemainingTimeStr(test.start_time || "")}
+                              </Button>
+                            ) : (
+                              <Button
+                                onClick={() => setSelectedTestIdForMonitoring(test.id)}
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9 text-xs animate-pulse"
+                              >
+                                Monitor Live Feeds
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <div>
                 {/* Header for monitoring a specific test */}
-                <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
                   <div>
                     <button
                       onClick={() => setSelectedTestIdForMonitoring(null)}
-                      className="mb-1 text-xs font-bold text-emerald-600 hover:underline uppercase flex items-center gap-1"
+                      className="mb-1 text-xs font-bold text-emerald-600 hover:underline uppercase flex items-center gap-1 cursor-pointer"
                     >
                       ← Back to Test List
                     </button>
-                    <h2 className="text-lg font-extrabold text-slate-800">
+                    <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">
                       Monitoring: {tests.find(t => t.id === selectedTestIdForMonitoring)?.name || "Live Test"}
                     </h2>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Class: {tests.find(t => t.id === selectedTestIdForMonitoring)?.class || "All"} | Subject: {
                         (() => {
                           const test = tests.find(t => t.id === selectedTestIdForMonitoring);
@@ -740,22 +1271,32 @@ export const TeacherDashboard = () => {
                       }
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                    <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
-                    <span>Real-time polling active (every 3s)</span>
+                  <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg border ${
+                    isWsConnected
+                      ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30"
+                      : "text-slate-500 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800"
+                  }`}>
+                    <span className={`h-2 w-2 rounded-full animate-ping ${
+                      isWsConnected ? "bg-emerald-500" : "bg-red-500"
+                    }`} />
+                    <span>
+                      {isWsConnected
+                        ? "Real-time WebSocket feed active"
+                        : "Real-time polling active (every 3s)"}
+                    </span>
                   </div>
                 </div>
 
                 {/* Grid of student feeds */}
                 {activeStreamsList.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 p-12 text-center text-slate-500">
+                  <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-12 text-center text-slate-500 dark:text-slate-400">
                     <p className="text-sm font-semibold mb-1">Waiting for students to join...</p>
                     <p className="text-xs">No active students have started the test attempt with proctoring stream yet.</p>
                   </div>
                 ) : (
                   <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                     {activeStreamsList.map((stream) => (
-                      <div key={stream.user_id} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-900 shadow-sm relative aspect-video flex flex-col justify-end text-white">
+                      <div key={stream.user_id} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900 shadow-sm relative aspect-video flex flex-col justify-end text-white">
                         {/* Stream Image / Fallback */}
                         {stream.frame ? (
                           <img
@@ -764,7 +1305,7 @@ export const TeacherDashboard = () => {
                             className="w-full h-full object-cover absolute inset-0"
                           />
                         ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 text-slate-400">
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 dark:bg-slate-950 text-slate-400">
                             <span className="text-4xl font-extrabold mb-1">👤</span>
                             <span className="text-xs font-semibold uppercase tracking-wider">Camera Inactive</span>
                           </div>
@@ -801,7 +1342,7 @@ export const TeacherDashboard = () => {
           </div>
         )}
 
-        {/* Add/Edit Modal */}
+        {/* Add/Edit Modal (for editing from the list view) */}
         <Modal
           open={modalOpen}
           title={editingQuestionId ? "Edit MCQ Question" : "Add MCQ Question to Pool"}
@@ -872,8 +1413,6 @@ export const TeacherDashboard = () => {
               ))}
             </div>
 
-
-
             {/* Classification */}
             <div className="grid gap-4 sm:grid-cols-4">
               <Select
@@ -942,100 +1481,6 @@ export const TeacherDashboard = () => {
 
             {formError ? <p className="text-xs font-bold text-rose-500">{formError}</p> : null}
           </form>
-        </Modal>
-
-        {/* CSV Import Modal */}
-        <Modal
-          open={csvModalOpen}
-          title="Import Questions via CSV"
-          onClose={() => setCsvModalOpen(false)}
-          footer={
-            <>
-              <Button
-                variant="secondary"
-                onClick={() => setCsvModalOpen(false)}
-                disabled={isImporting}
-              >
-                Cancel
-              </Button>
-              <Button
-                disabled={!csvText.trim() || isImporting}
-                onClick={handleCsvImport}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                {isImporting ? "Importing..." : "Import Questions"}
-              </Button>
-            </>
-          }
-        >
-          <div className="space-y-4">
-            <p className="text-xs text-slate-500 leading-normal">
-              Upload a `.csv` file or paste CSV text directly. The imported questions will be added to the global pool for your subject (<strong>{teacherSubject.name}</strong>).
-            </p>
-
-            {/* CSV File Input */}
-            <label className="block border border-dashed border-slate-300 rounded-lg p-5 hover:border-slate-400 text-center cursor-pointer transition bg-slate-50/50">
-              <input
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <FileSpreadsheet className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-              <span className="text-xs font-semibold text-emerald-600 block">Click to upload .csv file</span>
-              <span className="text-[10px] text-slate-400 block mt-1">UTF-8 comma-separated format</span>
-            </label>
-
-            {/* Textarea for Paste CSV */}
-            <div>
-              <span className="mb-1 block text-xs font-bold text-slate-600">Or Paste CSV Text:</span>
-              <textarea
-                value={csvText}
-                onChange={(e) => setCsvText(e.target.value)}
-                placeholder="question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic&#10;What is 1+1?,2,3,4,5,option1,easy,Class 10,Algebra,Addition"
-                className="h-28 w-full resize-none rounded border border-slate-300 p-2.5 text-xs font-mono outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            {parsedPreviewQuestions.length > 0 && (
-              <div>
-                <span className="mb-2 block text-xs font-bold text-slate-600">CSV Preview ({parsedPreviewQuestions.length} Questions):</span>
-                <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-2">
-                  {parsedPreviewQuestions.map((q, idx) => (
-                    <div key={idx} className="rounded border border-slate-100 bg-white p-3 text-xs shadow-sm">
-                      <div className="font-bold text-slate-800">Q{idx + 1}: {q.question}</div>
-                      <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[11px] text-slate-500">
-                        <div>Option 1: {q.option1 || "-"}</div>
-                        <div>Option 2: {q.option2 || "-"}</div>
-                        <div>Option 3: {q.option3 || "-"}</div>
-                        <div>Option 4: {q.option4 || "-"}</div>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
-                        <span className="font-semibold text-emerald-600">Correct: {q.correct_option || "-"}</span>
-                        <span className="text-slate-400">Class: {q.class || "Class 10"}</span>
-                        <span className="text-slate-400">Difficulty: {q.difficulty || "-"}</span>
-                        <span className="text-slate-400">Topic: {q.topic || "-"}</span>
-                        <span className="text-slate-400">Sub-topic: {q.sub_topic || "-"}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Format Help Details */}
-            <div className="rounded bg-amber-50 border border-amber-100 p-3 text-[10px] text-amber-800 leading-relaxed">
-              <h4 className="font-bold flex items-center gap-1 mb-1">
-                <HelpCircle className="h-3.5 w-3.5 shrink-0" /> Expected CSV Headers:
-              </h4>
-              <p className="font-mono bg-white/70 p-1.5 rounded mb-1.5 text-[9px] overflow-x-auto whitespace-nowrap">
-                question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic
-              </p>
-              <span>* Correct option should match A, B, C, D or option1, option2, option3, option4.</span>
-              <br />
-              <span>* If the topic name doesn't match any subject topics, the first topic will be auto-assigned.</span>
-            </div>
-          </div>
         </Modal>
 
         {toast ? <Toast>{toast}</Toast> : null}

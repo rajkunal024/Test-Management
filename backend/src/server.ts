@@ -1,9 +1,11 @@
 import { createServer } from "node:http";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { WebSocketServer } from "ws";
 import { connectDB } from "./db/index.js";
 import { handleRequest } from "./app.js";
 import { startAutoShareJob } from "./services/autoShareService.js";
+import { setupProctorWebSocketServer } from "./services/proctorSocketService.js";
 
 // Tiny dependency-free .env loader helper
 const loadEnv = () => {
@@ -30,7 +32,7 @@ const loadEnv = () => {
 loadEnv();
 
 const port = Number(process.env.PORT ?? 4000);
-const mongoUri = process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017/preproute";
+const mongoUri = process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017/parikshya";
 
 // Connect to MongoDB
 connectDB(mongoUri)
@@ -43,6 +45,21 @@ connectDB(mongoUri)
 
 const server = createServer(handleRequest);
 
+// Setup WebSocket Server for Live Proctoring Relay
+const wss = new WebSocketServer({ noServer: true });
+setupProctorWebSocketServer(wss);
+
+server.on("upgrade", (request, socket, head) => {
+  const url = new URL(request.url ?? "", `http://${request.headers.host ?? "127.0.0.1"}`);
+  if (url.pathname === "/api/proctor/stream") {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit("connection", ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
+
 server.listen(port, "127.0.0.1", () => {
-  console.log(`PrepRoute backend listening at http://127.0.0.1:${port}`);
+  console.log(`Parikshya backend listening at http://127.0.0.1:${port}`);
 });

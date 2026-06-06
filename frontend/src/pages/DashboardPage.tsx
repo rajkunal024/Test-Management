@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Pencil, Plus, Search, Trash2, Users, UserPlus } from "lucide-react";
+import { Pencil, Plus, Search, Trash2, Users, UserPlus, Sparkles, BookOpen, ClipboardList } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -212,13 +212,90 @@ export const DashboardPage = () => {
   return (
     <AppShell>
       <PageWrapper>
+        {/* Welcome Header */}
+        <div className="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500 via-[#6c7df7] to-[#8d9cfc] p-6 text-white shadow-lg md:p-8">
+          <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-150">
+                <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+                Parikshya Administrative Control Center
+              </div>
+              <h1 className="text-3xl font-black tracking-tight">
+                Control Hub & System Overview
+              </h1>
+              <p className="mt-2 text-sm text-indigo-100 max-w-xl">
+                Supervise active subjects, create test slots, register incoming student and teacher profiles, and track live session states across the platform.
+              </p>
+              <p className="mt-4 text-xs text-[#6c7df7] bg-white/95 rounded-full px-4 py-1.5 inline-block font-bold shadow-sm dark:bg-slate-900/90 dark:text-indigo-400">
+                Logged in as: {user?.name || "System Admin"} (Platform Administrator)
+              </p>
+            </div>
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-4xl border border-white/20 shadow-inner">
+              ⚙️
+            </div>
+          </div>
+          <div className="absolute -bottom-8 -right-8 h-40 w-40 rounded-full bg-white/5 pointer-events-none" />
+          <div className="absolute -top-8 -left-8 h-40 w-40 rounded-full bg-white/5 pointer-events-none" />
+        </div>
+
+        {/* Stats Grid */}
+        <section className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <article className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm transition hover:shadow-md">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+              <Users className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Students</p>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">
+                {adminUsers.filter(u => u.role === "Student").length}
+              </h3>
+            </div>
+          </article>
+          
+          <article className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm transition hover:shadow-md">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-450">
+              <Users className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Teachers</p>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">
+                {adminUsers.filter(u => u.role === "Teacher").length}
+              </h3>
+            </div>
+          </article>
+
+          <article className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm transition hover:shadow-md">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+              <BookOpen className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Subjects</p>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">
+                {subjects.length}
+              </h3>
+            </div>
+          </article>
+
+          <article className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm transition hover:shadow-md">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+              <ClipboardList className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tests Created</p>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">
+                {tests.length}
+              </h3>
+            </div>
+          </article>
+        </section>
+
         {/* Tabs switcher */}
-        <div className="mb-6 flex border-b border-slate-200">
+        <div className="mb-6 flex border-b border-slate-200 dark:border-slate-800">
           <button
             onClick={() => setActiveTab("tests")}
             className={`pb-3 px-5 text-sm font-bold border-b-2 transition-colors ${activeTab === "tests"
-              ? "border-[#6c7df7] text-[#6c7df7]"
-              : "border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-[#6c7df7] dark:border-indigo-500 text-[#6c7df7] dark:text-indigo-400"
+              : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
               }`}
           >
             Test Configurations
@@ -226,8 +303,8 @@ export const DashboardPage = () => {
           <button
             onClick={() => setActiveTab("users")}
             className={`pb-3 px-5 text-sm font-bold border-b-2 transition-colors ${activeTab === "users"
-              ? "border-[#6c7df7] text-[#6c7df7]"
-              : "border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-[#6c7df7] dark:border-indigo-500 text-[#6c7df7] dark:text-indigo-400"
+              : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
               }`}
           >
             User Accounts
@@ -238,8 +315,8 @@ export const DashboardPage = () => {
           <>
             <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
-                <p className="mb-2 text-sm font-medium text-slate-500">Dashboard</p>
-                <h1 className="text-2xl font-bold text-slate-800">Test Management</h1>
+                <p className="mb-2 text-sm font-medium text-slate-500 dark:text-slate-400">Dashboard</p>
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Test Management</h1>
               </div>
               <div className="flex gap-3">
                 <Button
@@ -259,26 +336,26 @@ export const DashboardPage = () => {
               </div>
             </div>
 
-            <div className="mb-5 grid gap-3 rounded-md border border-slate-200 bg-white p-4 md:grid-cols-[1fr_220px]">
+            <div className="mb-5 grid gap-3 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 md:grid-cols-[1fr_220px]">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input className="pl-10" placeholder="Search by test name" value={search} onChange={(event) => setSearch(event.target.value)} />
               </div>
               <select
                 value={status}
                 onChange={(event) => setStatus(event.target.value)}
-                className="h-12 rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-[#6c7df7]"
+                className="h-12 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-[#6c7df7] focus:ring-1 focus:ring-[#6c7df7]"
               >
-                <option value="all">All Status</option>
-                <option value="draft">Draft</option>
-                <option value="live">Live</option>
-                <option value="completed">Completed</option>
+                <option value="all" className="dark:bg-slate-900 dark:text-slate-300">All Status</option>
+                <option value="draft" className="dark:bg-slate-900 dark:text-slate-300">Draft</option>
+                <option value="live" className="dark:bg-slate-900 dark:text-slate-300">Live</option>
+                <option value="completed" className="dark:bg-slate-900 dark:text-slate-300">Completed</option>
               </select>
             </div>
 
-            <section className="overflow-hidden rounded-md border border-slate-200 bg-white">
+            <section className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <thead className="bg-slate-50 dark:bg-slate-950/40 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
                   <tr>
                     <th className="px-5 py-4">Test Name</th>
                     <th className="px-5 py-4">Subject</th>
@@ -287,30 +364,30 @@ export const DashboardPage = () => {
                     <th className="px-5 py-4">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {isLoading ? (
                     <tr>
-                      <td className="px-5 py-12 text-center text-slate-500" colSpan={5}>
+                      <td className="px-5 py-12 text-center text-slate-500 dark:text-slate-400" colSpan={5}>
                         <Spinner /> <span className="ml-2">Loading tests...</span>
                       </td>
                     </tr>
                   ) : error ? (
                     <tr>
-                      <td className="px-5 py-12 text-center text-rose-500" colSpan={5}>
+                      <td className="px-5 py-12 text-center text-rose-500 dark:text-rose-400" colSpan={5}>
                         {getErrorMessage(error)}
                       </td>
                     </tr>
                   ) : filteredTests.length === 0 ? (
                     <tr>
-                      <td className="px-5 py-12 text-center text-slate-500" colSpan={5}>
+                      <td className="px-5 py-12 text-center text-slate-500 dark:text-slate-400" colSpan={5}>
                         No tests found.
                       </td>
                     </tr>
                   ) : (
                     filteredTests.map((test) => (
                       <tr key={test.id}>
-                        <td className="px-5 py-4 font-semibold text-slate-800">{test.name}</td>
-                        <td className="px-5 py-4 text-slate-600">
+                        <td className="px-5 py-4 font-semibold text-slate-800 dark:text-slate-100">{test.name}</td>
+                        <td className="px-5 py-4 text-slate-600 dark:text-slate-400">
                           {Array.isArray(test.subject) ? test.subject.join(", ") : test.subject}
                         </td>
                         <td className="px-5 py-4">
@@ -326,7 +403,7 @@ export const DashboardPage = () => {
                             );
                           })()}
                         </td>
-                        <td className="px-5 py-4 text-slate-600">{new Date(test.created_at).toLocaleDateString()}</td>
+                        <td className="px-5 py-4 text-slate-600 dark:text-slate-400">{new Date(test.created_at).toLocaleDateString()}</td>
                         <td className="px-5 py-4">
                           <div className="flex flex-wrap gap-2">
                             <Link to={`/tests/${test.id}/preview`}>
@@ -360,17 +437,17 @@ export const DashboardPage = () => {
                             )}
 
                             <Link to={`/tests/${test.id}/monitor`}>
-                              <Button variant="secondary" className="h-9 px-3 text-[#6c7df7] bg-indigo-50/50 border-[#6c7df7]/20 hover:bg-indigo-50">
+                              <Button variant="secondary" className="h-9 px-3 text-[#6c7df7] dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 border-[#6c7df7]/20 dark:border-indigo-900/30 hover:bg-indigo-50 dark:hover:bg-indigo-950/50">
                                 Monitor
                               </Button>
                             </Link>
 
                             {isTestStarted(test) ? (
-                              <Button variant="ghost" className="h-9 px-3 text-slate-400 opacity-50 cursor-not-allowed" icon={<Trash2 className="h-4 w-4" />} disabled>
+                              <Button variant="ghost" className="h-9 px-3 text-slate-400 dark:text-slate-500 opacity-50 cursor-not-allowed" icon={<Trash2 className="h-4 w-4" />} disabled>
                                 Delete
                               </Button>
                             ) : (
-                              <Button variant="ghost" className="h-9 px-3 text-rose-600" onClick={() => setDeleteTarget(test)} icon={<Trash2 className="h-4 w-4" />}>
+                              <Button variant="ghost" className="h-9 px-3 text-rose-600 dark:text-rose-450 hover:bg-rose-500/10" onClick={() => setDeleteTarget(test)} icon={<Trash2 className="h-4 w-4" />}>
                                 Delete
                               </Button>
                             )}
@@ -387,8 +464,8 @@ export const DashboardPage = () => {
           <>
             <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
-                <p className="mb-2 text-sm font-medium text-slate-500">Dashboard</p>
-                <h1 className="text-2xl font-bold text-slate-800">User Directory</h1>
+                <p className="mb-2 text-sm font-medium text-slate-500 dark:text-slate-400">Dashboard</p>
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">User Directory</h1>
               </div>
               <Button
                 onClick={() => {
@@ -402,9 +479,9 @@ export const DashboardPage = () => {
               </Button>
             </div>
 
-            <div className="mb-5 grid gap-3 rounded-md border border-slate-200 bg-white p-4 md:grid-cols-[1fr_200px_200px]">
+            <div className="mb-5 grid gap-3 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 md:grid-cols-[1fr_200px_200px]">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
                   className="pl-10"
                   placeholder="Search users by name or email"
@@ -422,22 +499,22 @@ export const DashboardPage = () => {
                     setSubjectFilter("all");
                   }
                 }}
-                className="h-12 rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-[#6c7df7]"
+                className="h-12 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-[#6c7df7] focus:ring-1 focus:ring-[#6c7df7]"
               >
-                <option value="all">All Roles</option>
-                <option value="Student">Student</option>
-                <option value="Teacher">Teacher</option>
+                <option value="all" className="dark:bg-slate-900 dark:text-slate-300">All Roles</option>
+                <option value="Student" className="dark:bg-slate-900 dark:text-slate-300">Student</option>
+                <option value="Teacher" className="dark:bg-slate-900 dark:text-slate-300">Teacher</option>
               </select>
 
               {roleFilter === "Teacher" ? (
                 <select
                   value={subjectFilter}
                   onChange={(event) => setSubjectFilter(event.target.value)}
-                  className="h-12 rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-[#6c7df7]"
+                  className="h-12 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-[#6c7df7] focus:ring-1 focus:ring-[#6c7df7]"
                 >
-                  <option value="all">All Subjects</option>
+                  <option value="all" className="dark:bg-slate-900 dark:text-slate-300">All Subjects</option>
                   {subjects.map((sub: any) => (
-                    <option key={sub.id} value={sub.name}>
+                    <option key={sub.id} value={sub.name} className="dark:bg-slate-900 dark:text-slate-300">
                       {sub.name}
                     </option>
                   ))}
@@ -446,20 +523,20 @@ export const DashboardPage = () => {
                 <select
                   value={classFilter}
                   onChange={(event) => setClassFilter(event.target.value)}
-                  className="h-12 rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-[#6c7df7]"
+                  className="h-12 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-[#6c7df7] focus:ring-1 focus:ring-[#6c7df7]"
                 >
-                  <option value="all">All Classes</option>
-                  <option value="Class 9">Class 9</option>
-                  <option value="Class 10">Class 10</option>
-                  <option value="Class 11">Class 11</option>
-                  <option value="Class 12">Class 12</option>
+                  <option value="all" className="dark:bg-slate-900 dark:text-slate-300">All Classes</option>
+                  <option value="Class 9" className="dark:bg-slate-900 dark:text-slate-300">Class 9</option>
+                  <option value="Class 10" className="dark:bg-slate-900 dark:text-slate-300">Class 10</option>
+                  <option value="Class 11" className="dark:bg-slate-900 dark:text-slate-300">Class 11</option>
+                  <option value="Class 12" className="dark:bg-slate-900 dark:text-slate-300">Class 12</option>
                 </select>
               )}
             </div>
 
-            <section className="overflow-hidden rounded-md border border-slate-200 bg-white">
+            <section className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <thead className="bg-slate-50 dark:bg-slate-950/40 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
                   <tr>
                     <th className="px-5 py-4">Name</th>
                     <th className="px-5 py-4">Email</th>
@@ -469,47 +546,47 @@ export const DashboardPage = () => {
                     <th className="px-5 py-4">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {isLoadingUsers ? (
                     <tr>
-                      <td className="px-5 py-12 text-center text-slate-500" colSpan={6}>
+                      <td className="px-5 py-12 text-center text-slate-500 dark:text-slate-400" colSpan={6}>
                         <Spinner /> <span className="ml-2">Loading user directory...</span>
                       </td>
                     </tr>
                   ) : errorUsers ? (
                     <tr>
-                      <td className="px-5 py-12 text-center text-rose-500" colSpan={6}>
+                      <td className="px-5 py-12 text-center text-rose-500 dark:text-rose-450" colSpan={6}>
                         {getErrorMessage(errorUsers)}
                       </td>
                     </tr>
                   ) : filteredUsers.length === 0 ? (
                     <tr>
-                      <td className="px-5 py-12 text-center text-slate-500" colSpan={6}>
+                      <td className="px-5 py-12 text-center text-slate-500 dark:text-slate-400" colSpan={6}>
                         No users registered yet.
                       </td>
                     </tr>
                   ) : (
                     filteredUsers.map((usr) => (
                       <tr key={usr.id || usr.email}>
-                        <td className="px-5 py-4 font-semibold text-slate-800">{usr.name}</td>
-                        <td className="px-5 py-4 text-slate-600 font-medium">{usr.email}</td>
-                        <td className="px-5 py-4 text-slate-600">{usr.dob}</td>
+                        <td className="px-5 py-4 font-semibold text-slate-800 dark:text-slate-100">{usr.name}</td>
+                        <td className="px-5 py-4 text-slate-600 dark:text-slate-450 font-medium">{usr.email}</td>
+                        <td className="px-5 py-4 text-slate-600 dark:text-slate-400">{usr.dob}</td>
                         <td className="px-5 py-4">
                           <Badge tone={usr.role === "Teacher" ? "blue" : "slate"}>
                             {usr.role}
                           </Badge>
                         </td>
-                        <td className="px-5 py-4 text-slate-600 font-medium">
+                        <td className="px-5 py-4 text-slate-600 dark:text-slate-400 font-medium">
                           {usr.role === "Teacher" ? (
-                            <span className="font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md text-xs border border-indigo-100">
+                            <span className="font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-md text-xs border border-indigo-100 dark:border-indigo-900/40">
                               {usr.subject}
                             </span>
                           ) : usr.role === "Student" && usr.class ? (
-                            <span className="font-semibold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-md text-xs border border-teal-100">
+                            <span className="font-semibold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40 px-2.5 py-1 rounded-md text-xs border border-teal-100 dark:border-teal-900/40">
                               {usr.class}
                             </span>
                           ) : (
-                            <span className="text-slate-400">-</span>
+                            <span className="text-slate-400 dark:text-slate-650">-</span>
                           )}
                         </td>
                         <td className="px-5 py-4">
@@ -540,8 +617,8 @@ export const DashboardPage = () => {
             </>
           }
         >
-          <p className="text-sm text-slate-600">Delete {deleteTarget?.name}? This action cannot be undone.</p>
-          {deleteMutation.error ? <p className="mt-3 text-sm text-rose-600">{getErrorMessage(deleteMutation.error)}</p> : null}
+          <p className="text-sm text-slate-600 dark:text-slate-400">Delete {deleteTarget?.name}? This action cannot be undone.</p>
+          {deleteMutation.error ? <p className="mt-3 text-sm text-rose-600 dark:text-rose-450">{getErrorMessage(deleteMutation.error)}</p> : null}
         </Modal>
 
         {/* Register User Modal */}
@@ -566,14 +643,14 @@ export const DashboardPage = () => {
         >
           <form id="register-user-form" onSubmit={handleRegisterSubmit} className="space-y-4">
             {formError && (
-              <div className="rounded-lg bg-rose-50 border border-rose-200 p-3.5 text-xs font-semibold text-rose-700">
+              <div className="rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 p-3.5 text-xs font-semibold text-rose-700 dark:text-rose-400">
                 {formError}
               </div>
             )}
 
             {/* Role switch */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                 Account Role
               </label>
               <div className="flex gap-4">
@@ -581,8 +658,8 @@ export const DashboardPage = () => {
                   type="button"
                   onClick={() => setRegRole("Student")}
                   className={`flex-1 py-3 text-center rounded-lg border font-bold text-sm transition ${regRole === "Student"
-                    ? "border-[#6c7df7] bg-indigo-50/40 text-[#6c7df7]"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    ? "border-[#6c7df7] dark:border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/40 text-[#6c7df7] dark:text-indigo-400"
+                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                     }`}
                 >
                   Student
@@ -591,8 +668,8 @@ export const DashboardPage = () => {
                   type="button"
                   onClick={() => setRegRole("Teacher")}
                   className={`flex-1 py-3 text-center rounded-lg border font-bold text-sm transition ${regRole === "Teacher"
-                    ? "border-[#6c7df7] bg-indigo-50/40 text-[#6c7df7]"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    ? "border-[#6c7df7] dark:border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/40 text-[#6c7df7] dark:text-indigo-400"
+                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                     }`}
                 >
                   Teacher
@@ -602,7 +679,7 @@ export const DashboardPage = () => {
 
             {/* Name field */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                 Full Name
               </label>
               <Input
@@ -615,12 +692,12 @@ export const DashboardPage = () => {
 
             {/* Email field */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                 Email Address
               </label>
               <Input
                 type="email"
-                placeholder="e.g. user@preproute.com"
+                placeholder="e.g. user@parikshya.com"
                 value={regEmail}
                 onChange={(e) => setRegEmail(e.target.value)}
                 required
@@ -629,7 +706,7 @@ export const DashboardPage = () => {
 
             {/* DOB field */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                 Date of Birth
               </label>
               <Input
@@ -642,7 +719,7 @@ export const DashboardPage = () => {
 
             {/* Password field */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                 Password
               </label>
               <Input
@@ -657,20 +734,20 @@ export const DashboardPage = () => {
             {/* Class field (Student only) */}
             {regRole === "Student" && (
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                   Student Class
                 </label>
                 <select
                   value={regClass}
                   onChange={(e) => setRegClass(e.target.value)}
                   required
-                  className="w-full h-12 rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-[#6c7df7]"
+                  className="w-full h-12 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-[#6c7df7] focus:ring-1 focus:ring-[#6c7df7]"
                 >
-                  <option value="">Select Class</option>
-                  <option value="Class 9">Class 9</option>
-                  <option value="Class 10">Class 10</option>
-                  <option value="Class 11">Class 11</option>
-                  <option value="Class 12">Class 12</option>
+                  <option value="" className="dark:bg-slate-900 dark:text-slate-300">Select Class</option>
+                  <option value="Class 9" className="dark:bg-slate-900 dark:text-slate-300">Class 9</option>
+                  <option value="Class 10" className="dark:bg-slate-900 dark:text-slate-300">Class 10</option>
+                  <option value="Class 11" className="dark:bg-slate-900 dark:text-slate-300">Class 11</option>
+                  <option value="Class 12" className="dark:bg-slate-900 dark:text-slate-300">Class 12</option>
                 </select>
               </div>
             )}
@@ -678,18 +755,18 @@ export const DashboardPage = () => {
             {/* Subject field (Teacher only) */}
             {regRole === "Teacher" && (
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                   Assigned Subject
                 </label>
                 <select
                   value={regSubject}
                   onChange={(e) => setRegSubject(e.target.value)}
                   required
-                  className="w-full h-12 rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 outline-none focus:border-[#6c7df7]"
+                  className="w-full h-12 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-[#6c7df7] focus:ring-1 focus:ring-[#6c7df7]"
                 >
-                  <option value="">Select Subject</option>
+                  <option value="" className="dark:bg-slate-900 dark:text-slate-300">Select Subject</option>
                   {subjects.map((sub) => (
-                    <option key={sub.id} value={sub.name}>
+                    <option key={sub.id} value={sub.name} className="dark:bg-slate-900 dark:text-slate-300">
                       {sub.name}
                     </option>
                   ))}
@@ -721,13 +798,13 @@ export const DashboardPage = () => {
         >
           <form id="register-subject-form" onSubmit={handleSubjectSubmit} className="space-y-4">
             {subjectFormError && (
-              <div className="rounded-lg bg-rose-50 border border-rose-200 p-3.5 text-xs font-semibold text-rose-700">
+              <div className="rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 p-3.5 text-xs font-semibold text-rose-700 dark:text-rose-450">
                 {subjectFormError}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                 Subject Name
               </label>
               <Input

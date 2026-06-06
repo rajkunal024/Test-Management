@@ -90,6 +90,7 @@ export interface Question {
   sub_topic_name?: string;
   subject_id?: string;
   class?: string;
+  created_by?: string;
 }
 
 export interface TestPayload {

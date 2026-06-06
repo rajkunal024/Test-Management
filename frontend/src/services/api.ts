@@ -47,7 +47,7 @@ const collectErrorMessages = (value: unknown): string[] => {
 };
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = useAuthStore.getState().token ?? localStorage.getItem("preproute_token");
+  const token = useAuthStore.getState().token ?? localStorage.getItem("parikshya_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -234,5 +234,10 @@ export const uploadStreamFrame = async (payload: {
 export const getActiveStreams = async (testId: string): Promise<ActiveStream[]> => {
   const { data } = await api.get<ApiEnvelope<ActiveStream[]> | ActiveStream[]>(`/attempts/active-streams?test_id=${testId}`);
   return unwrap(data);
+};
+
+export const changePassword = async (payload: { oldPassword: string; newPassword: string }): Promise<{ success: boolean; message: string }> => {
+  const { data } = await api.post("/auth/change-password", payload);
+  return data;
 };
 

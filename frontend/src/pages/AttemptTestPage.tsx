@@ -103,40 +103,125 @@ export const AttemptTestPage = () => {
     }
   }, [cameraStream]);
 
-  // Periodic stream frame upload
+  // Periodic stream frame upload with WebSockets and HTTP fallback
   useEffect(() => {
     if (!cameraStream || !user) return;
 
-    const interval = setInterval(async () => {
-      try {
-        const video = videoRef.current;
-        if (video && video.readyState >= 2) { // HAVE_CURRENT_DATA or higher
-          const canvas = document.createElement("canvas");
-          canvas.width = 160;
-          canvas.height = 120;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
-            
-            // Upload to API
+    let ws: WebSocket | null = null;
+    let fallbackInterval: NodeJS.Timeout | null = null;
+    let wsInterval: NodeJS.Timeout | null = null;
+    let isWsConnecting = false;
+    let isDestroyed = false;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 160;
+    canvas.height = 120;
+    const ctx = canvas.getContext("2d");
+
+    const captureFrame = () => {
+      const video = videoRef.current;
+      if (video && video.readyState >= 2 && ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL("image/jpeg", 0.5);
+      }
+      return null;
+    };
+
+    const startHttpFallback = () => {
+      if (fallbackInterval) return;
+      console.log("Using HTTP fallback for proctoring...");
+      fallbackInterval = setInterval(async () => {
+        try {
+          const frame = captureFrame();
+          if (frame) {
             await uploadStreamFrame({
               test_id: id || "",
               user_id: user.userId || "",
               username: user.name || user.userId || "",
-              frame: dataUrl,
+              frame: frame,
               hasVideo: hasVideo,
               hasAudio: hasAudio
             });
           }
+        } catch (err) {
+          console.error("HTTP proctor fallback error:", err);
         }
-      } catch (err) {
-        console.error("Error capturing and uploading stream frame:", err);
-      }
-    }, 3000);
+      }, 3000);
+    };
+
+    const connectWS = () => {
+      if (isDestroyed || ws || isWsConnecting) return;
+      isWsConnecting = true;
+
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      // Connect to port 4000 (backend)
+      const wsUrl = `${protocol}//127.0.0.1:4000/api/proctor/stream?role=student&test_id=${id}&user_id=${user.userId}&username=${encodeURIComponent(user.name || user.userId || "")}`;
+
+      console.log("Connecting to proctor WS:", wsUrl);
+      const socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => {
+        if (isDestroyed) {
+          socket.close();
+          return;
+        }
+        console.log("Proctor WS connected successfully.");
+        ws = socket;
+        isWsConnecting = false;
+
+        if (fallbackInterval) {
+          clearInterval(fallbackInterval);
+          fallbackInterval = null;
+        }
+
+        // Stream frames at 250ms for live quality
+        wsInterval = setInterval(() => {
+          if (socket.readyState === WebSocket.OPEN) {
+            const frame = captureFrame();
+            if (frame) {
+              socket.send(JSON.stringify({
+                type: "frame",
+                frame,
+                hasVideo,
+                hasAudio
+              }));
+            }
+          }
+        }, 250);
+      };
+
+      socket.onerror = (err) => {
+        console.error("Proctor WS error:", err);
+      };
+
+      socket.onclose = () => {
+        if (isDestroyed) return;
+        console.log("Proctor WS closed. Falling back to HTTP.");
+        ws = null;
+        isWsConnecting = false;
+        if (wsInterval) {
+          clearInterval(wsInterval);
+          wsInterval = null;
+        }
+        startHttpFallback();
+        // Try to reconnect in 5 seconds
+        setTimeout(connectWS, 5000);
+      };
+    };
+
+    connectWS();
 
     return () => {
-      clearInterval(interval);
+      isDestroyed = true;
+      if (ws) {
+        ws.close();
+      }
+      if (wsInterval) {
+        clearInterval(wsInterval);
+      }
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval);
+      }
     };
   }, [cameraStream, id, user, hasVideo, hasAudio]);
 

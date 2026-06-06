@@ -72,7 +72,8 @@ export const QuestionSchema = new Schema({
   topic_id: { type: String },
   sub_topic_id: { type: String },
   media_url: { type: String },
-  class: { type: String }
+  class: { type: String },
+  created_by: { type: String }
 });
 export const QuestionModel = mongoose.model("Question", QuestionSchema);
 

@@ -2,6 +2,7 @@ import { IncomingMessage, ServerResponse } from "node:http";
 import { json, readBody } from "../middlewares/utils.js";
 import { AdminModel, TeacherModel, StudentModel } from "../models/index.js";
 import { hashPassword, verifyPassword, signToken } from "../utils/crypto.js";
+import { getUserFromRequest } from "../middlewares/auth.js";
 
 export const signupAdmin = async (request: IncomingMessage, response: ServerResponse) => {
   try {
@@ -141,5 +142,47 @@ export const logout = async (request: IncomingMessage, response: ServerResponse)
     );
   } catch (e) {
     json(response, 500, { success: false, message: "Logout error" });
+  }
+};
+
+export const changePassword = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const user = getUserFromRequest(request);
+    if (!user) {
+      json(response, 401, { success: false, message: "Unauthorized" });
+      return;
+    }
+
+    const { oldPassword, newPassword } = JSON.parse(await readBody(request));
+    if (!oldPassword || !newPassword) {
+      json(response, 400, { success: false, message: "Old password and new password are required" });
+      return;
+    }
+
+    let userDoc: any = null;
+    if (user.role === "Admin") {
+      userDoc = await AdminModel.findOne({ userId: user.userId });
+    } else if (user.role === "Teacher") {
+      userDoc = await TeacherModel.findOne({ userId: user.userId });
+    } else if (user.role === "Student") {
+      userDoc = await StudentModel.findOne({ userId: user.userId });
+    }
+
+    if (!userDoc) {
+      json(response, 404, { success: false, message: "User account not found" });
+      return;
+    }
+
+    if (!verifyPassword(oldPassword, userDoc.password)) {
+      json(response, 400, { success: false, message: "Incorrect old password" });
+      return;
+    }
+
+    userDoc.password = hashPassword(newPassword);
+    await userDoc.save();
+
+    json(response, 200, { success: true, message: "Password updated successfully" });
+  } catch (e) {
+    json(response, 500, { success: false, message: "Server error during password update" });
   }
 };
