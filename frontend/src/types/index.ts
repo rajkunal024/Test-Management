@@ -8,6 +8,8 @@ export interface User {
   subject?: string;
   dob?: string;
   class?: string;
+  gender?: string;
+  requiresPasswordChange?: boolean;
 }
 
 export interface LoginRequest {
@@ -39,7 +41,7 @@ export interface SubTopic {
   topic_id: string;
 }
 
-export type TestStatus = "draft" | "live" | null;
+export type TestStatus = "draft" | "live" | "scheduled" | null;
 export type TestDifficulty = "easy" | "medium" | "hard";
 export type TestType = "practice" | "mock" | "previous_year";
 export type CorrectOption = "option1" | "option2" | "option3" | "option4";

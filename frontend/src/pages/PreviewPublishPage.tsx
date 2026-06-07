@@ -67,8 +67,13 @@ export const PreviewPublishPage = () => {
   });
 
   useEffect(() => {
-    if (test?.status === "live") setToast("This test is already live");
-  }, [test?.status]);
+    if (test) {
+      const now = new Date().getTime();
+      const start = test.start_time ? new Date(test.start_time).getTime() : 0;
+      const isLive = (test.status === "live" || test.status === "scheduled") && (!start || now >= start);
+      if (isLive) setToast("This test is already live");
+    }
+  }, [test]);
 
   if (isLoading || !test) {
     return (
@@ -97,9 +102,9 @@ export const PreviewPublishPage = () => {
               <Badge tone="blue">Chapter Wise</Badge>
               <h2 className="font-bold text-slate-900">📚 Chapter 1</h2>
               <Badge tone={
-                (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" : 
-                (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" : 
-                (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
+                (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" :
+                  (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" :
+                    (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
               }>{test.difficulty}</Badge>
             </div>
             <Link to={`/tests/${id}/edit`} title="Edit test details">
@@ -110,7 +115,7 @@ export const PreviewPublishPage = () => {
             <span>Subject</span>
             <span className="text-slate-700">: {test.subject}</span>
             <span>Topic</span>
-            <span className="flex flex-wrap gap-2">: 
+            <span className="flex flex-wrap gap-2">:
               {topicNames.length > 0 ? (
                 topicNames.map((name) => (
                   <Badge key={name} tone="yellow">{name}</Badge>
@@ -120,7 +125,7 @@ export const PreviewPublishPage = () => {
               )}
             </span>
             <span>Sub Topic</span>
-            <span className="flex flex-wrap gap-2">: 
+            <span className="flex flex-wrap gap-2">:
               {subTopicNames.length > 0 ? (
                 subTopicNames.map((name) => (
                   <Badge key={name} tone="yellow">{name}</Badge>
@@ -154,9 +159,8 @@ export const PreviewPublishPage = () => {
                     {(["option1", "option2", "option3", "option4"] as const).map((option) => (
                       <div
                         key={option}
-                        className={`rounded-md border px-3 py-2 text-sm ${
-                          question.correct_option === option ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-600"
-                        }`}
+                        className={`rounded-md border px-3 py-2 text-sm ${question.correct_option === option ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-600"
+                          }`}
                       >
                         {question.correct_option === option ? <CheckCircle2 className="mr-2 inline h-4 w-4" /> : null}
                         {question[option]}

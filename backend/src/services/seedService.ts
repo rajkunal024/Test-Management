@@ -24,10 +24,19 @@ export const seedDatabase = async () => {
 
     const teachers = await TeacherModel.find({});
     for (const teacher of teachers) {
+      let updated = false;
       if (teacher.password && !teacher.password.includes(":")) {
         teacher.password = hashPassword(teacher.password);
-        await teacher.save();
+        updated = true;
         console.log(`Migrated Teacher ${teacher.userId} password to hash.`);
+      }
+      if (teacher.gender !== "Female") {
+        teacher.gender = "Female";
+        updated = true;
+        console.log(`Migrated Teacher ${teacher.userId} gender to Female.`);
+      }
+      if (updated) {
+        await teacher.save();
       }
     }
 

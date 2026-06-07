@@ -241,3 +241,43 @@ export const changePassword = async (payload: { oldPassword: string; newPassword
   return data;
 };
 
+export const bulkRegisterUsers = async (users: any[]): Promise<{ success: boolean; count: number; errors?: string[] }> => {
+  const { data } = await api.post("/admin/users/bulk", { users });
+  return data;
+};
+
+export interface TestCsvPayload {
+  name: string;
+  total_time: number;
+  correct_marks: number;
+  wrong_marks: number;
+  unattempt_marks: number;
+  type: string;
+  class: string;
+  status: "draft" | "live";
+  questions: any[];
+  total_questions?: number;
+  start_time?: string;
+  end_time?: string;
+}
+
+export interface TestCsvResponse {
+  success: boolean;
+  data: Test;
+  summary: {
+    totalRows: number;
+    newSubjects: number;
+    newTopics: number;
+    newSubTopics: number;
+    newQuestions: number;
+    reusedQuestions: number;
+    failedRows: number;
+  };
+  errors: { row: number; error: string }[];
+}
+
+export const createTestFromCsv = async (payload: TestCsvPayload): Promise<TestCsvResponse> => {
+  const { data } = await api.post("/tests/csv-import", payload);
+  return data;
+};
+

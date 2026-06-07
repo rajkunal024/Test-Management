@@ -140,7 +140,7 @@ export const LoginPage = () => {
               />
               <PasswordInput
                 label="Admin Registration Key"
-                placeholder="Enter signup key (roar)"
+                placeholder="Enter registration key"
                 value={adminKey}
                 onChange={(event) => setAdminKey(event.target.value)}
               />

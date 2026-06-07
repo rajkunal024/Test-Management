@@ -137,7 +137,7 @@ export const MonitorTestPage = () => {
               </Badge>
             </div>
             <h1 className="text-xl md:text-2xl font-bold text-slate-800">{test.name}</h1>
-            
+
             <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-500 max-w-lg">
               <span>Time Slot Window:</span>
               <span className="font-semibold text-slate-700">
@@ -387,7 +387,7 @@ export const MonitorTestPage = () => {
                           {statusBadge}
                         </div>
                         <p className="font-bold text-slate-800 text-sm leading-relaxed mb-4">{item.question}</p>
-                        
+
                         <div className="grid gap-2 text-xs md:grid-cols-2">
                           {["option1", "option2", "option3", "option4"].map((optKey, oIdx) => {
                             const optText = item[optKey];
@@ -396,8 +396,8 @@ export const MonitorTestPage = () => {
 
                             let optStyle = "border-slate-100 text-slate-500 bg-white";
                             if (isSelected) {
-                              optStyle = isCorrect 
-                                ? "border-emerald-400 bg-emerald-50 text-emerald-800" 
+                              optStyle = isCorrect
+                                ? "border-emerald-400 bg-emerald-50 text-emerald-800"
                                 : "border-rose-400 bg-rose-50 text-rose-800";
                             } else if (isCorrectOpt) {
                               optStyle = "border-emerald-300 bg-emerald-50/20 text-emerald-700";

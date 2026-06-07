@@ -10,8 +10,8 @@ const tones: Record<BadgeTone, string> = {
   red: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/30 dark:bg-rose-950/20 dark:text-rose-400",
 };
 
-export const Badge = ({ tone = "slate", children }: { tone?: BadgeTone; children: ReactNode }) => (
-  <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${tones[tone]}`}>
+export const Badge = ({ tone = "slate", className = "", children }: { tone?: BadgeTone; className?: string; children: ReactNode }) => (
+  <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${tones[tone]} ${className}`}>
     {children}
   </span>
 );

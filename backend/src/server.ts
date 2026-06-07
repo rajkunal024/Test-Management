@@ -5,6 +5,7 @@ import { WebSocketServer } from "ws";
 import { connectDB } from "./db/index.js";
 import { handleRequest } from "./app.js";
 import { startAutoShareJob } from "./services/autoShareService.js";
+import { startUpcomingNotificationJob } from "./services/upcomingNotificationService.js";
 import { setupProctorWebSocketServer } from "./services/proctorSocketService.js";
 
 // Tiny dependency-free .env loader helper
@@ -38,6 +39,7 @@ const mongoUri = process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017/parikshya
 connectDB(mongoUri)
   .then(() => {
     startAutoShareJob();
+    startUpcomingNotificationJob();
   })
   .catch(err => {
     console.error("MongoDB Connection Error:", err);

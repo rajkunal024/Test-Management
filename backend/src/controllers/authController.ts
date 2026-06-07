@@ -65,7 +65,7 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { id: admin.id, name: admin.name, userId: admin.userId, role: "Admin" }
+              user: { id: admin.id, name: admin.name, userId: admin.userId, role: "Admin", requiresPasswordChange: admin.requiresPasswordChange }
             }
           },
           {
@@ -89,7 +89,7 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { id: teacher.id, name: teacher.name, userId: teacher.userId, role: "Teacher", subject: teacher.subject }
+              user: { id: teacher.id, name: teacher.name, userId: teacher.userId, role: "Teacher", subject: teacher.subject, gender: teacher.gender, requiresPasswordChange: teacher.requiresPasswordChange }
             }
           },
           {
@@ -113,7 +113,7 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { id: student.id, name: student.name, userId: student.userId, role: "Student", class: student.class || "Class 10" }
+              user: { id: student.id, name: student.name, userId: student.userId, role: "Student", class: student.class || "Class 10", gender: student.gender, requiresPasswordChange: student.requiresPasswordChange }
             }
           },
           {
@@ -179,6 +179,7 @@ export const changePassword = async (request: IncomingMessage, response: ServerR
     }
 
     userDoc.password = hashPassword(newPassword);
+    userDoc.requiresPasswordChange = false;
     await userDoc.save();
 
     json(response, 200, { success: true, message: "Password updated successfully" });

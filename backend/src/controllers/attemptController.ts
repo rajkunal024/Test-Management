@@ -20,16 +20,16 @@ const seedRandom = (seedStr: string) => {
 
 const getDeterministicSubset = <T,>(array: T[], count: number, seed: string): T[] => {
   if (array.length <= count) return array;
-  
+
   const temp = [...array];
   const rand = seedRandom(seed);
   const result: T[] = [];
-  
+
   for (let i = 0; i < count; i++) {
     const idx = Math.floor(rand() * temp.length);
     result.push(temp.splice(idx, 1)[0]);
   }
-  
+
   return result;
 };
 
@@ -68,7 +68,7 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
   try {
     const payload = JSON.parse(await readBody(request));
     const { test_id, user_id, answers = {}, time_spent = 0, tab_switches = 0 } = payload;
-    
+
     const test = await TestModel.findOne({ id: test_id });
     if (!test) {
       json(response, 404, { success: false, message: "Test not found" });
@@ -94,18 +94,18 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
       json(response, 400, { success: false, message: "You have already attempted this test." });
       return;
     }
-    
+
     // Get all questions for this test by their linked IDs
     const rawQuestions = await QuestionModel.find({ id: { $in: test.questions || [] } });
     const sortedQuestions = [...rawQuestions].sort((a: any, b: any) => (a.id || "").localeCompare(b.id || ""));
     const seed = `${userIdStr}-${test.id}`;
     const questions = getDeterministicSubset(sortedQuestions, test.total_questions, seed);
-    
+
     let correct_answers = 0;
     let wrong_answers = 0;
     let unattempted = 0;
     let score = 0;
-    
+
     const test_copy = questions.map((q: any) => ({
       id: q.id,
       question: q.question,
@@ -116,7 +116,7 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
       correct_option: q.correct_option,
       selected_option: answers[q.id ?? ""] || ""
     }));
-    
+
     questions.forEach((q: any) => {
       const selected = answers[q.id ?? ""];
       if (selected === undefined || selected === null || selected === "") {
@@ -131,7 +131,7 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
         score += penalty < 0 ? penalty : -penalty;
       }
     });
-    
+
     const newAttempt = new ResultModel({
       test_id,
       test_name: test.name,
@@ -146,9 +146,9 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
       test_copy,
       submitted_at: new Date()
     });
-    
+
     await newAttempt.save();
-    
+
     json(response, 201, {
       success: true,
       data: newAttempt
@@ -197,7 +197,7 @@ export const saveStreamFrame = async (request: IncomingMessage, response: Server
         if (testObj) {
           const studentName = username || user_id;
           const msg = `Student '${studentName}' (${user_id}) has started attempting the test '${testObj.name}' with live video proctoring active.`;
-          
+
           // Check if notification already exists for this specific student and test
           const alreadyNotified = await NotificationModel.findOne({
             type: "student_attempt_started",
@@ -211,7 +211,7 @@ export const saveStreamFrame = async (request: IncomingMessage, response: Server
               subject: { $in: testSubjects }
             });
             const targetTeachers = teachers.length > 0 ? teachers : await TeacherModel.find({});
-            
+
             for (const t of targetTeachers) {
               await NotificationModel.create({
                 user_id: t.userId,

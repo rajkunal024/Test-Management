@@ -28,7 +28,9 @@ export const TeacherSchema = new Schema({
   role: { type: String, default: "Teacher" },
   subject: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  dob: { type: String, required: true }
+  dob: { type: String, required: true },
+  gender: { type: String, enum: ["Male", "Female"], default: "Male" },
+  requiresPasswordChange: { type: Boolean, default: false }
 });
 export const TeacherModel = mongoose.model("Teacher", TeacherSchema);
 
@@ -40,6 +42,8 @@ export const StudentSchema = new Schema({
   email: { type: String, required: true, unique: true },
   dob: { type: String, required: true },
   class: { type: String },
+  gender: { type: String, enum: ["Male", "Female"], default: "Male" },
+  requiresPasswordChange: { type: Boolean, default: false },
   results: [{
     test_id: { type: String, required: true },
     test_name: { type: String, required: true },
@@ -54,7 +58,8 @@ export const AdminSchema = new Schema({
   userId: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   name: { type: String, required: true },
-  role: { type: String, default: "Admin" }
+  role: { type: String, default: "Admin" },
+  requiresPasswordChange: { type: Boolean, default: false }
 });
 export const AdminModel = mongoose.model("Admin", AdminSchema);
 
@@ -118,7 +123,7 @@ export const TestSchema = new Schema({
   total_time: { type: Number, required: true },
   total_marks: { type: Number, required: true },
   total_questions: { type: Number, required: true },
-  status: { type: String, default: null },
+  status: { type: String, default: "draft" },
   questions: { type: [String], default: [] },
   created_at: { type: Date, default: Date.now },
   start_time: { type: String },

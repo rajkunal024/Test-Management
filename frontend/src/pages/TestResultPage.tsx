@@ -76,7 +76,7 @@ export const TestResultPage = () => {
     } else {
       baseQuestions = fetchedQuestions;
     }
-    
+
     // Filter/slice the questions to the deterministic subset of size test.total_questions
     if (test && baseQuestions.length > 0 && attempt) {
       const seedRandom = (seedStr: string) => {
@@ -110,22 +110,22 @@ export const TestResultPage = () => {
       const seed = `${attempt.user_id}-${test.id}`;
       return getDeterministicSubset(sortedQuestions, test.total_questions, seed);
     }
-    
+
     return baseQuestions;
   }, [attempt, fetchedQuestions, test]);
 
   // Calculations
   const scorecard = useMemo(() => {
     if (!attempt || !test) return null;
-    
+
     const score = attempt.score;
     const maxMarks = test.total_marks;
     const pct = Math.max(0, Math.round((score / maxMarks) * 100));
 
     const totalQuestions = questions.length;
     const answered = attempt.correct_answers + attempt.wrong_answers;
-    const accuracy = answered > 0 
-      ? Math.round((attempt.correct_answers / answered) * 100) 
+    const accuracy = answered > 0
+      ? Math.round((attempt.correct_answers / answered) * 100)
       : 0;
 
     // Time spent formatting
@@ -242,7 +242,7 @@ export const TestResultPage = () => {
             {/* Left Box: Percentage Circle */}
             <div className={`p-8 bg-gradient-to-br ${scorecard.gradient} text-white flex flex-col items-center justify-center text-center md:w-[280px]`}>
               <span className="text-xs font-bold uppercase tracking-wider opacity-75">Your Score</span>
-              
+
               <div className="relative flex items-center justify-center mt-4 mb-4 h-36 w-36 rounded-full border-4 border-white/20 bg-white/10">
                 <div className="text-center">
                   <span className="text-4xl font-extrabold">{scorecard.pct}%</span>
@@ -251,11 +251,11 @@ export const TestResultPage = () => {
                   </p>
                 </div>
               </div>
-              
+
               <Badge tone={
-                (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" : 
-                (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" : 
-                (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
+                (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" :
+                  (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" :
+                    (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
               }>
                 {test.difficulty}
               </Badge>
@@ -401,7 +401,7 @@ export const TestResultPage = () => {
           <Link to="/dashboard">
             <Button variant="secondary">Go to Dashboard</Button>
           </Link>
-          <Button 
+          <Button
             onClick={() => window.print()}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold inline-flex items-center gap-2"
           >
@@ -409,7 +409,8 @@ export const TestResultPage = () => {
           </Button>
         </div>
 
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           @media print {
             aside, header, .print\\:hidden {
               display: none !important;

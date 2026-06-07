@@ -9,6 +9,14 @@ import {
   CheckCircle2,
   AlertTriangle,
   FolderPlus,
+  Sparkles,
+  Clock,
+  ClipboardList,
+  GraduationCap,
+  Award,
+  FileQuestion,
+  Check,
+  ChevronRight,
 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -48,7 +56,8 @@ export const AddQuestionsPage = () => {
     if (test) {
       const now = new Date().getTime();
       const start = test.start_time ? new Date(test.start_time).getTime() : 0;
-      if (test.status === "live" && start && now >= start) {
+      const hasStarted = (test.status === "live" || test.status === "scheduled") && (!start || now >= start);
+      if (hasStarted) {
         navigate("/dashboard", { replace: true });
       }
     }
@@ -167,68 +176,110 @@ export const AddQuestionsPage = () => {
       <PageWrapper compact>
         {/* Header Links */}
         <div className="mb-6 flex items-center justify-between gap-4">
-          <Link to="/dashboard" className="inline-flex items-center gap-1 text-xs font-bold text-[#6c7df7] hover:underline uppercase">
-            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-          </Link>
+          <div className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <Link to="/dashboard" className="hover:text-primary-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-1">
+              <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
+            </Link>
+            <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-700" />
+            <span className="text-slate-805 dark:text-slate-200">Question Manager</span>
+          </div>
           <Link to={`/tests/${id}/preview`}>
-            <Button className="h-9 px-4 text-xs font-semibold">Preview & Publish</Button>
+            <Button className="rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/10 text-white border-none font-bold transition-all hover:scale-[1.02] active:scale-[0.98] text-xs px-5 py-2 flex items-center gap-1.5">
+              Preview & Publish
+            </Button>
           </Link>
         </div>
 
         {/* Test Summary Card */}
-        <section className="mb-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Badge tone="blue">{subjectsName}</Badge>
-            <Badge tone="slate">{test.type.replace("_", " ")}</Badge>
-            <Badge tone={
-              (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" : 
-              (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" : 
-              (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
-            }>{test.difficulty}</Badge>
-          </div>
-          <h1 className="text-lg font-bold text-slate-800 mb-2">📚 {test.name}</h1>
-          <div className="flex gap-4 text-xs text-slate-500">
-            <span>⌚ {test.total_time} Mins</span>
-            <span>□ {test.total_questions} Questions Target</span>
-            <span>♙ {test.total_marks} Marks</span>
+        <section className="relative overflow-hidden mb-8 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 shadow-md text-white border border-slate-800/80">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f2937_1px,transparent_1px),linear-gradient(to_bottom,#1f2937_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30" />
+          
+          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="blue" className="bg-blue-500/15 border-blue-450/20 text-blue-300 font-bold">{subjectsName}</Badge>
+                <Badge tone="slate" className="bg-slate-500/15 border-slate-450/20 text-slate-300 font-bold uppercase tracking-wider text-[10px]">{test.type.replace("_", " ")}</Badge>
+                <Badge tone={
+                  (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" : 
+                  (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" : 
+                  (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
+                } className="font-bold">{test.difficulty}</Badge>
+              </div>
+              <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-200 bg-clip-text text-transparent flex items-center gap-2.5">
+                <GraduationCap className="h-6 w-6 text-indigo-400" />
+                {test.name}
+              </h1>
+              <div className="flex flex-wrap gap-4 text-xs font-semibold text-slate-300/85">
+                <span className="flex items-center gap-1.5 bg-slate-800/40 border border-slate-700/50 px-2.5 py-1 rounded-lg">
+                  <Clock className="h-3.5 w-3.5 text-indigo-455" /> {test.total_time} Minutes Duration
+                </span>
+                <span className="flex items-center gap-1.5 bg-slate-800/40 border border-slate-700/50 px-2.5 py-1 rounded-lg">
+                  <ClipboardList className="h-3.5 w-3.5 text-indigo-455" /> {test.total_questions} Questions Target
+                </span>
+                <span className="flex items-center gap-1.5 bg-slate-800/40 border border-slate-700/50 px-2.5 py-1 rounded-lg">
+                  <Award className="h-3.5 w-3.5 text-indigo-455" /> {test.total_marks} Marks Pool
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-400/20 text-indigo-300 shadow-inner md:mr-2 flex-shrink-0">
+              <FileQuestion className="h-6 w-6" />
+            </div>
           </div>
         </section>
 
         {/* Manager Layout */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
           {/* Left Column: Manage Linked Questions */}
           <main className="space-y-6">
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center justify-between">
-                <span>Linked Test Questions ({testQuestions.length})</span>
-                <span className="text-xs text-slate-400 font-semibold">Target: {test.total_questions} Qs</span>
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-6 shadow-sm">
+              <h2 className="text-base font-extrabold text-slate-850 dark:text-slate-105 tracking-tight mb-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  Linked Test Questions ({testQuestions.length})
+                </span>
+                <span className="text-xs text-slate-400 font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200/65 dark:border-slate-850 px-2.5 py-1 rounded-lg">
+                  Target: {test.total_questions} Qs
+                </span>
               </h2>
 
               {testQuestions.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-slate-300 py-10 text-center text-slate-400 text-sm">
-                  No questions linked to this test yet. Link questions from the global pool on the right side.
+                <div className="rounded-xl border-2 border-dashed border-slate-250 dark:border-slate-800 py-16 text-center text-slate-400 dark:text-slate-500 text-sm bg-white/40 dark:bg-slate-955/20 shadow-inner flex flex-col items-center justify-center space-y-3">
+                  <div className="p-3.5 bg-slate-55 dark:bg-slate-900 text-slate-400 dark:text-slate-500 rounded-full border border-slate-200 dark:border-slate-800">
+                    <FileQuestion className="h-6 w-6" />
+                  </div>
+                  <div className="max-w-xs space-y-1">
+                    <p className="font-bold text-slate-700 dark:text-slate-350">No questions linked yet</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Link questions from the global pool on the right panel to build your test</p>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                <div className="space-y-3.5 max-h-[62vh] overflow-y-auto pr-2 scrollbar-thin">
                   {testQuestions.map((q, index) => (
                     <article
                       key={q.id ?? index}
-                      className="flex items-start justify-between gap-4 rounded-lg border border-slate-100 p-4 hover:border-slate-200 transition"
+                      className="flex items-start justify-between gap-4 rounded-xl border border-slate-150 dark:border-slate-800/60 bg-white/50 dark:bg-slate-955/30 p-4 hover:border-slate-250 dark:hover:border-slate-700/80 transition-all hover:shadow-sm"
                     >
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 line-clamp-2">
-                          {index + 1}. {q.question}
+                      <div className="min-w-0 space-y-1.5">
+                        <p className="text-sm font-bold text-slate-805 dark:text-slate-200 leading-snug line-clamp-3">
+                          <span className="text-indigo-500 dark:text-indigo-400 font-black mr-1.5">{index + 1}.</span>
+                          {q.question}
                         </p>
-                        <p className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Correct: {q.correct_option.replace("option", "Option ")}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-450 font-bold bg-emerald-50 dark:bg-emerald-955/30 border border-emerald-100 dark:border-emerald-900/50 px-2 py-0.5 rounded-lg">
+                            <Check className="h-3.5 w-3.5" /> Answer: {q.correct_option?.replace("option", "Option ")}
+                          </span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider">
+                            Topic: {q.topic_name || "General"}
+                          </span>
+                        </div>
                       </div>
                       <Button
                         variant="ghost"
-                        className="h-8 px-2 text-rose-600 hover:bg-rose-50 flex items-center justify-center shrink-0"
+                        className="h-9 w-9 rounded-xl text-rose-500 dark:text-rose-450 hover:bg-rose-55 dark:hover:bg-rose-955/40 border border-transparent hover:border-rose-100 dark:hover:border-rose-900/40 flex items-center justify-center shrink-0 transition-colors"
                         onClick={() => handleRemoveFromTest(q.id ?? "")}
-                        icon={<Trash2 className="h-3.5 w-3.5" />}
-                        title="Remove from test"
+                        icon={<Trash2 className="h-4 w-4" />}
+                        title="Remove question"
                       />
                     </article>
                   ))}
@@ -239,38 +290,54 @@ export const AddQuestionsPage = () => {
 
           {/* Right Column: Source Question Bank (Global Pool) */}
           <aside className="space-y-6">
-            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col">
+            <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-6 shadow-sm flex flex-col min-h-[480px]">
               <div className="flex-1 flex flex-col">
-                <h3 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-1.5">
-                  <FolderPlus className="h-4 w-4 text-slate-400" />
+                <h3 className="text-sm font-extrabold text-slate-808 dark:text-slate-200 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                  <FolderPlus className="h-5 w-5 text-indigo-500" />
                   Available Pool Questions ({availablePoolQuestions.length})
                 </h3>
 
                 {availablePoolQuestions.length === 0 ? (
-                  <p className="text-xs text-slate-400 py-8 text-center bg-slate-50 rounded">
-                    No pool questions available for subjects: {subjectsName}. Let teachers create them.
-                  </p>
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/30 border border-slate-150 dark:border-slate-800 rounded-xl space-y-2">
+                    <FileQuestion className="h-6 w-6 text-slate-350" />
+                    <p className="text-xs text-slate-455 dark:text-slate-500 font-semibold max-w-[200px]">
+                      No pool questions available for subjects: {subjectsName}. Let teachers create them.
+                    </p>
+                  </div>
                 ) : (
                   <div className="flex-1 flex flex-col justify-between">
-                    <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+                    <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-1.5 scrollbar-thin">
                       {availablePoolQuestions.map((q) => {
                         const isSelected = selectedPoolIds.includes(q.id ?? "");
                         return (
                           <label
                             key={q.id}
-                            className={`flex items-start gap-3 p-2.5 rounded border text-xs cursor-pointer hover:bg-slate-50/50 transition ${
-                              isSelected ? "border-indigo-400 bg-indigo-50/30" : "border-slate-100"
+                            className={`flex items-start gap-3 p-3.5 rounded-xl border text-xs cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-955/30 transition-all ${
+                              isSelected 
+                                ? "border-indigo-400 dark:border-indigo-850 bg-indigo-50/30 dark:bg-indigo-950/10 ring-2 ring-indigo-500/10" 
+                                : "border-slate-155 dark:border-slate-800/60 bg-white/50 dark:bg-slate-955/20"
                             }`}
                           >
                             <input
                               type="checkbox"
                               checked={isSelected}
-                              className="h-4.5 w-4.5 rounded text-indigo-600 mt-0.5"
+                              className="h-4.5 w-4.5 rounded text-indigo-650 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer mt-0.5 border-slate-300 dark:border-slate-700"
                               onChange={() => handleToggleSelectPool(q.id ?? "")}
                             />
-                            <div className="min-w-0">
-                              <p className="font-semibold text-slate-700 line-clamp-2">{q.question}</p>
-                              <span className="text-[10px] text-slate-400 mt-1 block">Difficulty: {q.difficulty}</span>
+                            <div className="min-w-0 space-y-1.5 flex-1">
+                              <p className="font-bold text-slate-755 dark:text-slate-200 leading-snug line-clamp-3">{q.question}</p>
+                              <div className="flex items-center justify-between">
+                                <Badge tone={
+                                  (q.difficulty || "").toLowerCase().trim() === "easy" ? "green" : 
+                                  (q.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" : 
+                                  (((q.difficulty || "").toLowerCase().trim() === "hard" || (q.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
+                                } className="px-2 py-0.5 font-bold uppercase tracking-wide text-[9px]">
+                                  {q.difficulty}
+                                </Badge>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold truncate max-w-[120px]">
+                                  {q.topic_name || "General"}
+                                </span>
+                              </div>
                             </div>
                           </label>
                         );
@@ -280,8 +347,8 @@ export const AddQuestionsPage = () => {
                     <Button
                       disabled={selectedPoolIds.length === 0 || updateTestMutation.isPending}
                       onClick={() => handleAddToTest(selectedPoolIds)}
-                      className="mt-4 w-full text-xs font-bold h-9 bg-indigo-600 hover:bg-indigo-700 text-white"
-                      icon={<Plus className="h-3.5 w-3.5" />}
+                      className="mt-5 w-full text-xs font-bold h-10 bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/10 text-white border-none rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:scale-100"
+                      icon={<Plus className="h-4 w-4" />}
                     >
                       Add Selected ({selectedPoolIds.length}) to Test
                     </Button>

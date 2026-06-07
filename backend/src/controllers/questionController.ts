@@ -251,6 +251,14 @@ export const bulkQuestions = async (request: IncomingMessage, response: ServerRe
       return;
     }
 
+    const now = new Date().getTime();
+    const start = test.start_time ? new Date(test.start_time).getTime() : 0;
+    const hasStarted = (test.status === "live" || test.status === "scheduled") && (!start || now >= start);
+    if (hasStarted) {
+      json(response, 400, { success: false, message: "Cannot edit questions for a test that has already started" });
+      return;
+    }
+
     if (user && user.role === "Teacher") {
       const teacher = await TeacherModel.findOne({ userId: user.userId });
       if (!teacher) {

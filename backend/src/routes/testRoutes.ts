@@ -1,10 +1,14 @@
 import { IncomingMessage, ServerResponse } from "node:http";
-import { getTests, createTest, getTestById, updateTest, deleteTest, shareResults } from "../controllers/testController.js";
+import { getTests, createTest, getTestById, updateTest, deleteTest, shareResults, bulkCreateTestFromCsv } from "../controllers/testController.js";
 import { json } from "../middlewares/utils.js";
 
 export const handleTestsRoutes = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
   if (path === "/api/tests" && method === "GET") {
     await getTests(request, response);
+    return;
+  }
+  if (path === "/api/tests/csv-import" && method === "POST") {
+    await bulkCreateTestFromCsv(request, response);
     return;
   }
   if (path === "/api/tests" && method === "POST") {

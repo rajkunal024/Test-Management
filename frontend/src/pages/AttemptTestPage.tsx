@@ -39,16 +39,16 @@ const seedRandom = (seedStr: string) => {
 
 const getDeterministicSubset = <T,>(array: T[], count: number, seed: string): T[] => {
   if (array.length <= count) return array;
-  
+
   const temp = [...array];
   const rand = seedRandom(seed);
   const result: T[] = [];
-  
+
   for (let i = 0; i < count; i++) {
     const idx = Math.floor(rand() * temp.length);
     result.push(temp.splice(idx, 1)[0]);
   }
-  
+
   return result;
 };
 
@@ -359,13 +359,13 @@ export const AttemptTestPage = () => {
   // Send Chat Message Handler
   const handleSendChatMessage = () => {
     if (!chatInput.trim() || !socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
-    
+
     const text = chatInput.trim();
     socketRef.current.send(JSON.stringify({
       type: "chat_message",
       text
     }));
-    
+
     setChatMessages((prev) => [...prev, {
       sender: "You",
       text,
@@ -490,7 +490,7 @@ export const AttemptTestPage = () => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [marked, setMarked] = useState<Record<string, boolean>>({});
   const [visited, setVisited] = useState<Record<string, boolean>>({ "0": true });
-  
+
   // Refs to always hold latest values (avoid stale closures in timer callbacks)
   const answersRef = useRef<Record<string, string>>({});
   const timeSpentRef = useRef(0);
@@ -499,7 +499,7 @@ export const AttemptTestPage = () => {
   // Timer State
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [timeSpent, setTimeSpent] = useState(0);
-  
+
   // Modals
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -548,7 +548,7 @@ export const AttemptTestPage = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft === null]);
 
   // Mutation to submit the attempt
@@ -755,8 +755,8 @@ export const AttemptTestPage = () => {
             <span>{Math.round((stats.answered / totalQuestions) * 100)}% ({stats.answered}/{totalQuestions})</span>
           </div>
           <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-indigo-500 transition-all duration-300 rounded-full" 
+            <div
+              className="h-full bg-indigo-500 transition-all duration-300 rounded-full"
               style={{ width: `${(stats.answered / totalQuestions) * 100}%` }}
             />
           </div>
@@ -764,19 +764,18 @@ export const AttemptTestPage = () => {
 
         {/* Timer Component */}
         <div className="flex items-center gap-4">
-          <div 
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm font-bold transition duration-300 ${
-              timeLeft !== null && timeLeft < 300 
-                ? "bg-rose-50 border-rose-200 text-rose-600 animate-pulse" 
+          <div
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm font-bold transition duration-300 ${timeLeft !== null && timeLeft < 300
+                ? "bg-rose-50 border-rose-200 text-rose-600 animate-pulse"
                 : "bg-slate-50 border-slate-200 text-slate-700"
-            }`}
+              }`}
           >
             <Clock className={`h-4 w-4 ${timeLeft !== null && timeLeft < 300 ? "text-rose-500" : "text-slate-500"}`} />
             <span>Time Remaining: {formattedTimeLeft}</span>
           </div>
 
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={handleManualSubmit}
             className="h-10 bg-indigo-600 hover:bg-indigo-700 text-xs px-4"
             icon={<Send className="h-3.5 w-3.5" />}
@@ -788,7 +787,7 @@ export const AttemptTestPage = () => {
 
       {/* Main Attempt Area */}
       <div className="flex-1 flex flex-col lg:flex-row max-w-[1440px] mx-auto w-full p-4 lg:p-6 gap-6">
-        
+
         {/* Left Column: Question Card */}
         <main className="flex-1 flex flex-col min-w-0">
           <article className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col flex-1 p-6 lg:p-8">
@@ -799,9 +798,9 @@ export const AttemptTestPage = () => {
               </span>
               <div className="flex items-center gap-2">
                 <Badge tone={
-                  (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" : 
-                  (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" : 
-                  (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
+                  (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" :
+                    (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" :
+                      (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
                 }>
                   {test.difficulty}
                 </Badge>
@@ -827,18 +826,16 @@ export const AttemptTestPage = () => {
                   <button
                     key={optKey}
                     onClick={() => handleSelectOption(currentQuestion.id ?? "", optKey)}
-                    className={`flex items-center gap-4 w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ${
-                      isSelected
+                    className={`flex items-center gap-4 w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ${isSelected
                         ? "border-indigo-500 bg-indigo-50/50 shadow-sm text-indigo-900"
                         : "border-slate-100 hover:border-slate-300 hover:bg-slate-50/30 text-slate-700"
-                    }`}
-                  >
-                    <div 
-                      className={`h-7 w-7 rounded-lg flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${
-                        isSelected 
-                          ? "bg-indigo-600 border-indigo-600 text-white" 
-                          : "border-slate-200 bg-white text-slate-400"
                       }`}
+                  >
+                    <div
+                      className={`h-7 w-7 rounded-lg flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${isSelected
+                          ? "bg-indigo-600 border-indigo-600 text-white"
+                          : "border-slate-200 bg-white text-slate-400"
+                        }`}
                     >
                       {optionLetter}
                     </div>
@@ -851,8 +848,8 @@ export const AttemptTestPage = () => {
             {/* Actions Footer */}
             <div className="flex flex-wrap items-center justify-between border-t border-slate-100 pt-6 gap-4">
               <div className="flex gap-2">
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={() => handleClearResponse(currentQuestion.id ?? "")}
                   disabled={answers[currentQuestion.id ?? ""] === undefined}
                   className="text-xs text-rose-600 hover:bg-rose-50 h-10 px-3.5"
@@ -862,11 +859,10 @@ export const AttemptTestPage = () => {
                 <Button
                   variant="secondary"
                   onClick={() => handleMarkReview(currentQuestion.id ?? "")}
-                  className={`text-xs h-10 px-4 ${
-                    marked[currentQuestion.id ?? ""] 
-                      ? "bg-purple-100 text-purple-700 hover:bg-purple-200" 
+                  className={`text-xs h-10 px-4 ${marked[currentQuestion.id ?? ""]
+                      ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
                       : "text-purple-600 hover:bg-purple-50"
-                  }`}
+                    }`}
                   icon={<Bookmark className="h-3.5 w-3.5" />}
                 >
                   {marked[currentQuestion.id ?? ""] ? "Marked" : "Mark for Review"}
@@ -883,7 +879,7 @@ export const AttemptTestPage = () => {
                 >
                   Previous
                 </Button>
-                
+
                 {currentIdx === totalQuestions - 1 ? (
                   <Button
                     onClick={handleManualSubmit}
@@ -907,7 +903,7 @@ export const AttemptTestPage = () => {
 
         {/* Right Column: Question Navigator Sidebar */}
         <aside className="w-full lg:w-[320px] flex flex-col gap-6 shrink-0">
-          
+
           {/* Proctoring Card */}
           <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col">
             <h3 className="text-sm font-bold text-slate-800 mb-3 pb-2 border-b border-slate-100 flex items-center gap-2">
@@ -982,7 +978,7 @@ export const AttemptTestPage = () => {
             <h3 className="text-sm font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">
               Question Navigator
             </h3>
-            
+
             {/* Grid */}
             <div className="grid grid-cols-5 gap-2.5 mb-6">
               {questions.map((q, idx) => {
@@ -993,7 +989,7 @@ export const AttemptTestPage = () => {
                 const isCurrent = currentIdx === idx;
 
                 let btnBg = "bg-slate-50 text-slate-400 border-slate-200";
-                
+
                 if (isAns && isMarked) {
                   // Answered and Marked for Review
                   btnBg = "bg-purple-500 border-purple-500 text-white";
@@ -1012,9 +1008,8 @@ export const AttemptTestPage = () => {
                   <button
                     key={qId}
                     onClick={() => handleSelectQuestion(idx)}
-                    className={`h-11 w-full rounded-lg font-bold text-sm border flex items-center justify-center transition-all ${btnBg} ${
-                      isCurrent ? "ring-2 ring-indigo-500 ring-offset-2 scale-105" : ""
-                    }`}
+                    className={`h-11 w-full rounded-lg font-bold text-sm border flex items-center justify-center transition-all ${btnBg} ${isCurrent ? "ring-2 ring-indigo-500 ring-offset-2 scale-105" : ""
+                      }`}
                   >
                     {idx + 1}
                   </button>
@@ -1069,7 +1064,7 @@ export const AttemptTestPage = () => {
             <Button variant="secondary" onClick={() => setConfirmOpen(false)} disabled={submitMutation.isPending}>
               Resume Test
             </Button>
-            <Button 
+            <Button
               onClick={executeSubmission}
               disabled={submitMutation.isPending}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
@@ -1082,7 +1077,7 @@ export const AttemptTestPage = () => {
         <div className="text-slate-600 text-sm">
           <p className="font-bold text-slate-800 text-base mb-3">Are you sure you want to submit your test?</p>
           <p className="mb-4">Once submitted, you will not be able to edit any answers.</p>
-          
+
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 grid grid-cols-2 gap-3 font-semibold mt-4">
             <span className="text-slate-500">Total Questions:</span>
             <span className="text-slate-800 text-right">{totalQuestions}</span>
@@ -1107,7 +1102,7 @@ export const AttemptTestPage = () => {
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                 <h3 className="font-bold text-sm">Proctor Live Support</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setChatOpen(false)}
                 className="text-white/80 hover:text-white font-bold text-sm px-2 py-1 hover:bg-white/10 rounded"
               >
@@ -1125,19 +1120,18 @@ export const AttemptTestPage = () => {
                 chatMessages.map((msg, mIdx) => {
                   const isProctor = msg.sender === "Proctor";
                   return (
-                    <div 
+                    <div
                       key={mIdx}
                       className={`flex flex-col max-w-[85%] ${isProctor ? "mr-auto" : "ml-auto items-end"}`}
                     >
                       <span className="text-[10px] font-bold text-slate-400 mb-1">
                         {msg.sender} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
-                      <div 
-                        className={`p-3 rounded-2xl text-xs font-semibold leading-relaxed ${
-                          isProctor 
+                      <div
+                        className={`p-3 rounded-2xl text-xs font-semibold leading-relaxed ${isProctor
                             ? "bg-rose-50 border border-rose-100 text-rose-800 rounded-tl-none dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300"
                             : "bg-indigo-600 text-white rounded-tr-none"
-                        }`}
+                          }`}
                       >
                         {msg.text}
                       </div>
@@ -1157,7 +1151,7 @@ export const AttemptTestPage = () => {
                 placeholder="Type a message to the proctor..."
                 className="flex-1 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 dark:border-slate-700 text-slate-800 dark:text-white"
               />
-              <Button 
+              <Button
                 variant="primary"
                 onClick={handleSendChatMessage}
                 className="h-8 text-[11px] px-3 bg-indigo-600 text-white hover:bg-indigo-700"

@@ -15,6 +15,9 @@ import {
   Filter,
   Upload,
   FileSpreadsheet,
+  FolderPlus,
+  Check,
+  FileQuestion,
 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -113,7 +116,7 @@ export const TeacherDashboard = () => {
   const [wsStreams, setWsStreams] = useState<Record<string, any>>({});
   const [isWsConnected, setIsWsConnected] = useState(false);
   const teacherSocketRef = useRef<WebSocket | null>(null);
-  
+
   interface ChatMessage {
     sender: string;
     text: string;
@@ -252,14 +255,14 @@ export const TeacherDashboard = () => {
   const handleSendTeacherChatMessage = (studentId: string) => {
     const input = chatInputMap[studentId] || "";
     if (!input.trim() || !teacherSocketRef.current || teacherSocketRef.current.readyState !== WebSocket.OPEN) return;
-    
+
     const text = input.trim();
     teacherSocketRef.current.send(JSON.stringify({
       type: "chat_message",
       target_user_id: studentId,
       text
     }));
-    
+
     setChatHistory((prev) => {
       const current = prev[studentId] || [];
       return {
@@ -271,7 +274,7 @@ export const TeacherDashboard = () => {
         }]
       };
     });
-    
+
     setChatInputMap((prev) => ({
       ...prev,
       [studentId]: ""
@@ -525,10 +528,21 @@ export const TeacherDashboard = () => {
         // Map correct option value (A -> option1, B -> option2, etc.)
         let correct_option = "option1";
         const rawCorrect = (row.correct_option || "").toUpperCase().trim();
-        if (rawCorrect === "A" || rawCorrect === "OPTION1") correct_option = "option1";
-        else if (rawCorrect === "B" || rawCorrect === "OPTION2") correct_option = "option2";
-        else if (rawCorrect === "C" || rawCorrect === "OPTION3") correct_option = "option3";
-        else if (rawCorrect === "D" || rawCorrect === "OPTION4") correct_option = "option4";
+        const coLower = (row.correct_option || "").toLowerCase().trim();
+        const optVal1 = (row.option1 || "").toLowerCase().trim();
+        const optVal2 = (row.option2 || "").toLowerCase().trim();
+        const optVal3 = (row.option3 || "").toLowerCase().trim();
+        const optVal4 = (row.option4 || "").toLowerCase().trim();
+
+        if (rawCorrect === "A" || rawCorrect === "OPTION1" || coLower === optVal1) {
+          correct_option = "option1";
+        } else if (rawCorrect === "B" || rawCorrect === "OPTION2" || coLower === optVal2) {
+          correct_option = "option2";
+        } else if (rawCorrect === "C" || rawCorrect === "OPTION3" || coLower === optVal3) {
+          correct_option = "option3";
+        } else if (rawCorrect === "D" || rawCorrect === "OPTION4" || coLower === optVal4) {
+          correct_option = "option4";
+        }
 
         const qPayload: Question = {
           question: row.question,
@@ -747,10 +761,10 @@ export const TeacherDashboard = () => {
                 <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
                   {subjectQuestions.slice(-3).reverse().map((q, idx) => {
                     const diffLower = (q.difficulty || "").toLowerCase().trim();
-                    const difficultyColor = 
-                      diffLower === "easy" ? "green" : 
-                      diffLower === "medium" ? "yellow" : 
-                      (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
+                    const difficultyColor =
+                      diffLower === "easy" ? "green" :
+                        diffLower === "medium" ? "yellow" :
+                          (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
                     return (
                       <div key={q.id || idx} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition">
                         <div className="flex-1 min-w-0">
@@ -793,22 +807,20 @@ export const TeacherDashboard = () => {
                 <div className="flex gap-2.5">
                   <Button
                     onClick={() => setAddSubTab("csv")}
-                    className={`h-10 text-xs font-bold flex items-center gap-1.5 shadow-sm transition ${
-                      addSubTab === "csv"
+                    className={`h-10 text-xs font-bold flex items-center gap-1.5 shadow-sm transition ${addSubTab === "csv"
                         ? "bg-white text-emerald-700 hover:bg-teal-50 border-transparent"
                         : "bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-500/25"
-                    }`}
+                      }`}
                     icon={<Upload className={`h-3.5 w-3.5 ${addSubTab === "csv" ? "text-emerald-700" : "text-white"}`} />}
                   >
                     Import via CSV
                   </Button>
                   <Button
                     onClick={() => setAddSubTab("manual")}
-                    className={`h-10 text-xs font-bold flex items-center gap-1.5 shadow-sm transition ${
-                      addSubTab === "manual"
+                    className={`h-10 text-xs font-bold flex items-center gap-1.5 shadow-sm transition ${addSubTab === "manual"
                         ? "bg-white text-emerald-700 hover:bg-teal-50 border-transparent"
                         : "bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-500/25"
-                    }`}
+                      }`}
                     icon={<Plus className={`h-3.5 w-3.5 ${addSubTab === "manual" ? "text-emerald-700" : "text-white"}`} />}
                   >
                     Add New Question
@@ -1060,189 +1072,241 @@ export const TeacherDashboard = () => {
             )}
           </div>
         )}
-
         {activeTab === "view" && (
-          <div>
-            <div className="mb-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-                  {selectedClass === "all" ? "All Questions Bank" : `${selectedClass} Questions Bank`}
-                </h1>
-                <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold mt-0.5">
-                  Subject: {teacherSubject.name}
-                </p>
+          <div className="space-y-6 animate-fade-in">
+            {/* Header Banner */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-pink-500/10 border border-indigo-150/50 dark:border-indigo-900/30 p-6 shadow-sm backdrop-blur-md">
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="mb-2 flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-indigo-650 dark:text-indigo-400">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+                    Subject Question Repository
+                  </div>
+                  <h1 className="text-2xl md:text-3xl font-black text-slate-850 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                    <FolderPlus className="h-6.5 w-6.5 text-indigo-500" />
+                    {selectedClass === "all" ? "All Questions Bank" : `${selectedClass} Questions Bank`}
+                  </h1>
+                  <p className="text-xs text-slate-450 dark:text-slate-500 font-semibold mt-1">
+                    Subject Domain: <span className="font-bold text-indigo-650 dark:text-indigo-400">{teacherSubject.name}</span>
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] font-extrabold text-indigo-650 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/45 px-3.5 py-2 rounded-xl border border-indigo-100/60 dark:border-indigo-900/40 shadow-sm">
+                    {filteredQuestions.length} Questions Displayed
+                  </span>
+                </div>
               </div>
+              <div className="absolute -right-6 -bottom-6 h-24 w-24 rounded-full bg-indigo-500/10 blur-xl pointer-events-none" />
             </div>
 
             {/* Stats Grid */}
-            <section className="mb-8 grid gap-4 grid-cols-2 sm:grid-cols-4">
-              <article 
+            <section className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+              <article
                 onClick={() => setDifficultyFilter("all")}
-                className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
-                  difficultyFilter === "all" 
-                    ? "border-slate-500 bg-slate-50/50 dark:border-slate-650 dark:bg-slate-800/30 ring-2 ring-slate-500/20" 
-                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
+                  difficultyFilter === "all"
+                    ? "border-indigo-500 bg-indigo-50/20 dark:border-indigo-855 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20"
+                    : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-slate-350 dark:hover:border-slate-700 shadow-sm"
                 }`}
               >
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Total Pool</p>
-                <h3 className="text-2xl font-black text-slate-800 dark:text-slate-200 mt-1">{stats.total} Qs</h3>
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl text-indigo-500 mb-2.5 group-hover:scale-110 transition-transform">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <p className="text-[10px] font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest">Total Pool</p>
+                <h3 className="text-3xl font-black text-slate-800 dark:text-slate-200 mt-1">{stats.total} <span className="text-xs font-bold text-slate-450">Qs</span></h3>
+                <div className="absolute bottom-2 text-[9px] font-bold text-indigo-650 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">Click to view all</div>
               </article>
-              <article 
+
+              <article
                 onClick={() => setDifficultyFilter("easy")}
-                className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
-                  difficultyFilter === "easy" 
-                    ? "border-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/20 ring-2 ring-emerald-500/20" 
-                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
+                  difficultyFilter === "easy"
+                    ? "border-emerald-500 bg-emerald-50/20 dark:border-emerald-855 dark:bg-emerald-955/20 ring-2 ring-emerald-500/20"
+                    : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-emerald-300 dark:hover:border-emerald-900/40 shadow-sm"
                 }`}
               >
-                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Easy Level</p>
-                <h3 className="text-2xl font-black text-emerald-600 mt-1">{stats.easy} Qs</h3>
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-950/50 rounded-xl text-emerald-500 mb-2.5 group-hover:scale-110 transition-transform">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <p className="text-[10px] font-extrabold text-emerald-555 dark:text-emerald-455 uppercase tracking-widest">Easy Level</p>
+                <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats.easy} <span className="text-xs font-bold text-emerald-500 dark:text-emerald-555">Qs</span></h3>
+                <div className="absolute bottom-2 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">Filter by easy</div>
               </article>
-              <article 
+
+              <article
                 onClick={() => setDifficultyFilter("medium")}
-                className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
-                  difficultyFilter === "medium" 
-                    ? "border-amber-500 bg-amber-50/10 dark:bg-amber-950/20 ring-2 ring-amber-500/20" 
-                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
+                  difficultyFilter === "medium"
+                    ? "border-amber-500 bg-amber-50/20 dark:border-amber-855 dark:bg-amber-955/20 ring-2 ring-amber-500/20"
+                    : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-amber-300 dark:hover:border-amber-900/40 shadow-sm"
                 }`}
               >
-                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">Medium Level</p>
-                <h3 className="text-2xl font-black text-amber-600 mt-1">{stats.medium} Qs</h3>
+                <div className="p-2 bg-amber-50 dark:bg-amber-955/50 rounded-xl text-amber-500 mb-2.5 group-hover:scale-110 transition-transform">
+                  <HelpCircle className="h-5 w-5" />
+                </div>
+                <p className="text-[10px] font-extrabold text-amber-555 dark:text-amber-455 uppercase tracking-widest">Medium Level</p>
+                <h3 className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-1">{stats.medium} <span className="text-xs font-bold text-amber-555 dark:text-amber-455">Qs</span></h3>
+                <div className="absolute bottom-2 text-[9px] font-bold text-amber-655 dark:text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity">Filter by medium</div>
               </article>
-              <article 
+
+              <article
                 onClick={() => setDifficultyFilter("hard")}
-                className={`rounded-xl border p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] select-none hover:shadow-md ${
-                  difficultyFilter === "hard" 
-                    ? "border-rose-500 bg-rose-50/10 dark:bg-rose-950/20 ring-2 ring-rose-500/20" 
-                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
+                  difficultyFilter === "hard"
+                    ? "border-rose-500 bg-rose-50/20 dark:border-rose-855 dark:bg-rose-955/20 ring-2 ring-rose-500/20"
+                    : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-rose-300 dark:hover:border-rose-900/40 shadow-sm"
                 }`}
               >
-                <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide">Difficult Level</p>
-                <h3 className="text-2xl font-black text-rose-600 mt-1">{stats.hard} Qs</h3>
+                <div className="p-2 bg-rose-50 dark:bg-rose-955/50 rounded-xl text-rose-500 mb-2.5 group-hover:scale-110 transition-transform">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <p className="text-[10px] font-extrabold text-rose-555 dark:text-rose-455 uppercase tracking-widest">Difficult Level</p>
+                <h3 className="text-3xl font-black text-rose-600 dark:text-rose-450 mt-1">{stats.hard} <span className="text-xs font-bold text-rose-500 dark:text-rose-555">Qs</span></h3>
+                <div className="absolute bottom-2 text-[9px] font-bold text-rose-600 dark:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity">Filter by hard</div>
               </article>
             </section>
 
             {/* Search & Topic Filters */}
-            <div className="mb-6 grid gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm md:grid-cols-[1fr_240px]">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <div className="grid gap-4 rounded-2xl border border-slate-200/60 dark:border-slate-850 bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-4.5 shadow-sm md:grid-cols-[1fr_260px] items-center">
+              <div className="relative w-full">
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
-                  className="pl-10 h-11 border-slate-200"
-                  placeholder="Search questions..."
+                  className="pl-11 h-11 rounded-xl border-slate-250 dark:border-slate-800 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm w-full bg-white dark:bg-slate-950/60"
+                  placeholder="Search questions by keyword or prompt text..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
 
-              <div className="relative">
+              <div className="relative w-full">
                 <select
                   value={topicFilter}
                   onChange={(e) => setTopicFilter(e.target.value)}
-                  className="h-11 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm text-slate-750 dark:text-slate-200 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="h-11 w-full appearance-none rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm text-slate-750 dark:text-slate-200 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 cursor-pointer"
                 >
-                  <option value="all">All Topics</option>
+                  <option value="all">All Topic Nodes</option>
                   {filteredTopics.map((t) => (
-                    <option key={t.id} value={t.id} className="dark:bg-slate-900 dark:text-slate-200">
+                    <option key={t.id} value={t.id} className="dark:bg-slate-950 dark:text-slate-200">
                       {t.name}
                     </option>
                   ))}
                 </select>
+                <div className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-550">
+                  <Filter className="h-4 w-4" />
+                </div>
               </div>
             </div>
 
-            {/* Questions Table */}
-            <h2 className="mb-4 text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-emerald-500" />
-              Manage Subject Questions
-            </h2>
+            {/* Questions Table Section */}
+            <div>
+              <h2 className="mb-4 text-base font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-indigo-500 animate-pulse" />
+                Manage Questions Inventory
+              </h2>
 
-            {isLoadingQuestions ? (
-              <div className="flex h-64 items-center justify-center text-slate-500 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                <Spinner /> <span className="ml-2">Loading question pool...</span>
-              </div>
-            ) : filteredQuestions.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 py-16 text-center text-slate-500 dark:text-slate-400">
-                <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">No questions found</p>
-                <p className="mt-1 text-sm text-slate-400">Add questions or adjust your search filters.</p>
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 dark:bg-slate-950/20 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-850">
-                    <tr>
-                      <th className="px-6 py-4 w-12 text-center">#</th>
-                      <th className="px-6 py-4">Question Prompt</th>
-                      <th className="px-6 py-4 w-44">Topic</th>
-                      <th className="px-6 py-4 w-32">Difficulty</th>
-                      <th className="px-6 py-4 w-40 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {filteredQuestions.map((q, index) => {
-                      const topicName = topics.find(t => t.id === q.topic_id)?.name ?? "General";
-                      const diffLower = (q.difficulty || "").toLowerCase().trim();
-                      const difficultyColor =
-                        diffLower === "easy" ? "green" :
-                        diffLower === "medium" ? "yellow" : 
-                        (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
-
-                      return (
-                        <tr key={q.id ?? index} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/40">
-                          <td className="px-6 py-4 text-center font-bold text-slate-400">{index + 1}</td>
-                          <td className="px-6 py-4">
-                            <div className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-2">{q.question}</div>
-                            <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
-                              <span className="text-emerald-600 font-semibold flex items-center gap-1">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Ans: {q.correct_option.replace("option", "Option ")}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-slate-500 dark:text-slate-400 font-medium">
-                            <Badge tone="blue">{topicName}</Badge>
-                          </td>
-                          <td className="px-6 py-4">
-                            <Badge tone={difficultyColor}>{q.difficulty ?? "easy"}</Badge>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              {(user?.role === "Admin" || q.created_by === user?.userId) ? (
-                                <>
-                                  <Button
-                                    variant="secondary"
-                                    className="h-8 px-2.5 text-xs"
-                                    onClick={() => handleOpenEditModal(q, index)}
-                                    icon={<Pencil className="h-3.5 w-3.5" />}
-                                  >
-                                    Edit
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    className="h-8 px-2.5 text-xs text-rose-600 hover:bg-rose-50 cursor-pointer"
-                                    onClick={() => {
-                                      if (confirm("Delete this question from pool?")) {
-                                        deleteMutation.mutate(q.id ?? "");
-                                      }
-                                    }}
-                                    icon={<Trash2 className="h-3.5 w-3.5" />}
-                                  >
-                                    Delete
-                                  </Button>
-                                </>
-                              ) : (
-                                <span className="text-xs font-semibold text-slate-400 italic bg-slate-50 dark:bg-slate-950 px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
-                                  View Only
-                                </span>
-                              )}
-                            </div>
-                          </td>
+              {isLoadingQuestions ? (
+                <div className="flex h-64 items-center justify-center text-slate-550 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <Spinner /> <span className="ml-2 font-semibold text-sm">Loading question bank...</span>
+                </div>
+              ) : filteredQuestions.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/40 dark:bg-slate-955/20 py-20 text-center text-slate-550 dark:text-slate-400 shadow-inner flex flex-col items-center justify-center space-y-3">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900 text-slate-450 dark:text-slate-550 rounded-full border border-slate-200 dark:border-slate-800">
+                    <FileQuestion className="h-6 w-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-bold text-slate-750 dark:text-slate-350">No questions found</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Create new questions or adjust search filters.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md shadow-md mb-10 transition-all hover:shadow-lg">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm relative">
+                      <thead className="bg-slate-50/80 dark:bg-slate-950/60 text-xs font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-850 sticky top-0 backdrop-blur-md z-10">
+                        <tr>
+                          <th className="px-6 py-4.5 w-14 text-center">#</th>
+                          <th className="px-6 py-4.5">Question Prompt</th>
+                          <th className="px-6 py-4.5 w-44">Topic</th>
+                          <th className="px-6 py-4.5 w-32">Difficulty</th>
+                          <th className="px-6 py-4.5 w-40 text-right">Actions</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                        {filteredQuestions.map((q, index) => {
+                          const topicName = topics.find(t => t.id === q.topic_id)?.name ?? "General";
+                          const diffLower = (q.difficulty || "").toLowerCase().trim();
+                          const difficultyColor =
+                            diffLower === "easy" ? "green" :
+                              diffLower === "medium" ? "yellow" :
+                                (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
+
+                          return (
+                            <tr key={q.id ?? index} className="group odd:bg-white/40 even:bg-slate-55/10 dark:odd:bg-slate-900/20 dark:even:bg-slate-900/5 hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10 transition-all duration-200">
+                              <td className="px-6 py-4.5 text-center font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">{index + 1}</td>
+                              <td className="px-6 py-4.5">
+                                <div className="font-bold text-slate-800 dark:text-slate-200 leading-relaxed max-w-xl group-hover:text-indigo-650 dark:group-hover:text-indigo-400 transition-colors">{q.question}</div>
+                                <div className="mt-2.5 flex flex-wrap items-center gap-3">
+                                  <span className="text-[10px] text-slate-450 dark:text-slate-500 font-extrabold uppercase tracking-wider bg-slate-100 dark:bg-slate-800/60 px-2 py-1 rounded-md">
+                                    Class: {q.class || "Class 10"}
+                                  </span>
+                                  <span className="text-[10px] text-emerald-655 dark:text-emerald-400 font-extrabold flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md shadow-sm">
+                                    <Check className="h-3 w-3 stroke-[3]" />
+                                    Correct Option: <span className="font-black uppercase">{q.correct_option?.replace("option", "Option ")}</span>
+                                  </span>
+                                  {q.sub_topic_name && (
+                                    <span className="text-[10px] text-slate-450 dark:text-slate-500 font-bold">
+                                      Subtopic: <span className="text-slate-600 dark:text-slate-400">{q.sub_topic_name}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4.5 text-slate-500 dark:text-slate-450 font-medium">
+                                <Badge tone="blue" className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide">{topicName}</Badge>
+                              </td>
+                              <td className="px-6 py-4.5">
+                                <Badge tone={difficultyColor} className="px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider">{q.difficulty ?? "easy"}</Badge>
+                              </td>
+                              <td className="px-6 py-4.5 text-right">
+                                <div className="flex justify-end gap-2">
+                                  {(user?.role === "Admin" || q.created_by === user?.userId) ? (
+                                    <>
+                                      <Button
+                                        variant="secondary"
+                                        className="h-8.5 rounded-lg px-3 text-xs border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-900 bg-white hover:bg-slate-50 dark:bg-slate-900 font-bold transition-all shadow-sm hover:shadow active:scale-95"
+                                        onClick={() => handleOpenEditModal(q, index)}
+                                        icon={<Pencil className="h-3.5 w-3.5 text-indigo-500" />}
+                                      >
+                                        Edit
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        className="h-8.5 rounded-lg px-3 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-955/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/40 font-bold transition-all hover:shadow-sm active:scale-95 cursor-pointer"
+                                        onClick={() => {
+                                          if (confirm("Delete this question from pool?")) {
+                                            deleteMutation.mutate(q.id ?? "");
+                                          }
+                                        }}
+                                        icon={<Trash2 className="h-3.5 w-3.5 text-rose-555" />}
+                                      >
+                                        Delete
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 bg-slate-100/50 dark:bg-slate-800/40 px-2.5 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-800/50 select-none">
+                                      View Only
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1278,7 +1342,7 @@ export const TeacherDashboard = () => {
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {liveAndScheduledTests.map((test) => {
                         const isFuture = test.start_time && new Date(test.start_time).getTime() > now;
-                        
+
                         const getRemainingTimeStr = (startTime: string) => {
                           const diff = new Date(startTime).getTime() - now;
                           if (diff <= 0) return "00h 00m 00s";
@@ -1345,14 +1409,12 @@ export const TeacherDashboard = () => {
                       }
                     </p>
                   </div>
-                  <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg border ${
-                    isWsConnected
+                  <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg border ${isWsConnected
                       ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30"
                       : "text-slate-500 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800"
-                  }`}>
-                    <span className={`h-2 w-2 rounded-full animate-ping ${
-                      isWsConnected ? "bg-emerald-500" : "bg-red-500"
-                    }`} />
+                    }`}>
+                    <span className={`h-2 w-2 rounded-full animate-ping ${isWsConnected ? "bg-emerald-500" : "bg-red-500"
+                      }`} />
                     <span>
                       {isWsConnected
                         ? "Real-time WebSocket feed active"
@@ -1387,14 +1449,12 @@ export const TeacherDashboard = () => {
 
                         {/* Top corner indicators */}
                         <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                            stream.hasVideo ? "bg-emerald-500/90 text-white" : "bg-red-500/90 text-white"
-                          }`}>
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${stream.hasVideo ? "bg-emerald-500/90 text-white" : "bg-red-500/90 text-white"
+                            }`}>
                             Video: {stream.hasVideo ? "ON" : "OFF"}
                           </span>
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                            stream.hasAudio ? "bg-emerald-500/90 text-white animate-pulse" : "bg-red-500/90 text-white"
-                          }`}>
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${stream.hasAudio ? "bg-emerald-500/90 text-white animate-pulse" : "bg-red-500/90 text-white"
+                            }`}>
                             Mic: {stream.hasAudio ? "ON" : "OFF"}
                           </span>
                         </div>
@@ -1451,8 +1511,8 @@ export const TeacherDashboard = () => {
                 {createMutation.isPending || updateMutation.isPending
                   ? "Saving..."
                   : editingQuestionId
-                  ? "Save Changes"
-                  : "Add to Pool"}
+                    ? "Save Changes"
+                    : "Add to Pool"}
               </Button>
             </>
           }
@@ -1570,73 +1630,72 @@ export const TeacherDashboard = () => {
           </form>
         </Modal>
 
-      {/* Proctor Chat Modal / Drawer for Teachers */}
-      {activeChatStudentId && (
-        <Modal
-          open={Boolean(activeChatStudentId)}
-          title={`Chat with Student (${activeChatStudentId})`}
-          onClose={() => setActiveChatStudentId(null)}
-          footer={
-            <div className="flex w-full gap-2">
-              <input
-                type="text"
-                value={chatInputMap[activeChatStudentId] || ""}
-                onChange={(e) => setChatInputMap((prev) => ({
-                  ...prev,
-                  [activeChatStudentId]: e.target.value
-                }))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleSendTeacherChatMessage(activeChatStudentId);
-                  }
-                }}
-                placeholder="Type a warning/message to the student..."
-                className="flex-1 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 dark:border-slate-700 text-slate-800 dark:text-white"
-              />
-              <Button
-                variant="primary"
-                onClick={() => handleSendTeacherChatMessage(activeChatStudentId)}
-                className="bg-indigo-600 text-white hover:bg-indigo-700 h-9"
-              >
-                Send
-              </Button>
-            </div>
-          }
-        >
-          <div className="flex flex-col h-[350px]">
-            <div className="flex-1 overflow-y-auto space-y-3 p-2 mb-4 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-100 dark:border-slate-800">
-              {(!chatHistory[activeChatStudentId] || chatHistory[activeChatStudentId].length === 0) ? (
-                <div className="h-full flex items-center justify-center text-center p-6 text-slate-400 text-xs">
-                  <p>No chat history. Send a warning message to warn the student of any rules switches or suspicious movements.</p>
-                </div>
-              ) : (
-                chatHistory[activeChatStudentId].map((msg, mIdx) => {
-                  const isTeacher = msg.sender.includes("Proctor") || msg.sender === "You (Proctor)";
-                  return (
-                    <div 
-                      key={mIdx}
-                      className={`flex flex-col max-w-[85%] ${isTeacher ? "ml-auto items-end" : "mr-auto"}`}
-                    >
-                      <span className="text-[10px] font-bold text-slate-400 mb-0.5">
-                        {msg.sender} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <div 
-                        className={`p-2.5 rounded-xl text-xs font-semibold leading-relaxed ${
-                          isTeacher 
-                            ? "bg-indigo-600 text-white rounded-tr-none"
-                            : "bg-rose-50 border border-rose-100 text-rose-800 rounded-tl-none dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300"
-                        }`}
+        {/* Proctor Chat Modal / Drawer for Teachers */}
+        {activeChatStudentId && (
+          <Modal
+            open={Boolean(activeChatStudentId)}
+            title={`Chat with Student (${activeChatStudentId})`}
+            onClose={() => setActiveChatStudentId(null)}
+            footer={
+              <div className="flex w-full gap-2">
+                <input
+                  type="text"
+                  value={chatInputMap[activeChatStudentId] || ""}
+                  onChange={(e) => setChatInputMap((prev) => ({
+                    ...prev,
+                    [activeChatStudentId]: e.target.value
+                  }))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSendTeacherChatMessage(activeChatStudentId);
+                    }
+                  }}
+                  placeholder="Type a warning/message to the student..."
+                  className="flex-1 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 dark:border-slate-700 text-slate-800 dark:text-white"
+                />
+                <Button
+                  variant="primary"
+                  onClick={() => handleSendTeacherChatMessage(activeChatStudentId)}
+                  className="bg-indigo-600 text-white hover:bg-indigo-700 h-9"
+                >
+                  Send
+                </Button>
+              </div>
+            }
+          >
+            <div className="flex flex-col h-[350px]">
+              <div className="flex-1 overflow-y-auto space-y-3 p-2 mb-4 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-100 dark:border-slate-800">
+                {(!chatHistory[activeChatStudentId] || chatHistory[activeChatStudentId].length === 0) ? (
+                  <div className="h-full flex items-center justify-center text-center p-6 text-slate-400 text-xs">
+                    <p>No chat history. Send a warning message to warn the student of any rules switches or suspicious movements.</p>
+                  </div>
+                ) : (
+                  chatHistory[activeChatStudentId].map((msg, mIdx) => {
+                    const isTeacher = msg.sender.includes("Proctor") || msg.sender === "You (Proctor)";
+                    return (
+                      <div
+                        key={mIdx}
+                        className={`flex flex-col max-w-[85%] ${isTeacher ? "ml-auto items-end" : "mr-auto"}`}
                       >
-                        {msg.text}
+                        <span className="text-[10px] font-bold text-slate-400 mb-0.5">
+                          {msg.sender} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <div
+                          className={`p-2.5 rounded-xl text-xs font-semibold leading-relaxed ${isTeacher
+                              ? "bg-indigo-600 text-white rounded-tr-none"
+                              : "bg-rose-50 border border-rose-100 text-rose-800 rounded-tl-none dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300"
+                            }`}
+                        >
+                          {msg.text}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
-              )}
+                    );
+                  })
+                )}
+              </div>
             </div>
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        )}
 
         {toast ? <Toast>{toast}</Toast> : null}
       </PageWrapper>
