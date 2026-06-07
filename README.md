@@ -265,6 +265,7 @@ npm run dev
 ### 👁️ 5. Live Proctoring & Result Declarations (Teacher Workspace)
 * **Live Surveillance Feed:** The Teacher Dashboard contains a "Live Test Monitoring" tab that displays active student attempts in real-time, showing active status markers and warning badges for tab-switches.
 * **Interactive Live Grid:** Teachers can monitor active student video feeds in a responsive grid, verifying who is taking the exam in real-time.
+* **Tactile Questions Inventory & Bank:** Features a redesigned 'Questions Bank' view with a glassmorphic dashboard banner, flex-centered difficulty stats cards with visual hover outlines, fully styled search filter dropdowns, and a sticky-header data table containing difficulty badges, topic tags, and sleek action buttons.
 * **Automated Sharing Daemon:** A background scheduler runs every 30 seconds to check for completed exams. Once the scheduled `end_time` passes, it:
   1. Sets `results_shared = true`.
   2. Compiles student grades and injects individual scores into student profiles.
