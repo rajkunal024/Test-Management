@@ -86,6 +86,7 @@ export interface Question {
   topic_id?: string;
   sub_topic_id?: string;
   media_url?: string;
+  image_url?: string;
   new_topic_name?: string;
   new_sub_topic_name?: string;
   topic_name?: string;
@@ -147,6 +148,8 @@ export interface Attempt {
     option4: string;
     correct_option: string;
     selected_option?: string;
+    media_url?: string;
+    image_url?: string;
   }>;
 }
 

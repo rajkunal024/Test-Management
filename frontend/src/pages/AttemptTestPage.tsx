@@ -57,6 +57,57 @@ export const AttemptTestPage = () => {
   const { id = "" } = useParams();
   const navigate = useNavigate();
 
+  // Pre-Test Environment Check States
+  const [envChecked, setEnvChecked] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isScreenSizeOk, setIsScreenSizeOk] = useState(window.innerWidth >= 768);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [resourcesLoaded, setResourcesLoaded] = useState(false);
+  const [imagesPreloaded, setImagesPreloaded] = useState(false);
+
+  // Time-ticking state to dynamically update start-time readiness
+  const [currentTime, setCurrentTime] = useState(new Date().getTime());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date().getTime());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fullscreen and violation monitoring states and refs
+  const [fullscreenViolations, setFullscreenViolations] = useState(0);
+  const [fullscreenWarningOpen, setFullscreenWarningOpen] = useState(false);
+  const fullscreenViolationsRef = useRef(0);
+
+  const enterFullscreen = () => {
+    const docEl = document.documentElement;
+    if (docEl.requestFullscreen) {
+      docEl.requestFullscreen().catch((err) => {
+        console.error("Error entering fullscreen:", err);
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const active = !!document.fullscreenElement;
+      setIsFullscreen(active);
+      
+      if (envChecked && !active) {
+        fullscreenViolationsRef.current += 1;
+        setFullscreenViolations(fullscreenViolationsRef.current);
+        setFullscreenWarningOpen(true);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, [envChecked]);
+
   // Proctoring States and Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const proctorCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -77,7 +128,29 @@ export const AttemptTestPage = () => {
   const [unreadChat, setUnreadChat] = useState(false);
   const [chatInput, setChatInput] = useState("");
 
+  // Internet connectivity monitoring
   useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  // Screen size check monitoring
+  useEffect(() => {
+    const handleResize = () => {
+      setIsScreenSizeOk(window.innerWidth >= 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!envChecked) return;
     let activeStream: MediaStream | null = null;
 
     const startProctoring = async () => {
@@ -108,7 +181,7 @@ export const AttemptTestPage = () => {
         activeStream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, []);
+  }, [envChecked]);
 
   useEffect(() => {
     if (cameraStream && videoRef.current) {
@@ -118,7 +191,7 @@ export const AttemptTestPage = () => {
 
   // Periodic stream frame upload with WebSockets and HTTP fallback
   useEffect(() => {
-    if (!cameraStream || !user) return;
+    if (!envChecked || !cameraStream || !user) return;
 
     let ws: WebSocket | null = null;
     let fallbackInterval: NodeJS.Timeout | null = null;
@@ -258,7 +331,7 @@ export const AttemptTestPage = () => {
 
   // AI Proctoring Canvas Overlay Loop
   useEffect(() => {
-    if (!cameraStream || !proctorCanvasRef.current) return;
+    if (!envChecked || !cameraStream || !proctorCanvasRef.current) return;
     const canvas = proctorCanvasRef.current;
     let animationFrameId: number;
     let scanY = 0;
@@ -400,6 +473,7 @@ export const AttemptTestPage = () => {
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!envChecked) return;
     const handleTabAway = () => {
       if (!isTabOutRef.current) {
         isTabOutRef.current = true;
@@ -440,7 +514,7 @@ export const AttemptTestPage = () => {
       window.removeEventListener("blur", handleWindowBlur);
       window.removeEventListener("focus", handleWindowFocus);
     };
-  }, []);
+  }, [envChecked]);
 
   useEffect(() => {
     if (warningMessage) {
@@ -485,6 +559,37 @@ export const AttemptTestPage = () => {
     return getDeterministicSubset(sortedQuestions, test.total_questions, seed);
   }, [test, rawQuestions, user?.userId]);
 
+  const imageUrls = useMemo(() => {
+    return questions
+      .map((q) => q.image_url || q.media_url)
+      .filter(Boolean) as string[];
+  }, [questions]);
+
+  useEffect(() => {
+    if (questions.length > 0) {
+      if (imageUrls.length === 0) {
+        setImagesPreloaded(true);
+        setResourcesLoaded(true);
+      } else {
+        let loadedCount = 0;
+        const preloadImage = (url: string) => {
+          const img = new Image();
+          img.src = url;
+          const onFinish = () => {
+            loadedCount++;
+            if (loadedCount === imageUrls.length) {
+              setImagesPreloaded(true);
+              setResourcesLoaded(true);
+            }
+          };
+          img.onload = onFinish;
+          img.onerror = onFinish;
+        };
+        imageUrls.forEach(preloadImage);
+      }
+    }
+  }, [imageUrls, questions]);
+
   // State
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -505,6 +610,7 @@ export const AttemptTestPage = () => {
 
   // Initialize Timer
   useEffect(() => {
+    if (!envChecked) return;
     if (test && timeLeft === null) {
       let durationSeconds = test.total_time * 60;
       if (test.end_time) {
@@ -517,11 +623,11 @@ export const AttemptTestPage = () => {
       }
       setTimeLeft(durationSeconds);
     }
-  }, [test, timeLeft]);
+  }, [test, timeLeft, envChecked]);
 
   // Timer Tick — uses a single persistent interval, not one per tick
   useEffect(() => {
-    if (timeLeft === null) return;
+    if (timeLeft === null || !envChecked) return;
 
     // If timer already expired when effect runs (e.g. page load with 0s left)
     if (timeLeft <= 0) {
@@ -549,7 +655,7 @@ export const AttemptTestPage = () => {
 
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeLeft === null]);
+  }, [timeLeft === null, envChecked]);
 
   // Mutation to submit the attempt
   const submitMutation = useMutation({
@@ -622,7 +728,7 @@ export const AttemptTestPage = () => {
       user_id: user?.userId,
       answers: answersRef.current,
       time_spent: timeSpentRef.current,
-      tab_switches: tabSwitchesRef.current,
+      tab_switches: tabSwitchesRef.current + fullscreenViolationsRef.current,
     });
   };
 
@@ -636,7 +742,7 @@ export const AttemptTestPage = () => {
       user_id: user?.userId,
       answers: answersRef.current,       // always latest
       time_spent: timeSpentRef.current,  // always latest
-      tab_switches: tabSwitchesRef.current,
+      tab_switches: tabSwitchesRef.current + fullscreenViolationsRef.current,
     });
   };
 
@@ -676,14 +782,22 @@ export const AttemptTestPage = () => {
     return { answered, marked: markedCount, notAnswered, notVisited };
   }, [questions, answers, marked, visited]);
 
-  const isSlotValid = useMemo(() => {
+  const isPrepWindowActive = useMemo(() => {
     if (!test) return true;
-    if (!test.start_time || !test.end_time) return true;
-    const now = new Date().getTime();
+    if (!test.start_time) return true;
     const start = new Date(test.start_time).getTime();
-    const end = new Date(test.end_time).getTime();
-    return now >= start && now <= end;
-  }, [test]);
+    const end = test.end_time ? new Date(test.end_time).getTime() : Infinity;
+    // Allowed to enter starting 60 seconds before start time, and up to the end time
+    return currentTime >= (start - 60000) && currentTime <= end;
+  }, [test, currentTime]);
+
+  const isSlotActive = useMemo(() => {
+    if (!test) return true;
+    if (!test.start_time) return true;
+    const start = new Date(test.start_time).getTime();
+    const end = test.end_time ? new Date(test.end_time).getTime() : Infinity;
+    return currentTime >= start && currentTime <= end;
+  }, [test, currentTime]);
 
   if (isLoadingTest || isLoadingQuestions || !test) {
     return (
@@ -696,7 +810,7 @@ export const AttemptTestPage = () => {
     );
   }
 
-  if (!isSlotValid) {
+  if (!isPrepWindowActive) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-500 p-6">
         <div className="text-center max-w-md rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -731,10 +845,294 @@ export const AttemptTestPage = () => {
         </div>
       </div>
     );
+  }  const checks = [
+    { name: "Internet Connection", passed: isOnline, label: isOnline ? "Connected to Internet" : "No Internet Connection" },
+    { name: "Screen Resolution", passed: isScreenSizeOk, label: isScreenSizeOk ? "Desktop/Tablet OK" : "Screen Width too small (<768px)" },
+    { name: "Fullscreen Mode", passed: isFullscreen, label: isFullscreen ? "Fullscreen Enabled" : "Fullscreen Required" },
+    { name: "Resources Loaded", passed: resourcesLoaded, label: resourcesLoaded ? "Questions & Assets Preloaded" : "Preloading exam assets..." },
+    { name: "Instructions Accepted", passed: acknowledged, label: acknowledged ? "Rules Acknowledged" : "Instructions Not Accepted" },
+  ];
+
+  const passedChecksCount = checks.filter(c => c.passed).length;
+  const progressPercent = (passedChecksCount / checks.length) * 100;
+  const allChecksPassed = passedChecksCount === checks.length;
+
+  if (!envChecked) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col select-none relative">
+        {!isOnline && (
+          <div className="fixed top-0 inset-x-0 z-50 bg-rose-600 text-white px-4 py-2 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-md animate-pulse">
+            <AlertTriangle className="h-4 w-4" />
+            <span>No Internet Connection detected. Please check your connectivity. Retrying automatically...</span>
+          </div>
+        )}
+
+        <header className="h-[72px] bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+          <div className="flex items-center gap-3">
+            <Logo compact />
+            <div className="h-6 w-px bg-slate-200" />
+            <div>
+              <h1 className="text-sm font-bold text-slate-800">Exam Environment Setup</h1>
+              <p className="text-[10px] font-semibold text-indigo-500 tracking-wider uppercase">
+                Secure Assessment Portal
+              </p>
+            </div>
+          </div>
+          <Button variant="ghost" onClick={() => navigate("/dashboard")} className="text-slate-500 hover:text-slate-800 text-xs">
+            Cancel & Return
+          </Button>
+        </header>
+
+        <main className="flex-1 max-w-[1200px] mx-auto w-full p-4 md:p-8 flex flex-col lg:flex-row gap-8">
+          <div className="flex-1 flex flex-col gap-6">
+            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+              <div className="flex items-start justify-between border-b border-slate-100 pb-4 mb-4">
+                <div>
+                  <span className="text-[10px] font-bold text-indigo-500 tracking-widest uppercase">EXAM SUMMARY</span>
+                  <h2 className="text-xl font-extrabold text-slate-800 mt-1">{test.name}</h2>
+                </div>
+                <Badge tone="blue" className="text-xs uppercase tracking-wider px-3 py-1 font-bold">{test.type.replace("_", " ")}</Badge>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Subject</span>
+                  <span className="text-sm font-bold text-slate-700 mt-1 block leading-tight text-slate-800">
+                    {Array.isArray(test.subject) ? test.subject.join(", ") : test.subject}
+                  </span>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Questions</span>
+                  <span className="text-sm font-bold text-slate-700 mt-1 block leading-tight">{test.total_questions} Questions</span>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Total Marks</span>
+                  <span className="text-sm font-bold text-slate-700 mt-1 block leading-tight">{test.total_marks} Marks</span>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Duration</span>
+                  <span className="text-sm font-bold text-slate-700 mt-1 block leading-tight">{test.total_time} Minutes</span>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Passing Marks</span>
+                  <span className="text-sm font-bold text-slate-700 mt-1 block leading-tight">
+                    {Math.ceil(test.total_marks * 0.4)} Marks (40%)
+                  </span>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Negative Marking</span>
+                  <span className={`text-sm font-bold mt-1 block leading-tight ${test.wrong_marks !== 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                    {test.wrong_marks === 0 ? "0" : (test.wrong_marks < 0 ? test.wrong_marks : `-${test.wrong_marks}`)}
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col">
+              <h3 className="text-sm font-extrabold text-slate-800 mb-4 tracking-wide border-b border-slate-100 pb-2">
+                System Readiness Checklist
+              </h3>
+              
+              <div className="space-y-3.5 mb-6">
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center gap-3">
+                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isOnline ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                      {isOnline ? "✓" : "⚠"}
+                    </span>
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block">Internet Connectivity</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">{isOnline ? "High Speed Connection Active" : "No Internet Connection"}</span>
+                    </div>
+                  </div>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isOnline ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                    {isOnline ? "Connected" : "Disconnected"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center gap-3">
+                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isScreenSizeOk ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
+                      {isScreenSizeOk ? "✓" : "⚠"}
+                    </span>
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block">Screen Resolution</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">
+                        {isScreenSizeOk ? "Desktop or tablet viewport size is optimal" : "Screen is narrow. Desktop or landscape tablet is recommended."}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isScreenSizeOk ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                    {isScreenSizeOk ? "Pass" : "Warning"}
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isFullscreen ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                      {isFullscreen ? "✓" : "⚠"}
+                    </span>
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block">Fullscreen Mode</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">
+                        {isFullscreen ? "Secure assessment view enabled" : "Fullscreen mode is required to start the exam"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isFullscreen ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                      {isFullscreen ? "Enabled" : "Required"}
+                    </span>
+                    {!isFullscreen && (
+                      <Button onClick={enterFullscreen} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 py-0 px-3 font-semibold">
+                        Enter Fullscreen
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center gap-3">
+                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${resourcesLoaded ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600 animate-pulse"}`}>
+                      {resourcesLoaded ? "✓" : "⌛"}
+                    </span>
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block">Question Loading Verification</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">
+                        {resourcesLoaded 
+                          ? "✓ Questions Loaded | ✓ Images Loaded | ✓ Assets Loaded | ✓ Test Ready" 
+                          : "Preloading and verifying exam questions and graphics..."}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${resourcesLoaded ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                    {resourcesLoaded ? "Ready" : "Loading"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center gap-3">
+                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${acknowledged ? "bg-emerald-100 text-emerald-600" : "bg-slate-200 text-slate-400"}`}>
+                      {acknowledged ? "✓" : "–"}
+                    </span>
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block">Exam Rules Acknowledgement</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">
+                        {acknowledged ? "Instructions signed and accepted" : "Please read and accept instructions in the right panel"}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${acknowledged ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                    {acknowledged ? "Accepted" : "Pending"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex justify-between text-[11px] font-bold text-slate-500 mb-1.5 uppercase">
+                    <span>Environment Readiness Progress</span>
+                    <span>{passedChecksCount} / {checks.length} Checks Passed ({Math.round(progressPercent)}%)</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-300 rounded-full ${allChecksPassed ? "bg-emerald-500" : "bg-indigo-500"}`} 
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div className="w-full lg:w-[360px] flex flex-col gap-6 shrink-0">
+            <section className="bg-slate-800 rounded-xl p-5 text-white shadow-md flex-1 flex flex-col">
+              <h3 className="text-sm font-extrabold tracking-wide uppercase text-indigo-400 mb-4 border-b border-slate-700 pb-2 flex items-center gap-2">
+                <HelpCircle className="h-4 w-4" />
+                Exam Rules & Instructions
+              </h3>
+              <ul className="text-xs text-slate-300 space-y-3.5 leading-relaxed list-none flex-1">
+                <li className="flex items-start gap-2.5">
+                  <span className="text-rose-400 shrink-0 font-bold">•</span>
+                  <span><strong>Do not refresh the page</strong>. Doing so may submit or invalidate your session.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-rose-400 shrink-0 font-bold">•</span>
+                  <span><strong>Do not switch browser tabs</strong> or windows. Tab switching is flagged as a violation.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-rose-400 shrink-0 font-bold">•</span>
+                  <span><strong>Do not close the browser</strong>. The exam must be finished in a single session.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-rose-400 shrink-0 font-bold">•</span>
+                  <span><strong>Timer cannot be paused</strong>. Once started, the countdown runs continuously.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-indigo-400 shrink-0 font-bold">•</span>
+                  <span><strong>Answers are automatically saved</strong>. When the timer expires, the test auto-submits.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-indigo-400 shrink-0 font-bold">•</span>
+                  <span><strong>Negative marking may apply</strong>. Please review summary for marking schemes.</span>
+                </li>
+              </ul>
+
+              <div className="border-t border-slate-700 pt-4 mt-6">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={acknowledged}
+                    onChange={(e) => setAcknowledged(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-700 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-800"
+                  />
+                  <span className="text-xs text-slate-300 group-hover:text-white transition duration-150 leading-relaxed font-semibold">
+                    I have read and understood all exam instructions.
+                  </span>
+                </label>
+              </div>
+            </section>
+
+            <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+              {allChecksPassed && isSlotActive ? (
+                <Button
+                  onClick={() => setEnvChecked(true)}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl text-sm transition duration-200"
+                >
+                  Start Test
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <Button
+                    disabled
+                    className="w-full bg-slate-100 border border-slate-200 text-slate-400 font-bold h-12 rounded-xl text-sm cursor-not-allowed"
+                  >
+                    Start Test
+                  </Button>
+                  {!allChecksPassed ? (
+                    <p className="text-[11px] text-center font-bold text-rose-500 leading-snug bg-rose-50 border border-rose-100 rounded-lg p-2.5">
+                      Complete all checks before starting the exam.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-center font-bold text-amber-600 leading-snug bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                      Waiting for exam start time: {new Date(test.start_time!).toLocaleTimeString()} (starts in {Math.max(0, Math.ceil((new Date(test.start_time!).getTime() - currentTime) / 1000))}s)
+                    </p>
+                  )}
+                </div>
+              )}
+            </section>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col select-none">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col select-none relative">
+      {!isOnline && (
+        <div className="fixed top-0 inset-x-0 z-50 bg-rose-600 text-white px-4 py-2 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-md animate-pulse">
+          <AlertTriangle className="h-4 w-4" />
+          <span>No Internet Connection detected. Please check your connectivity. Retrying automatically...</span>
+        </div>
+      )}
       {/* Distraction-Free Header */}
       <header className="h-[72px] bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-3">
@@ -766,8 +1164,8 @@ export const AttemptTestPage = () => {
         <div className="flex items-center gap-4">
           <div
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm font-bold transition duration-300 ${timeLeft !== null && timeLeft < 300
-                ? "bg-rose-50 border-rose-200 text-rose-600 animate-pulse"
-                : "bg-slate-50 border-slate-200 text-slate-700"
+              ? "bg-rose-50 border-rose-200 text-rose-600 animate-pulse"
+              : "bg-slate-50 border-slate-200 text-slate-700"
               }`}
           >
             <Clock className={`h-4 w-4 ${timeLeft !== null && timeLeft < 300 ? "text-rose-500" : "text-slate-500"}`} />
@@ -810,9 +1208,19 @@ export const AttemptTestPage = () => {
 
             {/* Question Prompt */}
             <div className="flex-1 mb-8">
-              <h2 className="text-base md:text-lg font-bold text-slate-800 leading-relaxed whitespace-pre-wrap">
+              <h2 className="text-base md:text-lg font-bold text-slate-800 leading-relaxed whitespace-pre-wrap mb-4">
                 {currentQuestion.question}
               </h2>
+              {(currentQuestion.image_url || currentQuestion.media_url) && (
+                <div className="mt-4 mb-4 flex justify-start">
+                  <img
+                    src={currentQuestion.image_url || currentQuestion.media_url}
+                    alt="Question Graphic"
+                    loading="lazy"
+                    className="max-h-96 w-auto max-w-full rounded-lg border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Multiple Choice Options */}
@@ -827,14 +1235,14 @@ export const AttemptTestPage = () => {
                     key={optKey}
                     onClick={() => handleSelectOption(currentQuestion.id ?? "", optKey)}
                     className={`flex items-center gap-4 w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ${isSelected
-                        ? "border-indigo-500 bg-indigo-50/50 shadow-sm text-indigo-900"
-                        : "border-slate-100 hover:border-slate-300 hover:bg-slate-50/30 text-slate-700"
+                      ? "border-indigo-500 bg-indigo-50/50 shadow-sm text-indigo-900"
+                      : "border-slate-100 hover:border-slate-300 hover:bg-slate-50/30 text-slate-700"
                       }`}
                   >
                     <div
                       className={`h-7 w-7 rounded-lg flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${isSelected
-                          ? "bg-indigo-600 border-indigo-600 text-white"
-                          : "border-slate-200 bg-white text-slate-400"
+                        ? "bg-indigo-600 border-indigo-600 text-white"
+                        : "border-slate-200 bg-white text-slate-400"
                         }`}
                     >
                       {optionLetter}
@@ -860,8 +1268,8 @@ export const AttemptTestPage = () => {
                   variant="secondary"
                   onClick={() => handleMarkReview(currentQuestion.id ?? "")}
                   className={`text-xs h-10 px-4 ${marked[currentQuestion.id ?? ""]
-                      ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
-                      : "text-purple-600 hover:bg-purple-50"
+                    ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                    : "text-purple-600 hover:bg-purple-50"
                     }`}
                   icon={<Bookmark className="h-3.5 w-3.5" />}
                 >
@@ -1090,6 +1498,39 @@ export const AttemptTestPage = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Fullscreen Violation Modal */}
+      <Modal
+        open={fullscreenWarningOpen}
+        title="Fullscreen Warning"
+        onClose={() => {}} // Cannot close unless they re-enter fullscreen
+        footer={
+          <Button
+            onClick={() => {
+              enterFullscreen();
+              setFullscreenWarningOpen(false);
+            }}
+            className="bg-rose-600 hover:bg-rose-700 text-white w-full font-bold animate-pulse"
+          >
+            Re-enter Fullscreen Mode
+          </Button>
+        }
+      >
+        <div className="text-center p-4">
+          <AlertTriangle className="h-16 w-16 text-rose-500 mx-auto mb-4 animate-bounce" />
+          <h3 className="text-lg font-bold text-slate-800 mb-2">Fullscreen Mode Exited!</h3>
+          <p className="text-sm text-slate-500 mb-4 leading-relaxed font-semibold">
+            Exiting fullscreen is a proctoring violation. This event has been recorded and reported to the system administrator.
+          </p>
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 inline-block font-bold text-rose-600 mb-2">
+            Fullscreen Violations: {fullscreenViolations}
+          </div>
+          <p className="text-xs text-slate-400 mt-2">
+            Please click the button below to re-enter fullscreen mode and resume your exam.
+          </p>
+        </div>
+      </Modal>
+
       {warningMessage && <Toast tone="error">{warningMessage}</Toast>}
 
       {/* Proctor Chat Slide-out Drawer */}
@@ -1129,8 +1570,8 @@ export const AttemptTestPage = () => {
                       </span>
                       <div
                         className={`p-3 rounded-2xl text-xs font-semibold leading-relaxed ${isProctor
-                            ? "bg-rose-50 border border-rose-100 text-rose-800 rounded-tl-none dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300"
-                            : "bg-indigo-600 text-white rounded-tr-none"
+                          ? "bg-rose-50 border border-rose-100 text-rose-800 rounded-tl-none dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300"
+                          : "bg-indigo-600 text-white rounded-tr-none"
                           }`}
                       >
                         {msg.text}

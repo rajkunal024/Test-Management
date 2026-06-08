@@ -114,7 +114,9 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
       option3: q.option3,
       option4: q.option4,
       correct_option: q.correct_option,
-      selected_option: answers[q.id ?? ""] || ""
+      selected_option: answers[q.id ?? ""] || "",
+      media_url: q.media_url,
+      image_url: q.image_url
     }));
 
     questions.forEach((q: any) => {

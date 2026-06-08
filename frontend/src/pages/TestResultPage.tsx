@@ -72,6 +72,8 @@ export const TestResultPage = () => {
         option3: q.option3,
         option4: q.option4,
         correct_option: q.correct_option,
+        media_url: q.media_url,
+        image_url: q.image_url,
       }));
     } else {
       baseQuestions = fetchedQuestions;
@@ -344,6 +346,17 @@ export const TestResultPage = () => {
                   <h3 className="text-base font-bold text-slate-800 mb-5 leading-relaxed">
                     {question.question}
                   </h3>
+
+                  {(question.image_url || question.media_url) && (
+                    <div className="mt-4 mb-4 flex justify-start">
+                      <img
+                        src={question.image_url || question.media_url}
+                        alt="Question Graphic"
+                        loading="lazy"
+                        className="max-h-96 w-auto max-w-full rounded-lg border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
+                      />
+                    </div>
+                  )}
 
                   {/* Options List */}
                   <div className="grid gap-3 mb-5">

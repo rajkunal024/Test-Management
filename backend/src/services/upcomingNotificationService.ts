@@ -40,21 +40,22 @@ export const startUpcomingNotificationJob = () => {
           }
         }
 
-        // 2. Send live notification (when the test starts)
-        if (start <= now && (!test.end_time || new Date(test.end_time).getTime() > now)) {
+        // 2. Send live notification (2 minutes before the test starts)
+        const twoMinutesBeforeStart = start - 2 * 60 * 1000;
+        if (now >= twoMinutesBeforeStart && (!test.end_time || new Date(test.end_time).getTime() > now)) {
           const alreadyNotifiedLive = await NotificationModel.findOne({
             test_id: test.id,
             type: "test_live"
           });
 
           if (!alreadyNotifiedLive) {
-            console.log(`Sending live notification for test starting now: ${test.name}`);
+            console.log(`Sending live notification (2 mins before) for test: ${test.name}`);
             const query = test.class ? { class: test.class } : {};
             const students = await StudentModel.find(query);
             for (const student of students) {
               await NotificationModel.create({
                 user_id: student.userId,
-                message: `A new test '${test.name}' is now live! Attempt it before it ends.`,
+                message: `Upcoming test '${test.name}' starts in 2 minutes. Get ready!`,
                 type: "test_live",
                 test_id: test.id,
                 test_name: test.name

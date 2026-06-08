@@ -37,11 +37,11 @@ export const StudentDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date().getTime());
   const [activeTab, setActiveTab] = useState<"exams" | "results">("exams");
 
-  // Keep time ticking to auto-lock/unlock slot buttons
+  // Keep time ticking to auto-lock/unlock slot buttons (every 1 second for precision)
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date().getTime());
-    }, 10000);
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -107,25 +107,11 @@ export const StudentDashboard = () => {
     };
 
     return filtered.sort((a, b) => {
-      const attemptA = testAttemptsMap[a.id] !== undefined;
-      const attemptB = testAttemptsMap[b.id] !== undefined;
-
-      // Unattempted tests come before attempted ones
-      if (!attemptA && attemptB) return -1;
-      if (attemptA && !attemptB) return 1;
-
       const timeA = getTestCreationTime(a);
-      const timeB = b ? getTestCreationTime(b) : 0; // standard type safety
-
-      if (!attemptA && !attemptB) {
-        // Both unattempted: descending order (newest first)
-        return timeB - timeA;
-      } else {
-        // Both attempted: ascending order (older first)
-        return timeA - timeB;
-      }
+      const timeB = getTestCreationTime(b);
+      return timeB - timeA;
     });
-  }, [liveTests, search, subjectFilter, testAttemptsMap]);
+  }, [liveTests, search, subjectFilter]);
 
   // Calculate student statistics
   const stats = useMemo(() => {
@@ -305,14 +291,14 @@ export const StudentDashboard = () => {
                   const difficultyColor = 
                   diffLower === "easy" ? "green" : 
                   diffLower === "medium" ? "yellow" : 
-                  (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
-
-                  // Check slots
+                  (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate")                  // Check slots
                   const startTime = test.start_time ? new Date(test.start_time).getTime() : 0;
                   const endTime = test.end_time ? new Date(test.end_time).getTime() : Infinity;
                   const isUpcoming = currentTime < startTime;
                   const isEnded = currentTime > endTime;
                   const isSlotActive = !isUpcoming && !isEnded;
+                  // Start test button is enabled starting 1 minute before start time
+                  const canEnterPrep = test.questions && test.questions.length > 0 && currentTime >= (startTime - 60000) && !isEnded;
 
                   const subjectsName = Array.isArray(test.subject) ? test.subject.join(", ") : test.subject;
 
@@ -394,7 +380,7 @@ export const StudentDashboard = () => {
                               </Button>
                             )
                           ) : (
-                            isSlotActive && test.questions && test.questions.length > 0 ? (
+                            canEnterPrep ? (
                               <Link to={`/tests/${test.id}/attempt`}>
                                 <Button className="h-9 text-xs px-4 flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700">
                                   Start Test
@@ -433,34 +419,8 @@ export const StudentDashboard = () => {
                 {(() => {
                   const studentAttempts = attempts.filter((a) => a.user_id === user?.userId);
 
-                  const getTestCreationTime = (testId: string) => {
-                    const test = tests.find((t) => t.id === testId);
-                    if (!test) return 0;
-                    if (test.created_at) {
-                      return new Date(test.created_at).getTime();
-                    }
-                    if (test.id && test.id.startsWith("test-")) {
-                      const tsStr = test.id.substring(5);
-                      const ts = parseInt(tsStr, 10);
-                      if (!isNaN(ts)) return ts;
-                    }
-                    return 0;
-                  };
-
-                  const timestamps = studentAttempts.map((a) => getTestCreationTime(a.test_id));
-                  const maxTime = timestamps.length > 0 ? Math.max(...timestamps) : 0;
-
                   const sortedAttempts = [...studentAttempts].sort((a, b) => {
-                    const timeA = getTestCreationTime(a.test_id);
-                    const timeB = getTestCreationTime(b.test_id);
-
-                    const isA_Newest = timeA === maxTime && maxTime > 0;
-                    const isB_Newest = timeB === maxTime && maxTime > 0;
-
-                    if (isA_Newest && !isB_Newest) return -1;
-                    if (!isA_Newest && isB_Newest) return 1;
-
-                    return timeA - timeB;
+                    return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime();
                   });
 
                   return sortedAttempts.map((attempt) => {

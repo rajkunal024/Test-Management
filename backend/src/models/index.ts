@@ -77,6 +77,7 @@ export const QuestionSchema = new Schema({
   topic_id: { type: String },
   sub_topic_id: { type: String },
   media_url: { type: String },
+  image_url: { type: String, default: "" },
   class: { type: String },
   created_by: { type: String }
 });
@@ -102,7 +103,8 @@ export const ResultSchema = new Schema({
     option3: { type: String },
     option4: { type: String },
     correct_option: { type: String },
-    selected_option: { type: String }
+    selected_option: { type: String },
+    image_url: { type: String, default: "" }
   }]
 });
 export const ResultModel = mongoose.model("Result", ResultSchema);

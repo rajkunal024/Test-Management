@@ -387,6 +387,16 @@ export const MonitorTestPage = () => {
                           {statusBadge}
                         </div>
                         <p className="font-bold text-slate-800 text-sm leading-relaxed mb-4">{item.question}</p>
+                        {(item.image_url || item.media_url) && (
+                          <div className="mt-2 mb-4 flex justify-start">
+                            <img
+                              src={item.image_url || item.media_url}
+                              alt="Question Graphic"
+                              loading="lazy"
+                              className="max-h-60 w-auto max-w-full rounded-lg border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
+                            />
+                          </div>
+                        )}
 
                         <div className="grid gap-2 text-xs md:grid-cols-2">
                           {["option1", "option2", "option3", "option4"].map((optKey, oIdx) => {

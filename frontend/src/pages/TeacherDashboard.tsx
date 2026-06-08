@@ -38,6 +38,7 @@ import {
   getAllTests,
   getActiveStreams,
   ActiveStream,
+  uploadQuestionImage,
 } from "../services/api";
 import { useSubTopics, useTopics } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
@@ -75,6 +76,7 @@ export const TeacherDashboard = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
   const [search, setSearch] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("all");
   const [topicFilter, setTopicFilter] = useState("all");
@@ -317,6 +319,7 @@ export const TeacherDashboard = () => {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<QuestionFormValues>({
     resolver: zodResolver(questionSchema),
@@ -325,9 +328,49 @@ export const TeacherDashboard = () => {
 
   const selectedTopicId = watch("topic_id");
   const selectedSubTopicId = watch("sub_topic_id");
+  const watchedClass = watch("class");
+  const selectedDifficulty = watch("difficulty");
+  const correctOptionValue = watch("correct_option");
   const filteredSubTopics = useMemo(() => {
     return subTopics.filter(st => st.topic_id === selectedTopicId);
   }, [subTopics, selectedTopicId]);
+
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const imageUrl = watch("image_url");
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image size should be less than 5MB");
+      return;
+    }
+
+    const allowedExtensions = ["jpg", "jpeg", "png", "webp"];
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    if (!allowedExtensions.includes(ext)) {
+      alert("Allowed formats are JPG, JPEG, PNG, WEBP.");
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const res = await uploadQuestionImage(formData);
+      setValue("image_url", res.image_url);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || "Failed to upload image.";
+      alert(msg);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setValue("image_url", "");
+  };
 
   const parsedPreviewQuestions = useMemo(() => {
     if (!csvText.trim()) return [];
@@ -615,6 +658,7 @@ export const TeacherDashboard = () => {
       new_topic_name: "",
       new_sub_topic_name: "",
       media_url: question.media_url ?? "",
+      image_url: question.image_url ?? "",
       class: question.class ?? "Class 10",
     });
     setModalOpen(true);
@@ -640,6 +684,7 @@ export const TeacherDashboard = () => {
       new_sub_topic_name: (values.topic_id === "new" || values.sub_topic_id === "new") ? values.new_sub_topic_name?.trim() : undefined,
       subject_id: teacherSubject.id,
       media_url: values.media_url || undefined,
+      image_url: values.image_url || "",
       type: "mcq",
       test_id: "", // Or unlinked initially
     };
@@ -808,8 +853,8 @@ export const TeacherDashboard = () => {
                   <Button
                     onClick={() => setAddSubTab("csv")}
                     className={`h-10 text-xs font-bold flex items-center gap-1.5 shadow-sm transition ${addSubTab === "csv"
-                        ? "bg-white text-emerald-700 hover:bg-teal-50 border-transparent"
-                        : "bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-500/25"
+                      ? "bg-white text-emerald-700 hover:bg-teal-50 border-transparent"
+                      : "bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-500/25"
                       }`}
                     icon={<Upload className={`h-3.5 w-3.5 ${addSubTab === "csv" ? "text-emerald-700" : "text-white"}`} />}
                   >
@@ -818,8 +863,8 @@ export const TeacherDashboard = () => {
                   <Button
                     onClick={() => setAddSubTab("manual")}
                     className={`h-10 text-xs font-bold flex items-center gap-1.5 shadow-sm transition ${addSubTab === "manual"
-                        ? "bg-white text-emerald-700 hover:bg-teal-50 border-transparent"
-                        : "bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-500/25"
+                      ? "bg-white text-emerald-700 hover:bg-teal-50 border-transparent"
+                      : "bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-500/25"
                       }`}
                     icon={<Plus className={`h-3.5 w-3.5 ${addSubTab === "manual" ? "text-emerald-700" : "text-white"}`} />}
                   >
@@ -832,139 +877,301 @@ export const TeacherDashboard = () => {
 
             {/* Manual Form */}
             {addSubTab === "manual" && (
-              <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-850 dark:bg-slate-900 p-6 shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-6">
-                  <h2 className="text-base font-bold text-slate-800 dark:text-slate-200">Add MCQ Question to Pool</h2>
+              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 md:p-8 shadow-md relative overflow-hidden">
+                {/* Visual Accent top border */}
+                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-teal-400 via-emerald-400 to-indigo-500" />
+
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+                  <div>
+                    <h2 className="text-lg font-extrabold text-slate-850 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                      <Plus className="h-5 w-5 text-emerald-500" />
+                      Create New MCQ Question
+                    </h2>
+                    <p className="text-xs text-slate-450 dark:text-slate-500 mt-0.5 font-medium">Add a structured multiple-choice question to the global pool.</p>
+                  </div>
                   <button
+                    type="button"
                     onClick={() => setAddSubTab(null)}
-                    className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition uppercase cursor-pointer"
+                    className="h-8 px-3 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 transition uppercase cursor-pointer"
                   >
                     Close Form ×
                   </button>
                 </div>
-                <form onSubmit={handleSubmit(handleSaveQuestion)} className="space-y-4">
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold text-slate-700">Question Prompt</span>
-                    <textarea
-                      className="h-24 w-full resize-none rounded-md border border-slate-300 px-4 py-3 text-sm outline-none placeholder:text-slate-300 focus:border-emerald-500"
-                      placeholder="Type the question details here..."
-                      {...register("question")}
-                    />
-                    {errors.question?.message ? (
-                      <span className="mt-1 block text-xs text-rose-500">{errors.question.message}</span>
-                    ) : null}
-                  </label>
 
-                  <div>
-                    <span className="mb-2 block text-sm font-semibold text-slate-700">Options (Select the correct one)</span>
-                    {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => (
-                      <div key={opt} className="mb-2.5 flex items-center gap-3">
-                        <Controller
-                          name="correct_option"
-                          control={control}
-                          render={({ field }) => (
-                            <input
-                              type="radio"
-                              className="h-5 w-5 accent-emerald-500 shrink-0"
-                              checked={field.value === opt}
-                              onChange={() => field.onChange(opt)}
-                            />
-                          )}
+                <form onSubmit={handleSubmit(handleSaveQuestion)} className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-8">
+                  {/* Left Column: Prompt & Choices */}
+                  <div className="space-y-6">
+                    {/* Prompt Box */}
+                    <div className="space-y-2">
+                      <label className="block">
+                        <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Prompt</span>
+                        <textarea
+                          className="h-32 w-full resize-none rounded-xl border border-slate-250 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold leading-relaxed"
+                          placeholder="Enter the question text or problem description here..."
+                          {...register("question")}
                         />
-                        <div className="flex-1">
-                          <Input
-                            placeholder={`Option ${idx + 1}`}
-                            className="h-10 border-slate-300"
-                            error={errors[opt]?.message}
-                            {...register(opt)}
-                          />
-                        </div>
+                        {errors.question?.message ? (
+                          <span className="mt-1 block text-xs font-bold text-rose-500">{errors.question.message}</span>
+                        ) : null}
+                      </label>
+                    </div>
+
+                    {/* Options List */}
+                    <div className="space-y-3">
+                      <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Options (Select Correct Indicator)</span>
+                      
+                      {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => {
+                        const letter = String.fromCharCode(65 + idx); // A, B, C, D
+                        const isCorrect = correctOptionValue === opt;
+                        
+                        // Harmonized vibrant colors for badges
+                        const colors = [
+                          { text: "text-indigo-650 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
+                          { text: "text-purple-650 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-100 dark:border-purple-900/40" },
+                          { text: "text-amber-650 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-100 dark:border-amber-900/40" },
+                          { text: "text-rose-650 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/40", border: "border-rose-100 dark:border-rose-900/40" },
+                        ][idx];
+
+                        return (
+                          <div 
+                            key={opt} 
+                            className={`flex items-center gap-3.5 p-3.5 rounded-2xl border-2 transition-all duration-250 ${
+                              isCorrect 
+                                ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-950/10 shadow-sm" 
+                                : "border-slate-150 dark:border-slate-800/80 hover:border-slate-250 dark:hover:border-slate-700 bg-slate-50/20 dark:bg-slate-900/30"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setValue("correct_option", opt)}
+                              className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-xs border shrink-0 transition-all ${
+                                isCorrect 
+                                  ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20" 
+                                  : `${colors.bg} ${colors.border} ${colors.text} hover:scale-105`
+                              }`}
+                              title={`Set Option ${letter} as correct`}
+                            >
+                              {isCorrect ? "✓" : letter}
+                            </button>
+                            <div className="flex-1">
+                              <Input
+                                placeholder={`Option ${idx + 1}`}
+                                className={`h-10 text-sm font-semibold transition-all focus:ring-4 focus:ring-indigo-550/10 ${
+                                  isCorrect 
+                                    ? "border-emerald-250 dark:border-emerald-900 focus:border-emerald-500" 
+                                    : "border-slate-200 dark:border-slate-850 focus:border-indigo-500"
+                                }`}
+                                error={errors[opt]?.message}
+                                {...register(opt)}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Meta & Image */}
+                  <div className="space-y-6 lg:border-l lg:border-slate-100 lg:dark:border-slate-800 lg:pl-8">
+                    {/* Class Selection */}
+                    <div className="space-y-2">
+                      <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Class Level</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {["Class 9", "Class 10", "Class 11", "Class 12"].map((cls) => {
+                          const isActive = watchedClass === cls;
+                          return (
+                            <button
+                              key={cls}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setValue("class", cls);
+                              }}
+                              className={`py-2.5 px-3.5 rounded-xl text-xs font-bold border transition-all duration-205 ${
+                                isActive
+                                  ? "bg-indigo-605 border-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]"
+                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                              }`}
+                            >
+                              {cls}
+                            </button>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
+                    </div>
 
-                  <div className="grid gap-4 sm:grid-cols-4">
-                    <Select
-                      label="Class"
-                      options={[
-                        { label: "Class 9", value: "Class 9" },
-                        { label: "Class 10", value: "Class 10" },
-                        { label: "Class 11", value: "Class 11" },
-                        { label: "Class 12", value: "Class 12" },
-                      ]}
-                      {...register("class")}
-                    />
-                    <Select
-                      label="Difficulty Level"
-                      options={[
-                        { label: "Easy", value: "easy" },
-                        { label: "Medium", value: "medium" },
-                        { label: "Difficult", value: "hard" },
-                      ]}
-                      {...register("difficulty")}
-                    />
-                    <Select
-                      label="Topic"
-                      options={[
-                        { label: "Select Topic", value: "" },
-                        ...topics.map((t) => ({ label: t.name, value: t.id })),
-                        { label: "+ Add New Topic", value: "new" },
-                      ]}
-                      {...register("topic_id")}
-                    />
-                    <Select
-                      label="Sub-topic"
-                      options={[
-                        { label: "Select Sub-topic", value: "" },
-                        ...filteredSubTopics.map((st) => ({ label: st.name, value: st.id })),
-                        { label: "+ Add New Sub-topic", value: "new" },
-                      ]}
-                      {...register("sub_topic_id")}
-                    />
-                  </div>
+                    {/* Difficulty Selection */}
+                    <div className="space-y-2">
+                      <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Difficulty Rating</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: "Easy", value: "easy", activeClass: "bg-emerald-600 border-emerald-600 text-white shadow-emerald-500/25" },
+                          { label: "Medium", value: "medium", activeClass: "bg-amber-500 border-amber-500 text-white shadow-amber-500/25" },
+                          { label: "Difficult", value: "hard", activeClass: "bg-rose-600 border-rose-600 text-white shadow-rose-500/25" },
+                        ].map((diff) => {
+                          const isActive = selectedDifficulty === diff.value;
+                          return (
+                            <button
+                              key={diff.value}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setValue("difficulty", diff.value);
+                              }}
+                              className={`py-2.5 px-1.5 rounded-xl text-xs font-bold border text-center transition-all duration-205 ${
+                                isActive
+                                  ? `${diff.activeClass} shadow-md scale-[1.02]`
+                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                              }`}
+                            >
+                              {diff.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                  {selectedTopicId === "new" && (
-                    <Input
-                      label="New Topic Name"
-                      placeholder="Enter new topic name"
-                      error={errors.new_topic_name?.message}
-                      {...register("new_topic_name")}
-                    />
-                  )}
+                    {/* Topic Selectors */}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Select
+                        label="Topic Category"
+                        options={[
+                          { label: "Select Topic", value: "" },
+                          ...topics.map((t) => ({ label: t.name, value: t.id })),
+                          { label: "+ Add New Topic", value: "new" },
+                        ]}
+                        {...register("topic_id")}
+                      />
+                      <Select
+                        label="Sub-topic Category"
+                        options={[
+                          { label: "Select Sub-topic", value: "" },
+                          ...filteredSubTopics.map((st) => ({ label: st.name, value: st.id })),
+                          { label: "+ Add New Sub-topic", value: "new" },
+                        ]}
+                        {...register("sub_topic_id")}
+                      />
+                    </div>
 
-                  {(selectedTopicId === "new" || selectedSubTopicId === "new") && (
-                    <Input
-                      label="New Sub-topic Name"
-                      placeholder="Enter new sub-topic name"
-                      error={errors.new_sub_topic_name?.message}
-                      {...register("new_sub_topic_name")}
-                    />
-                  )}
+                    {selectedTopicId === "new" && (
+                      <Input
+                        label="New Topic Name"
+                        placeholder="Enter new topic name"
+                        error={errors.new_topic_name?.message}
+                        {...register("new_topic_name")}
+                      />
+                    )}
 
-                  <Input
-                    label="Media URL (Optional)"
-                    placeholder="https://example.com/image.png"
-                    error={errors.media_url?.message}
-                    {...register("media_url")}
-                  />
+                    {(selectedTopicId === "new" || selectedSubTopicId === "new") && (
+                      <Input
+                        label="New Sub-topic Name"
+                        placeholder="Enter new sub-topic name"
+                        error={errors.new_sub_topic_name?.message}
+                        {...register("new_sub_topic_name")}
+                      />
+                    )}
 
-                  {formError ? <p className="text-xs font-bold text-rose-500">{formError}</p> : null}
+                    {/* Image Upload Area */}
+                    <div className="space-y-2.5">
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                        Question Graphic (Optional)
+                      </label>
+                      {imageUrl ? (
+                        <div className="relative group rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3 max-w-md shadow-sm">
+                          <img
+                            src={imageUrl}
+                            alt="Question Preview"
+                            className="max-h-48 object-contain rounded-xl mx-auto shadow-inner bg-white dark:bg-slate-950"
+                          />
+                          <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 rounded-2xl">
+                            <label className="p-2.5 bg-white text-slate-800 rounded-full hover:bg-slate-100 transition cursor-pointer shadow-md hover:scale-105 active:scale-95 animate-fade-in" title="Replace Image">
+                              <Upload className="h-5 w-5" />
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/webp"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleImageUpload(file);
+                                }}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={handleRemoveImage}
+                              className="p-2.5 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition shadow-md cursor-pointer hover:scale-105 active:scale-95"
+                              title="Remove Image"
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2.5 truncate px-1 text-center font-mono">{imageUrl}</p>
+                        </div>
+                      ) : (
+                        <div
+                          className="border-2 border-dashed border-slate-250 dark:border-slate-750 hover:border-indigo-400 dark:hover:border-indigo-850 rounded-2xl p-6 text-center cursor-pointer bg-slate-50/40 dark:bg-slate-950/10 max-w-md transition duration-200 hover:shadow-sm"
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const file = e.dataTransfer.files?.[0];
+                            if (file) handleImageUpload(file);
+                          }}
+                        >
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                            className="hidden"
+                            id="file-upload-add"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleImageUpload(file);
+                            }}
+                            disabled={isUploadingImage}
+                          />
+                          <label htmlFor="file-upload-add" className="cursor-pointer block">
+                            {isUploadingImage ? (
+                              <div className="flex flex-col items-center justify-center space-y-3 py-2">
+                                <Spinner className="h-7 w-7 text-indigo-500" />
+                                <span className="text-xs font-bold text-slate-500 animate-pulse">Uploading to ImageKit...</span>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <div className="h-10 w-10 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl flex items-center justify-center mx-auto text-indigo-600 dark:text-indigo-400">
+                                  <Upload className="h-5.5 w-5.5" />
+                                </div>
+                                <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 block">Click or drag & drop to upload question image</span>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">JPG, JPEG, PNG or WEBP up to 5MB</span>
+                              </div>
+                            )}
+                          </label>
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setAddSubTab(null)}
-                      type="button"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={createMutation.isPending || updateMutation.isPending}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                    >
-                      {createMutation.isPending || updateMutation.isPending ? "Saving..." : "Add to Pool"}
-                    </Button>
+                    {formError ? <p className="text-xs font-bold text-rose-500 mt-2">{formError}</p> : null}
+
+                    {/* Form Footer Buttons */}
+                    <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setAddSubTab(null)}
+                        type="button"
+                        className="rounded-xl px-5 h-11 text-xs font-bold"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                        className="rounded-xl px-6 h-11 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        {createMutation.isPending || updateMutation.isPending ? "Saving..." : "Add to Pool"}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -1103,11 +1310,10 @@ export const TeacherDashboard = () => {
             <section className="grid gap-4 grid-cols-2 sm:grid-cols-4">
               <article
                 onClick={() => setDifficultyFilter("all")}
-                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
-                  difficultyFilter === "all"
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "all"
                     ? "border-indigo-500 bg-indigo-50/20 dark:border-indigo-855 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20"
                     : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-slate-350 dark:hover:border-slate-700 shadow-sm"
-                }`}
+                  }`}
               >
                 <div className="p-2 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl text-indigo-500 mb-2.5 group-hover:scale-110 transition-transform">
                   <BookOpen className="h-5 w-5" />
@@ -1119,11 +1325,10 @@ export const TeacherDashboard = () => {
 
               <article
                 onClick={() => setDifficultyFilter("easy")}
-                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
-                  difficultyFilter === "easy"
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "easy"
                     ? "border-emerald-500 bg-emerald-50/20 dark:border-emerald-855 dark:bg-emerald-955/20 ring-2 ring-emerald-500/20"
                     : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-emerald-300 dark:hover:border-emerald-900/40 shadow-sm"
-                }`}
+                  }`}
               >
                 <div className="p-2 bg-emerald-50 dark:bg-emerald-950/50 rounded-xl text-emerald-500 mb-2.5 group-hover:scale-110 transition-transform">
                   <CheckCircle2 className="h-5 w-5" />
@@ -1135,11 +1340,10 @@ export const TeacherDashboard = () => {
 
               <article
                 onClick={() => setDifficultyFilter("medium")}
-                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
-                  difficultyFilter === "medium"
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "medium"
                     ? "border-amber-500 bg-amber-50/20 dark:border-amber-855 dark:bg-amber-955/20 ring-2 ring-amber-500/20"
                     : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-amber-300 dark:hover:border-amber-900/40 shadow-sm"
-                }`}
+                  }`}
               >
                 <div className="p-2 bg-amber-50 dark:bg-amber-955/50 rounded-xl text-amber-500 mb-2.5 group-hover:scale-110 transition-transform">
                   <HelpCircle className="h-5 w-5" />
@@ -1151,11 +1355,10 @@ export const TeacherDashboard = () => {
 
               <article
                 onClick={() => setDifficultyFilter("hard")}
-                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
-                  difficultyFilter === "hard"
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "hard"
                     ? "border-rose-500 bg-rose-50/20 dark:border-rose-855 dark:bg-rose-955/20 ring-2 ring-rose-500/20"
                     : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-rose-300 dark:hover:border-rose-900/40 shadow-sm"
-                }`}
+                  }`}
               >
                 <div className="p-2 bg-rose-50 dark:bg-rose-955/50 rounded-xl text-rose-500 mb-2.5 group-hover:scale-110 transition-transform">
                   <Sparkles className="h-5 w-5" />
@@ -1226,6 +1429,7 @@ export const TeacherDashboard = () => {
                         <tr>
                           <th className="px-6 py-4.5 w-14 text-center">#</th>
                           <th className="px-6 py-4.5">Question Prompt</th>
+                          <th className="px-6 py-4.5 w-24">Image</th>
                           <th className="px-6 py-4.5 w-44">Topic</th>
                           <th className="px-6 py-4.5 w-32">Difficulty</th>
                           <th className="px-6 py-4.5 w-40 text-right">Actions</th>
@@ -1244,9 +1448,15 @@ export const TeacherDashboard = () => {
                             <tr key={q.id ?? index} className="group odd:bg-white/40 even:bg-slate-55/10 dark:odd:bg-slate-900/20 dark:even:bg-slate-900/5 hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10 transition-all duration-200">
                               <td className="px-6 py-4.5 text-center font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">{index + 1}</td>
                               <td className="px-6 py-4.5">
-                                <div className="font-bold text-slate-800 dark:text-slate-200 leading-relaxed max-w-xl group-hover:text-indigo-650 dark:group-hover:text-indigo-400 transition-colors">{q.question}</div>
+                                <div
+                                  className="font-bold text-slate-800 dark:text-slate-200 leading-relaxed max-w-xl group-hover:text-indigo-650 dark:group-hover:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline cursor-pointer transition-all"
+                                  onClick={() => setPreviewQuestion(q)}
+                                  title="Click to preview question details"
+                                >
+                                  {q.question}
+                                </div>
                                 <div className="mt-2.5 flex flex-wrap items-center gap-3">
-                                  <span className="text-[10px] text-slate-450 dark:text-slate-500 font-extrabold uppercase tracking-wider bg-slate-100 dark:bg-slate-800/60 px-2 py-1 rounded-md">
+                                  <span className="text-[10px] text-slate-455 dark:text-slate-500 font-extrabold uppercase tracking-wider bg-slate-100 dark:bg-slate-800/60 px-2 py-1 rounded-md">
                                     Class: {q.class || "Class 10"}
                                   </span>
                                   <span className="text-[10px] text-emerald-655 dark:text-emerald-400 font-extrabold flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md shadow-sm">
@@ -1254,11 +1464,22 @@ export const TeacherDashboard = () => {
                                     Correct Option: <span className="font-black uppercase">{q.correct_option?.replace("option", "Option ")}</span>
                                   </span>
                                   {q.sub_topic_name && (
-                                    <span className="text-[10px] text-slate-450 dark:text-slate-500 font-bold">
+                                    <span className="text-[10px] text-slate-455 dark:text-slate-500 font-bold">
                                       Subtopic: <span className="text-slate-600 dark:text-slate-400">{q.sub_topic_name}</span>
                                     </span>
                                   )}
                                 </div>
+                              </td>
+                              <td className="px-6 py-4.5">
+                                {(q.image_url || q.media_url) ? (
+                                  <img
+                                    src={q.image_url || q.media_url}
+                                    alt="Thumbnail"
+                                    className="h-10 w-10 object-contain rounded-md border border-slate-200 bg-white"
+                                  />
+                                ) : (
+                                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-550 bg-slate-100 dark:bg-slate-800/60 px-2 py-1 rounded-md select-none">No Image</span>
+                                )}
                               </td>
                               <td className="px-6 py-4.5 text-slate-500 dark:text-slate-450 font-medium">
                                 <Badge tone="blue" className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide">{topicName}</Badge>
@@ -1410,8 +1631,8 @@ export const TeacherDashboard = () => {
                     </p>
                   </div>
                   <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg border ${isWsConnected
-                      ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30"
-                      : "text-slate-500 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800"
+                    ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30"
+                    : "text-slate-500 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800"
                     }`}>
                     <span className={`h-2 w-2 rounded-full animate-ping ${isWsConnected ? "bg-emerald-500" : "bg-red-500"
                       }`} />
@@ -1619,15 +1840,149 @@ export const TeacherDashboard = () => {
               />
             )}
 
-            <Input
-              label="Media URL (Optional)"
-              placeholder="https://example.com/image.png"
-              error={errors.media_url?.message}
-              {...register("media_url")}
-            />
+            {/* Question Image (Optional) */}
+            <div className="space-y-2 mb-4">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wide">
+                Question Image (Optional)
+              </label>
+              {imageUrl ? (
+                <div className="relative group rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-2 max-w-sm">
+                  <img
+                    src={imageUrl}
+                    alt="Question Preview"
+                    className="max-h-40 object-contain rounded-lg mx-auto"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 rounded-xl">
+                    <label className="p-2 bg-white text-slate-800 rounded-full hover:bg-slate-100 transition cursor-pointer shadow-md" title="Replace Image">
+                      <Upload className="h-4.5 w-4.5" />
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(file);
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="p-2 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition shadow-md cursor-pointer"
+                      title="Remove Image"
+                    >
+                      <Trash2 className="h-4.5 w-4.5" />
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-455 mt-1 truncate px-1 text-center">{imageUrl}</p>
+                </div>
+              ) : (
+                <div
+                  className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-900 rounded-xl p-5 text-center cursor-pointer bg-slate-50/50 dark:bg-slate-950/20 max-w-sm transition-colors"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleImageUpload(file);
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    className="hidden"
+                    id="file-upload-edit"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file);
+                    }}
+                    disabled={isUploadingImage}
+                  />
+                  <label htmlFor="file-upload-edit" className="cursor-pointer block">
+                    {isUploadingImage ? (
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <Spinner className="h-6 w-6 text-indigo-500" />
+                        <span className="text-xs font-semibold text-slate-500 animate-pulse">Uploading to ImageKit...</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <Upload className="h-7 w-7 text-slate-455 mx-auto mb-1" />
+                        <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 block">Click or drag & drop to upload question image</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 block">JPG, JPEG, PNG or WEBP up to 5MB</span>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              )}
+            </div>
 
             {formError ? <p className="text-xs font-bold text-rose-500">{formError}</p> : null}
           </form>
+        </Modal>
+
+        {/* Question Preview Modal */}
+        <Modal
+          open={Boolean(previewQuestion)}
+          title="Question Preview"
+          onClose={() => setPreviewQuestion(null)}
+          footer={
+            <Button variant="secondary" onClick={() => setPreviewQuestion(null)}>
+              Close
+            </Button>
+          }
+        >
+          {previewQuestion && (
+            <div className="space-y-5">
+              <div className="text-slate-800 dark:text-slate-200 text-sm font-bold border-b border-slate-100 dark:border-slate-800/80 pb-3 whitespace-pre-wrap leading-relaxed">
+                {previewQuestion.question}
+              </div>
+              {(previewQuestion.image_url || previewQuestion.media_url) && (
+                <div className="flex justify-start">
+                  <img
+                    src={previewQuestion.image_url || previewQuestion.media_url}
+                    alt="Question Graphic"
+                    loading="lazy"
+                    className="max-h-72 w-auto max-w-full rounded-lg border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
+                  />
+                </div>
+              )}
+              <div className="grid gap-3 pt-2">
+                {(["option1", "option2", "option3", "option4"] as const).map((optKey, oIdx) => {
+                  const optText = previewQuestion[optKey];
+                  const optLetter = String.fromCharCode(65 + oIdx);
+                  const isCorrect = previewQuestion.correct_option === optKey;
+
+                  return (
+                    <div
+                      key={optKey}
+                      className={`flex items-center gap-3 p-3 rounded-lg border text-xs font-semibold ${
+                        isCorrect
+                          ? "border-emerald-500 bg-emerald-50/25 text-emerald-800 dark:text-emerald-400"
+                          : "border-slate-100 dark:border-slate-800/60 text-slate-600 dark:text-slate-400"
+                      }`}
+                    >
+                      <span className={`h-6 w-6 rounded flex items-center justify-center font-bold border ${
+                        isCorrect
+                          ? "bg-emerald-600 border-emerald-600 text-white"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400"
+                      }`}>
+                        {optLetter}
+                      </span>
+                      <span>{optText}</span>
+                      {isCorrect && (
+                        <span className="ml-auto text-[10px] font-extrabold uppercase bg-emerald-600 text-white px-2 py-0.5 rounded">
+                          Correct
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </Modal>
 
         {/* Proctor Chat Modal / Drawer for Teachers */}
@@ -1682,8 +2037,8 @@ export const TeacherDashboard = () => {
                         </span>
                         <div
                           className={`p-2.5 rounded-xl text-xs font-semibold leading-relaxed ${isTeacher
-                              ? "bg-indigo-600 text-white rounded-tr-none"
-                              : "bg-rose-50 border border-rose-100 text-rose-800 rounded-tl-none dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300"
+                            ? "bg-indigo-600 text-white rounded-tr-none"
+                            : "bg-rose-50 border border-rose-100 text-rose-800 rounded-tl-none dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300"
                             }`}
                         >
                           {msg.text}

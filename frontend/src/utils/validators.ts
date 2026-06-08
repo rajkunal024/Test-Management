@@ -60,6 +60,7 @@ export const questionSchema = z.object({
   new_topic_name: z.string().optional(),
   new_sub_topic_name: z.string().optional(),
   media_url: z.string().url("Enter a valid URL").or(z.literal("")).optional(),
+  image_url: z.string().or(z.literal("")).optional(),
   class: z.string().min(1, "Class is required"),
 });
 

@@ -161,20 +161,10 @@ export const DashboardPage = () => {
       return 0;
     };
 
-    const timestamps = filtered.map((t) => getTestCreationTime(t));
-    const maxTime = timestamps.length > 0 ? Math.max(...timestamps) : 0;
-
     return filtered.sort((a, b) => {
       const timeA = getTestCreationTime(a);
       const timeB = getTestCreationTime(b);
-
-      const isA_Newest = timeA === maxTime && maxTime > 0;
-      const isB_Newest = timeB === maxTime && maxTime > 0;
-
-      if (isA_Newest && !isB_Newest) return -1;
-      if (!isA_Newest && isB_Newest) return 1;
-
-      return timeA - timeB;
+      return timeB - timeA;
     });
   }, [tests, search, status, currentTime]);
 

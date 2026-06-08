@@ -281,3 +281,12 @@ export const createTestFromCsv = async (payload: TestCsvPayload): Promise<TestCs
   return data;
 };
 
+export const uploadQuestionImage = async (formData: FormData): Promise<{ success: boolean; image_url: string }> => {
+  const { data } = await api.post<{ success: boolean; image_url: string }>("/questions/upload-image", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return data;
+};
+

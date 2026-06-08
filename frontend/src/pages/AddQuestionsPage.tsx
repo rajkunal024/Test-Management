@@ -193,16 +193,16 @@ export const AddQuestionsPage = () => {
         {/* Test Summary Card */}
         <section className="relative overflow-hidden mb-8 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 shadow-md text-white border border-slate-800/80">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f2937_1px,transparent_1px),linear-gradient(to_bottom,#1f2937_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30" />
-          
+
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone="blue" className="bg-blue-500/15 border-blue-450/20 text-blue-300 font-bold">{subjectsName}</Badge>
                 <Badge tone="slate" className="bg-slate-500/15 border-slate-450/20 text-slate-300 font-bold uppercase tracking-wider text-[10px]">{test.type.replace("_", " ")}</Badge>
                 <Badge tone={
-                  (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" : 
-                  (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" : 
-                  (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
+                  (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" :
+                    (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" :
+                      (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
                 } className="font-bold">{test.difficulty}</Badge>
               </div>
               <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-200 bg-clip-text text-transparent flex items-center gap-2.5">
@@ -221,7 +221,7 @@ export const AddQuestionsPage = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-400/20 text-indigo-300 shadow-inner md:mr-2 flex-shrink-0">
               <FileQuestion className="h-6 w-6" />
             </div>
@@ -265,6 +265,16 @@ export const AddQuestionsPage = () => {
                           <span className="text-indigo-500 dark:text-indigo-400 font-black mr-1.5">{index + 1}.</span>
                           {q.question}
                         </p>
+                        {(q.image_url || q.media_url) && (
+                          <div className="mt-1.5 mb-1 flex justify-start">
+                            <img
+                              src={q.image_url || q.media_url}
+                              alt="Question Graphic"
+                              loading="lazy"
+                              className="max-h-24 w-auto max-w-full rounded-md border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
+                            />
+                          </div>
+                        )}
                         <div className="flex flex-wrap items-center gap-3">
                           <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-450 font-bold bg-emerald-50 dark:bg-emerald-955/30 border border-emerald-100 dark:border-emerald-900/50 px-2 py-0.5 rounded-lg">
                             <Check className="h-3.5 w-3.5" /> Answer: {q.correct_option?.replace("option", "Option ")}
@@ -312,11 +322,10 @@ export const AddQuestionsPage = () => {
                         return (
                           <label
                             key={q.id}
-                            className={`flex items-start gap-3 p-3.5 rounded-xl border text-xs cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-955/30 transition-all ${
-                              isSelected 
-                                ? "border-indigo-400 dark:border-indigo-850 bg-indigo-50/30 dark:bg-indigo-950/10 ring-2 ring-indigo-500/10" 
+                            className={`flex items-start gap-3 p-3.5 rounded-xl border text-xs cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-955/30 transition-all ${isSelected
+                                ? "border-indigo-400 dark:border-indigo-850 bg-indigo-50/30 dark:bg-indigo-950/10 ring-2 ring-indigo-500/10"
                                 : "border-slate-155 dark:border-slate-800/60 bg-white/50 dark:bg-slate-955/20"
-                            }`}
+                              }`}
                           >
                             <input
                               type="checkbox"
@@ -326,11 +335,21 @@ export const AddQuestionsPage = () => {
                             />
                             <div className="min-w-0 space-y-1.5 flex-1">
                               <p className="font-bold text-slate-755 dark:text-slate-200 leading-snug line-clamp-3">{q.question}</p>
+                              {(q.image_url || q.media_url) && (
+                                <div className="mt-1.5 mb-1 flex justify-start">
+                                  <img
+                                    src={q.image_url || q.media_url}
+                                    alt="Question Graphic"
+                                    loading="lazy"
+                                    className="max-h-20 w-auto max-w-full rounded-md border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
+                                  />
+                                </div>
+                              )}
                               <div className="flex items-center justify-between">
                                 <Badge tone={
-                                  (q.difficulty || "").toLowerCase().trim() === "easy" ? "green" : 
-                                  (q.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" : 
-                                  (((q.difficulty || "").toLowerCase().trim() === "hard" || (q.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
+                                  (q.difficulty || "").toLowerCase().trim() === "easy" ? "green" :
+                                    (q.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" :
+                                      (((q.difficulty || "").toLowerCase().trim() === "hard" || (q.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
                                 } className="px-2 py-0.5 font-bold uppercase tracking-wide text-[9px]">
                                   {q.difficulty}
                                 </Badge>

@@ -1,10 +1,14 @@
 import { IncomingMessage, ServerResponse } from "node:http";
-import { getQuestions, createQuestion, updateQuestion, deleteQuestion, bulkQuestions, fetchBulkQuestions } from "../controllers/questionController.js";
+import { getQuestions, createQuestion, updateQuestion, deleteQuestion, bulkQuestions, fetchBulkQuestions, uploadQuestionImage } from "../controllers/questionController.js";
 import { json } from "../middlewares/utils.js";
 
 export const handleQuestionsRoutes = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
   if (path === "/api/questions" && method === "GET") {
     await getQuestions(request, response);
+    return;
+  }
+  if (path === "/api/questions/upload-image" && method === "POST") {
+    await uploadQuestionImage(request, response);
     return;
   }
   if (path === "/api/questions" && method === "POST") {

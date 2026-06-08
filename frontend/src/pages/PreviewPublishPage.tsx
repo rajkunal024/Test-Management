@@ -155,6 +155,16 @@ export const PreviewPublishPage = () => {
               {questions.map((question, index) => (
                 <article key={question.id ?? `${question.question}-${index}`} className="rounded-md border border-slate-100 p-4">
                   <h3 className="mb-3 text-sm font-bold text-slate-800">{index + 1}. {question.question}</h3>
+                  {(question.image_url || question.media_url) && (
+                    <div className="mt-2 mb-4 flex justify-start">
+                      <img
+                        src={question.image_url || question.media_url}
+                        alt="Question Graphic"
+                        loading="lazy"
+                        className="max-h-60 w-auto max-w-full rounded-lg border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
+                      />
+                    </div>
+                  )}
                   <div className="grid gap-2 md:grid-cols-2">
                     {(["option1", "option2", "option3", "option4"] as const).map((option) => (
                       <div
