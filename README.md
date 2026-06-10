@@ -112,12 +112,19 @@ Test-Management/
 * **Database Client:** Mongoose / MongoDB.
 * **Programming Language:** TypeScript.
 
-#### Backend Dependency List
-| Package Name | Version | Type | Purpose |
-| :--- | :---: | :---: | :--- |
-| **`mongoose`** | `^8.24.0` | Production | MongoDB object modeling and schema structure. |
-| **`typescript`** | `^5.7.2` | Development | Static compilation and typing checks. |
-| **`@types/node`** | `^25.9.1` | Development | Native Type declarations for Node.js modules. |
+#### 📦 Install Backend Dependencies
+To install the backend dependencies manually, run these commands:
+* **From the root directory (using Workspaces):**
+  ```bash
+  npm install mongoose ws imagekit @imagekit/nodejs --workspace backend
+  npm install --save-dev typescript @types/node @types/ws --workspace backend
+  ```
+* **Or from the `backend/` folder:**
+  ```bash
+  cd backend
+  npm install mongoose ws imagekit @imagekit/nodejs
+  npm install --save-dev typescript @types/node @types/ws
+  ```
 
 ---
 
@@ -131,28 +138,19 @@ Test-Management/
 * **Forms & Validation:** React Hook Form + Zod Resolvers.
 * **Icons:** Lucide React.
 
-#### Frontend Dependency List
-| Package Name | Version | Type | Purpose |
-| :--- | :---: | :---: | :--- |
-| **`react`** | `^18.3.1` | Production | Core view rendering engine. |
-| **`react-dom`** | `^18.3.1` | Production | React framework entry points for DOM targets. |
-| **`react-router-dom`** | `^6.28.2` | Production | Client-side routing management. |
-| **`@tanstack/react-query`** | `^5.66.0` | Production | Data-fetching, queries caching, and mutation state management. |
-| **`axios`** | `^1.7.9` | Production | HTTP requests client with global interceptors. |
-| **`zustand`** | `^5.0.3` | Production | Local authentication state manager. |
-| **`react-hook-form`** | `^7.54.2` | Production | React form control management. |
-| **`@hookform/resolvers`** | `^5.0.1` | Production | React Hook Form wrapper adapters for third-party validation engines. |
-| **`zod`** | `^3.24.1` | Production | Dynamic schema validator for form inputs. |
-| **`lucide-react`** | `^0.468.0` | Production | Premium SVG vector icons pack. |
-| **`vite`** | `^6.0.7` | Development | Project compiler and Hot-Module-Replacement server. |
-| **`@vitejs/plugin-react`** | `^4.3.4` | Development | React framework integration support inside Vite compiler. |
-| **`typescript`** | `^5.7.2` | Development | TypeScript scripting compiler environment. |
-| **`tailwindcss`** | `^3.4.17` | Development | Tailwind CSS styling builder tool. |
-| **`postcss`** | `^8.4.49` | Development | Styles processing engine. |
-| **`autoprefixer`** | `^10.4.20` | Development | Browser prefixes utility provider. |
-| **`@types/react`** | `^18.3.18` | Development | Type specifications for React. |
-| **`@types/react-dom`** | `^18.3.5` | Development | Type specifications for React DOM. |
-| **`@types/node`** | `^25.9.1` | Development | Node type mappings helper. |
+#### 📦 Install Frontend Dependencies
+To install the frontend dependencies manually, run these commands:
+* **From the root directory (using Workspaces):**
+  ```bash
+  npm install @hookform/resolvers @tanstack/react-query axios lucide-react react react-dom react-hook-form react-router-dom zod zustand --workspace frontend
+  npm install --save-dev @types/node @types/react @types/react-dom @vitejs/plugin-react autoprefixer postcss tailwindcss typescript vite --workspace frontend
+  ```
+* **Or from the `frontend/` folder:**
+  ```bash
+  cd frontend
+  npm install @hookform/resolvers @tanstack/react-query axios lucide-react react react-dom react-hook-form react-router-dom zod zustand
+  npm install --save-dev @types/node @types/react @types/react-dom @vitejs/plugin-react autoprefixer postcss tailwindcss typescript vite
+  ```
 
 ---
 
