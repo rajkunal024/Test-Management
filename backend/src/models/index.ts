@@ -44,6 +44,7 @@ export const StudentSchema = new Schema({
   class: { type: String },
   gender: { type: String, enum: ["Male", "Female"], default: "Male" },
   requiresPasswordChange: { type: Boolean, default: false },
+  joined_at: { type: Date, default: Date.now },
   results: [{
     test_id: { type: String, required: true },
     test_name: { type: String, required: true },

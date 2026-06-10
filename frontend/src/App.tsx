@@ -10,6 +10,9 @@ import { AttemptTestPage } from "./pages/AttemptTestPage";
 import { TestResultPage } from "./pages/TestResultPage";
 import { MonitorTestPage } from "./pages/MonitorTestPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { AdminStudentsPage } from "./pages/AdminStudentsPage";
+import { AdminStudentProfilePage } from "./pages/AdminStudentProfilePage";
+import { AdminStudentPerformancePage } from "./pages/AdminStudentPerformancePage";
 
 export const App = () => (
   <Routes>
@@ -18,6 +21,9 @@ export const App = () => (
     <Route element={<ProtectedRoute />}>
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/analytics" element={<AnalyticsPage />} />
+      <Route path="/admin/students" element={<AdminStudentsPage />} />
+      <Route path="/admin/students/:studentId" element={<AdminStudentProfilePage />} />
+      <Route path="/admin/students/:studentId/performance" element={<AdminStudentPerformancePage />} />
       <Route path="/tests/create" element={<CreateEditTestPage />} />
       <Route path="/tests/:id/edit" element={<CreateEditTestPage />} />
       <Route path="/tests/:id/questions" element={<AddQuestionsPage />} />

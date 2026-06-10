@@ -52,6 +52,7 @@ export const DashboardPage = () => {
   const [regEmail, setRegEmail] = useState("");
   const [regDob, setRegDob] = useState("");
   const [regGender, setRegGender] = useState("Male");
+  const [regJoinedAt, setRegJoinedAt] = useState("");
   const [regSubject, setRegSubject] = useState("");
   const [regClass, setRegClass] = useState("Class 10");
   const [formError, setFormError] = useState("");
@@ -187,6 +188,7 @@ export const DashboardPage = () => {
       setRegGender("Male");
       setRegSubject("");
       setRegClass("Class 10");
+      setRegJoinedAt("");
       setFormError("");
       await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
@@ -246,7 +248,8 @@ export const DashboardPage = () => {
       gender: regGender,
       password: "abc123", // default password
       subject: regRole === "Teacher" ? regSubject : undefined,
-      class: regRole === "Student" ? regClass : undefined
+      class: regRole === "Student" ? regClass : undefined,
+      joined_at: regRole === "Student" ? (regJoinedAt ? new Date(regJoinedAt).toISOString() : undefined) : undefined
     });
   };
 
@@ -313,7 +316,8 @@ export const DashboardPage = () => {
           dob: rowObj.dob,
           gender: rowObj.gender,
           class: regRole === "Student" ? rowObj.class : "",
-          subject: regRole === "Teacher" ? rowObj.subject : ""
+          subject: regRole === "Teacher" ? rowObj.subject : "",
+          joined_at: rowObj.joined_at || undefined
         });
       }
 
@@ -1024,6 +1028,8 @@ export const DashboardPage = () => {
                     setRegGender("Male");
                     setRegClass("");
                     setRegSubject("");
+                    const localISO = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                    setRegJoinedAt(localISO);
                     setRegWizardStep(3);
                   }}
                   className="flex flex-col items-center justify-center p-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-[#6c7df7] dark:hover:border-indigo-500 hover:shadow-md dark:hover:shadow-indigo-950/20 transition group text-center h-40"
@@ -1104,23 +1110,37 @@ export const DashboardPage = () => {
 
               {/* Class field (Student only) */}
               {regRole === "Student" && (
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-                    Student Class
-                  </label>
-                  <select
-                    value={regClass}
-                    onChange={(e) => setRegClass(e.target.value)}
-                    required
-                    className="w-full h-12 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-[#6c7df7] focus:ring-1 focus:ring-[#6c7df7]"
-                  >
-                    <option value="" className="dark:bg-slate-900 dark:text-slate-300">Select Class</option>
-                    <option value="Class 9" className="dark:bg-slate-900 dark:text-slate-300">Class 9</option>
-                    <option value="Class 10" className="dark:bg-slate-900 dark:text-slate-300">Class 10</option>
-                    <option value="Class 11" className="dark:bg-slate-900 dark:text-slate-300">Class 11</option>
-                    <option value="Class 12" className="dark:bg-slate-900 dark:text-slate-300">Class 12</option>
-                  </select>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                      Student Class
+                    </label>
+                    <select
+                      value={regClass}
+                      onChange={(e) => setRegClass(e.target.value)}
+                      required
+                      className="w-full h-12 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-[#6c7df7] focus:ring-1 focus:ring-[#6c7df7]"
+                    >
+                      <option value="" className="dark:bg-slate-900 dark:text-slate-300">Select Class</option>
+                      <option value="Class 9" className="dark:bg-slate-900 dark:text-slate-300">Class 9</option>
+                      <option value="Class 10" className="dark:bg-slate-900 dark:text-slate-300">Class 10</option>
+                      <option value="Class 11" className="dark:bg-slate-900 dark:text-slate-300">Class 11</option>
+                      <option value="Class 12" className="dark:bg-slate-900 dark:text-slate-300">Class 12</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                      Joined Organization Date & Time
+                    </label>
+                    <Input
+                      type="datetime-local"
+                      value={regJoinedAt}
+                      onChange={(e) => setRegJoinedAt(e.target.value)}
+                      required
+                    />
+                  </div>
+                </>
               )}
 
               {/* Subject field (Teacher only) */}

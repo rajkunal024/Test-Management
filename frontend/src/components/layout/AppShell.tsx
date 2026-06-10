@@ -15,6 +15,7 @@ import {
   Settings,
   ShieldCheck,
   User,
+  Users,
   Key,
   PlusCircle,
   Sun,
@@ -69,6 +70,14 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
       return [
         { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
         { label: "Analytics", icon: BarChart3, to: "/analytics" },
+      ];
+    }
+    if (user?.role === "Admin") {
+      return [
+        { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
+        { label: "Students", icon: Users, to: "/admin/students" },
+        { label: "Test Creation", icon: FileQuestion, to: "/tests/create" },
+        { label: "Test Tracking", icon: ClipboardList, to: "/dashboard?status=live" },
       ];
     }
     return sidebarItems;

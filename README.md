@@ -80,6 +80,9 @@ Test-Management/
         │   ├── DashboardPage.tsx         # Universal redirect page based on user role
         │   ├── StudentDashboard.tsx      # Student profile view, notifications, and scheduled exams
         │   ├── TeacherDashboard.tsx      # Teacher workspace (Question bank, live monitoring panel)
+        │   ├── AdminStudentsPage.tsx     # Student Directory (Quick stats, filter & search, table view)
+        │   ├── AdminStudentProfilePage.tsx # Student Demographic Profile (passport layout, performance aggregates)
+        │   ├── AdminStudentPerformancePage.tsx # Student Detailed Exam stats list (gauges, rankings, durations)
         │   ├── CreateEditTestPage.tsx    # Test compiler (Subjects, Checkboxes, scoring grid)
         │   ├── AddQuestionsPage.tsx      # Manual forms & CSV batch imports
         │   ├── PreviewPublishPage.tsx    # Final checklist review and publication control
@@ -177,7 +180,7 @@ JWT_SECRET=your_jwt_signing_key_secret_string
 
 ## 🚀 How to Run the Project
 
-You can run the frontend and backend services either together (using NPM workspaces) or as separate runtime processes.
+You can run the frontend and backend services either together (using NPM workspaces) or as separate processes. 
 
 ### Prerequisite Checklist
 1. Make sure Node.js (v18 or higher) is installed on your local computer.
@@ -185,29 +188,17 @@ You can run the frontend and backend services either together (using NPM workspa
 
 ---
 
-### Option A: Unified Execution (Recommended)
-This starts both the backend and frontend servers concurrently using root-level scripts.
-
-1. **Install workspace dependencies:**
-   ```bash
-   npm install
-   ```
-2. **Launch both servers in Development Mode:**
-   ```bash
-   npm run dev
-   ```
-   * *Backend Server URI:* `http://127.0.0.1:4000`
-   * *Frontend Application URI:* `http://127.0.0.1:5173`
+### 📦 Install Dependencies
+Because the project is configured as an NPM workspaces monorepo, you only need to run the install command once at the **root directory**. This installs all dependencies for both the frontend and backend:
+```bash
+npm install
+```
 
 ---
 
-### Option B: Separate Process Execution
-If you prefer running or debugging them in separate terminal tabs.
-
-#### 1. Running the Backend Server
+### Option A: Unified Execution (Concurrently)
+This starts both the backend (port 4000) and frontend (port 5173) dev servers concurrently using root-level scripts:
 ```bash
-cd backend
-npm install
 npm run dev
 ```
 * **Production Build & Run:**
@@ -216,17 +207,36 @@ npm run dev
   npm start
   ```
 
-#### 2. Running the Frontend Server
-```bash
-cd frontend
-npm install
-npm run dev
-```
-* **Production Build & Preview:**
+---
+
+### Option B: Targeted Workspace Execution
+If you prefer running or debugging them in separate terminal tabs, you can target specific workspaces using the root scripts:
+
+#### 1. Running the Backend Server
+* **Development Mode:**
   ```bash
-  npm run build
-  npm start
+  npm run dev:backend
   ```
+  *(Alternative: `cd backend && npm run dev`)*
+* **Production Build & Run:**
+  ```bash
+  npm run build --workspace backend
+  npm run start:backend
+  ```
+  *(Alternative: `cd backend && npm run build && npm start`)*
+
+#### 2. Running the Frontend Server
+* **Development Mode:**
+  ```bash
+  npm run dev:frontend
+  ```
+  *(Alternative: `cd frontend && npm run dev`)*
+* **Production Build & Run:**
+  ```bash
+  npm run build --workspace frontend
+  npm run start:frontend
+  ```
+  *(Alternative: `cd frontend && npm run build && npm start`)*
 
 ---
 
@@ -241,8 +251,9 @@ npm run dev
 ### 📝 2. Test Management & Automatic Layouts (Admin Workspace)
 * **Custom Scoring Specifications:** Admin specifies positive scores, negative deductions, and unattempted penalties during exam creation.
 * **Topic Selection:** Subtopic selection is fully automated based on Class and Topics checkboxes, reducing layout complexity. Topics are managed via checkboxes.
-* **Question Bank Management:** Allows manual creation of questions or bulk uploading via standard CSV documents.
+* **Question Bank Management & Colorful Entry UI:** Allows manual creation of questions or bulk uploading via standard CSV documents. Features a premium, colorful manual question editor form with distinct gradient field layouts for options, difficulties, and subjects.
 * **Preview and Launch Checklist:** Admins can preview tests and verify accuracy before publishing.
+* **Student Directory & Performance Analytics Module:** Administrators can access a dedicated "Students" tab to view all registered students, sorted in rank-order hierarchy (highest average scores first). Displays individual passports, average performance statistics, and detailed exam history logs containing ranks.
 
 ### ⏰ 3. Real-Time Exams & Proctoring (Student Workspace)
 * **Active Testing Client:** Features a dedicated screen displaying the active question, choices selection matrix, status progress indicator, and a running test-timer clock.
@@ -250,6 +261,9 @@ npm run dev
 * **Auto-Submission on Timeout:** If the timer reaches `00:00`, the exam instantly triggers an automated save request, collecting and submitting the current attempted questions to ensure progress is not lost.
 * **Tab-Switch Proctoring Warning:** Includes tab blur detectors. If the student exits the browser window or opens a new tab, a dismissible alert flashes on the screen showing the current violation count. This value is recorded and saved inside the exam session schema.
 * **Webcam Proctoring Stream:** The active testing client captures a webcam thumbnail snapshot every 3 seconds and streams it to the backend database to prove user presence.
+* **Joined-Date Visibility Rules:** Students only see exams whose scheduled start time is on or after the student's registration date (`test.start_time >= student.joined_at`). Past historical exams are automatically hidden.
+* **LIFO Dashboard Ordering:** Available test slots and completed exam results cards are displayed in LIFO (Last-In, First-Out) chronological order so students immediately access their most recent activities.
+* **Live Personal Standings (Rankings):** Calculates and renders the student's class-wide rank (computed dynamically on the backend) next to their scores on the Exams list tab, My Test Results tab, and the detailed exam scorecard banner.
 
 ### 📊 4. Interactive Performance Analytics & AI Study Coach (Student Workspace)
 * **High-Tech Interactive SVG Charts**:

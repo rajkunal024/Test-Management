@@ -45,7 +45,21 @@ export const getAttempts = async (request: IncomingMessage, response: ServerResp
       const studentDoc = await StudentModel.findOne({ userId: user.userId });
       if (studentDoc && studentDoc.class) {
         const classTests = await TestModel.find({ class: studentDoc.class });
-        const classTestIds = classTests.map((t: any) => t.id);
+        const rawStudent = studentDoc.toObject({ defaults: false } as any) as any;
+        const studentJoined = rawStudent.joined_at
+          ? new Date(rawStudent.joined_at).getTime()
+          : studentDoc._id.getTimestamp().getTime();
+
+        const classTestIds = classTests
+          .filter((t: any) => {
+            if (t.start_time) {
+              const start = new Date(t.start_time).getTime();
+              return start >= studentJoined;
+            }
+            return true;
+          })
+          .map((t: any) => t.id);
+
         filter = {
           user_id: user.userId,
           test_id: { $in: classTestIds }
@@ -87,8 +101,20 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
       }
     }
 
-    // Enforce one student attempt only
+    // Enforce join date visibility check
     const userIdStr = user_id || "student";
+    const student = await StudentModel.findOne({ userId: userIdStr });
+    if (student && test.start_time) {
+      const rawStudent = student.toObject({ defaults: false } as any) as any;
+      const studentJoined = rawStudent.joined_at
+        ? new Date(rawStudent.joined_at).getTime()
+        : student._id.getTimestamp().getTime();
+      const start = new Date(test.start_time).getTime();
+      if (start < studentJoined) {
+        json(response, 400, { success: false, message: "You cannot attempt this test because you joined the organization after the test was conducted." });
+        return;
+      }
+    }
     const existingAttempt = await ResultModel.findOne({ test_id, user_id: userIdStr });
     if (existingAttempt) {
       json(response, 400, { success: false, message: "You have already attempted this test." });

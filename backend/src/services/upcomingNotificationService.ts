@@ -29,6 +29,11 @@ export const startUpcomingNotificationJob = () => {
             const query = test.class ? { class: test.class } : {};
             const students = await StudentModel.find(query);
             for (const student of students) {
+              const rawStudent = student.toObject({ defaults: false } as any) as any;
+              const studentJoined = rawStudent.joined_at ? new Date(rawStudent.joined_at).getTime() : student._id.getTimestamp().getTime();
+              if (start < studentJoined) {
+                continue;
+              }
               await NotificationModel.create({
                 user_id: student.userId,
                 message: `Upcoming test '${test.name}' will start in 5 minutes.`,
@@ -53,6 +58,11 @@ export const startUpcomingNotificationJob = () => {
             const query = test.class ? { class: test.class } : {};
             const students = await StudentModel.find(query);
             for (const student of students) {
+              const rawStudent = student.toObject({ defaults: false } as any) as any;
+              const studentJoined = rawStudent.joined_at ? new Date(rawStudent.joined_at).getTime() : student._id.getTimestamp().getTime();
+              if (start < studentJoined) {
+                continue;
+              }
               await NotificationModel.create({
                 user_id: student.userId,
                 message: `Upcoming test '${test.name}' starts in 2 minutes. Get ready!`,

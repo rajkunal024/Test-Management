@@ -10,6 +10,7 @@ export interface User {
   class?: string;
   gender?: string;
   requiresPasswordChange?: boolean;
+  joined_at?: string;
 }
 
 export interface LoginRequest {
@@ -139,6 +140,7 @@ export interface Attempt {
   time_spent: number;
   tab_switches?: number;
   submitted_at: string;
+  rank?: number;
   test_copy?: Array<{
     id?: string;
     question: string;

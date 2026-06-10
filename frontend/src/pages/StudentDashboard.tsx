@@ -45,10 +45,31 @@ export const StudentDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Only show live tests for students matching their class
+  // Only show live tests for students matching their class and who joined before test start time
   const liveTests = useMemo(() => {
-    return tests.filter((t) => t.status === "live" && t.class === user?.class);
-  }, [tests, user?.class]);
+    return tests.filter((t) => {
+      if (t.status !== "live" || t.class !== user?.class) {
+        return false;
+      }
+      if (t.start_time) {
+        const testStart = new Date(t.start_time).getTime();
+        const parsedIdTime = (() => {
+          const id = user?.id || "";
+          if (id.length === 24) {
+            const timestampHex = id.substring(0, 8);
+            const timestampSec = parseInt(timestampHex, 16);
+            if (!isNaN(timestampSec)) return timestampSec * 1000;
+          }
+          return 0;
+        })();
+        const studentJoined = user?.joined_at
+          ? (parsedIdTime ? Math.min(new Date(user.joined_at).getTime(), parsedIdTime) : new Date(user.joined_at).getTime())
+          : parsedIdTime;
+        return testStart >= studentJoined;
+      }
+      return true;
+    });
+  }, [tests, user]);
 
   // Filter available subjects dynamically (supports both string and string[])
   const subjects = useMemo(() => {
@@ -81,7 +102,7 @@ export const StudentDashboard = () => {
   const filteredTests = useMemo(() => {
     const filtered = liveTests.filter((test) => {
       const matchesSearch = test.name.toLowerCase().includes(search.toLowerCase());
-      
+
       let matchesSubject = subjectFilter === "all";
       if (!matchesSubject && test.subject) {
         if (Array.isArray(test.subject)) {
@@ -90,7 +111,7 @@ export const StudentDashboard = () => {
           matchesSubject = test.subject === subjectFilter;
         }
       }
-      
+
       return matchesSearch && matchesSubject;
     });
 
@@ -118,10 +139,10 @@ export const StudentDashboard = () => {
     const studentAttempts = attempts.filter(a => a.user_id === user?.userId);
     const testAttempts = new Set(studentAttempts.map(a => a.test_id));
     const uniqueAttemptedCount = testAttempts.size;
-    
+
     let totalScore = 0;
     let totalMaxMarks = 0;
-    
+
     studentAttempts.forEach((attempt) => {
       const test = liveTests.find((t) => t.id === attempt.test_id);
       // Only average scores for tests that have had their results released
@@ -195,7 +216,7 @@ export const StudentDashboard = () => {
               <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">{stats.available}</h3>
             </div>
           </article>
-          
+
           <article className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm transition hover:shadow-md">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="h-6 w-6" />
@@ -221,21 +242,19 @@ export const StudentDashboard = () => {
         <div className="mb-6 flex border-b border-slate-200 dark:border-slate-800">
           <button
             onClick={() => setActiveTab("exams")}
-            className={`py-3 px-6 text-sm font-bold border-b-2 transition-all duration-200 ${
-              activeTab === "exams"
+            className={`py-3 px-6 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === "exams"
                 ? "border-indigo-600 text-indigo-600 dark:border-indigo-500 dark:text-indigo-400 font-extrabold"
                 : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
-            }`}
+              }`}
           >
             Available Exams
           </button>
           <button
             onClick={() => setActiveTab("results")}
-            className={`py-3 px-6 text-sm font-bold border-b-2 transition-all duration-200 ${
-              activeTab === "results"
+            className={`py-3 px-6 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === "results"
                 ? "border-indigo-600 text-indigo-600 dark:border-indigo-500 dark:text-indigo-400 font-extrabold"
                 : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
-            }`}
+              }`}
           >
             My Test Results
           </button>
@@ -288,10 +307,10 @@ export const StudentDashboard = () => {
                 {filteredTests.map((test) => {
                   const attempt = testAttemptsMap[test.id];
                   const diffLower = (test.difficulty || "").toLowerCase().trim();
-                  const difficultyColor = 
-                  diffLower === "easy" ? "green" : 
-                  diffLower === "medium" ? "yellow" : 
-                  (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate")                  // Check slots
+                  const difficultyColor =
+                    diffLower === "easy" ? "green" :
+                      diffLower === "medium" ? "yellow" :
+                        (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate")                  // Check slots
                   const startTime = test.start_time ? new Date(test.start_time).getTime() : 0;
                   const endTime = test.end_time ? new Date(test.end_time).getTime() : Infinity;
                   const isUpcoming = currentTime < startTime;
@@ -312,7 +331,7 @@ export const StudentDashboard = () => {
                           <Badge tone="blue">{subjectsName}</Badge>
                           <Badge tone={difficultyColor}>{test.difficulty}</Badge>
                           <Badge tone="slate">{test.type.replace("_", " ")}</Badge>
-                          
+
                           {/* Slot Badge */}
                           {isUpcoming ? (
                             <Badge tone="blue">Upcoming</Badge>
@@ -355,8 +374,8 @@ export const StudentDashboard = () => {
                           {attempt ? (
                             <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                               <CheckCircle2 className="h-4 w-4" />
-                              {test.results_shared 
-                                ? `Attempted (Score: ${attempt.score}/${test.total_marks})` 
+                              {test.results_shared
+                                ? `Attempted (Score: ${attempt.score}/${test.total_marks})`
                                 : "Attempted (Results Pending)"}
                             </div>
                           ) : (
@@ -417,7 +436,27 @@ export const StudentDashboard = () => {
             ) : (
               <div className="grid gap-6 md:grid-cols-2">
                 {(() => {
-                  const studentAttempts = attempts.filter((a) => a.user_id === user?.userId);
+                  const studentAttempts = attempts.filter((a) => {
+                    if (a.user_id !== user?.userId) return false;
+                    const test = tests.find((t) => t.id === a.test_id);
+                    if (test && test.start_time) {
+                      const testStart = new Date(test.start_time).getTime();
+                      const parsedIdTime = (() => {
+                        const id = user?.id || "";
+                        if (id.length === 24) {
+                          const timestampHex = id.substring(0, 8);
+                          const timestampSec = parseInt(timestampHex, 16);
+                          if (!isNaN(timestampSec)) return timestampSec * 1000;
+                        }
+                        return 0;
+                      })();
+                      const studentJoined = user?.joined_at
+                        ? (parsedIdTime ? Math.min(new Date(user.joined_at).getTime(), parsedIdTime) : new Date(user.joined_at).getTime())
+                        : parsedIdTime;
+                      return testStart >= studentJoined;
+                    }
+                    return true;
+                  });
 
                   const sortedAttempts = [...studentAttempts].sort((a, b) => {
                     return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime();

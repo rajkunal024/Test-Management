@@ -113,7 +113,7 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { id: student.id, name: student.name, userId: student.userId, role: "Student", class: student.class || "Class 10", gender: student.gender, requiresPasswordChange: student.requiresPasswordChange }
+            user: { id: student.id, name: student.name, userId: student.userId, role: "Student", class: student.class || "Class 10", gender: student.gender, requiresPasswordChange: student.requiresPasswordChange, joined_at: (student.toObject({ defaults: false } as any) as any).joined_at || student._id.getTimestamp() }
             }
           },
           {

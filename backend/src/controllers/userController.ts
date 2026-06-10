@@ -18,7 +18,8 @@ export const getUsers = async (request: IncomingMessage, response: ServerRespons
         role: "Student",
         class: s.class,
         gender: s.gender,
-        requiresPasswordChange: s.requiresPasswordChange
+        requiresPasswordChange: s.requiresPasswordChange,
+        joined_at: (s.toObject({ defaults: false } as any) as any).joined_at || s._id.getTimestamp()
       })),
       ...teachers.map((t: any) => ({
         id: t._id,
@@ -97,6 +98,7 @@ export const createUser = async (request: IncomingMessage, response: ServerRespo
         class: body.class || "Class 10",
         gender: cleanGender,
         requiresPasswordChange: true,
+        joined_at: body.joined_at ? new Date(body.joined_at) : new Date(),
         results: []
       });
       await newStudent.save();
@@ -184,7 +186,8 @@ export const bulkCreateUsers = async (request: IncomingMessage, response: Server
           gender: cleanGender,
           class: className || "Class 10",
           results: [],
-          requiresPasswordChange: true
+          requiresPasswordChange: true,
+          joined_at: u.joined_at ? new Date(u.joined_at) : new Date()
         });
         await newStudent.save();
         results.push(newStudent);

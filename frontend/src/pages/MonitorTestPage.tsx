@@ -51,9 +51,23 @@ export const MonitorTestPage = () => {
   const [toast, setToast] = useState("");
   const [selectedAttempt, setSelectedAttempt] = useState<Attempt | null>(null);
 
-  // Filter attempts for this test
+  // Filter attempts for this test, sort by score descending and calculate ranks
   const testAttempts = useMemo(() => {
-    return allAttempts.filter((att) => att.test_id === id);
+    const filtered = allAttempts.filter((att) => att.test_id === id);
+    // Sort by score descending
+    const sorted = [...filtered].sort((a, b) => b.score - a.score);
+    
+    // Assign ranks
+    let currentRank = 1;
+    return sorted.map((attempt, index) => {
+      if (index > 0 && attempt.score < sorted[index - 1].score) {
+        currentRank = index + 1;
+      }
+      return {
+        ...attempt,
+        rank: currentRank,
+      };
+    });
   }, [allAttempts, id]);
 
   // Statistics
@@ -229,6 +243,7 @@ export const MonitorTestPage = () => {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
                 <tr>
+                  <th className="px-6 py-4">Rank</th>
                   <th className="px-6 py-4">Student ID</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Submitted At</th>
@@ -243,9 +258,32 @@ export const MonitorTestPage = () => {
                   const m = Math.floor(attempt.time_spent / 60);
                   const s = attempt.time_spent % 60;
                   const timeStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
+                  const rankVal = attempt.rank ?? 1;
 
                   return (
                     <tr key={attempt.id} className="hover:bg-slate-50/40">
+                      <td className="px-6 py-4 font-bold">
+                        {rankVal === 1 && (
+                          <span className="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-xs font-extrabold bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-sm animate-pulse">
+                            🏆 1st
+                          </span>
+                        )}
+                        {rankVal === 2 && (
+                          <span className="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-xs font-extrabold bg-slate-300/20 text-slate-500 border border-slate-300/30">
+                            🥈 2nd
+                          </span>
+                        )}
+                        {rankVal === 3 && (
+                          <span className="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-xs font-extrabold bg-amber-700/10 text-amber-700 border border-amber-700/20">
+                            🥉 3rd
+                          </span>
+                        )}
+                        {rankVal > 3 && (
+                          <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                            #{rankVal}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 font-bold text-slate-700">{attempt.user_id}</td>
                       <td className="px-6 py-4">
                         <Badge tone="green">Submitted</Badge>

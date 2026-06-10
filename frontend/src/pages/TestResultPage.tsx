@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -30,6 +30,27 @@ export const TestResultPage = () => {
   const user = useAuthStore((state) => state.user);
 
   const { data: test, isLoading: isLoadingTest } = useTest(id);
+
+  useEffect(() => {
+    if (user && test && test.start_time) {
+      const testStart = new Date(test.start_time).getTime();
+      const parsedIdTime = (() => {
+        const id = user?.id || "";
+        if (id.length === 24) {
+          const timestampHex = id.substring(0, 8);
+          const timestampSec = parseInt(timestampHex, 16);
+          if (!isNaN(timestampSec)) return timestampSec * 1000;
+        }
+        return 0;
+      })();
+      const studentJoined = user?.joined_at
+        ? (parsedIdTime ? Math.min(new Date(user.joined_at).getTime(), parsedIdTime) : new Date(user.joined_at).getTime())
+        : parsedIdTime;
+      if (testStart < studentJoined) {
+        navigate("/dashboard", { replace: true });
+      }
+    }
+  }, [user, test, navigate]);
 
   const isAttemptFromStateValid = Boolean(location.state?.attempt && location.state.attempt.test_id === id);
 

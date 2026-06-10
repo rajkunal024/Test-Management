@@ -58,6 +58,14 @@ export const seedDatabase = async () => {
       }
     }
 
+    // Migrate student joined_at using $exists check to bypass Mongoose default behavior
+    const legacyStudents = await StudentModel.find({ joined_at: { $exists: false } });
+    for (const student of legacyStudents) {
+      student.joined_at = student._id.getTimestamp();
+      await student.save();
+      console.log(`Migrated Student ${student.userId} joined_at to ${student._id.getTimestamp()}.`);
+    }
+
     const testsToMigrate = await TestModel.find({});
     for (const test of testsToMigrate) {
       if (!test.class) {
