@@ -41,6 +41,7 @@ import {
   uploadQuestionImage,
   getAllPassages,
   createPassage,
+  updatePassage,
 } from "../services/api";
 import { useSubTopics, useTopics } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
@@ -88,6 +89,16 @@ export const TeacherDashboard = () => {
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
   const [search, setSearch] = useState("");
+  const [subQuestions, setSubQuestions] = useState<Array<{
+    question: string;
+    option1: string;
+    option2: string;
+    option3: string;
+    option4: string;
+    correct_option: CorrectOption;
+  }>>([
+    { question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1" }
+  ]);
   const [difficultyFilter, setDifficultyFilter] = useState("all");
   const [topicFilter, setTopicFilter] = useState("all");
   const [toast, setToast] = useState("");
@@ -95,6 +106,8 @@ export const TeacherDashboard = () => {
   const [csvText, setCsvText] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isDeletingSelected, setIsDeletingSelected] = useState(false);
 
   // URL routing tab parameters and local view states
   const [searchParams, setSearchParams] = useSearchParams();
@@ -118,6 +131,10 @@ export const TeacherDashboard = () => {
       setAddSubTab(null);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [search, difficultyFilter, topicFilter, selectedClass, activeTab]);
 
   // Queries for monitoring
   const { data: tests = [], isLoading: isLoadingTests } = useQuery({
@@ -337,6 +354,14 @@ export const TeacherDashboard = () => {
     defaultValues: emptyQuestion,
   });
 
+  useEffect(() => {
+    if (addSubTab === "manual" || addSubTab === null) {
+      reset(emptyQuestion);
+      setFormError("");
+      setSubQuestions([{ question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1" }]);
+    }
+  }, [addSubTab, reset]);
+
   const selectedTopicId = watch("topic_id");
   const selectedSubTopicId = watch("sub_topic_id");
   const watchedClass = watch("class");
@@ -534,6 +559,87 @@ export const TeacherDashboard = () => {
     onError: (err) => alert(getErrorMessage(err)),
   });
 
+  const downloadCsv = () => {
+    const selectedQuestions = filteredQuestions.filter(q => selectedIds.includes(q.id || ""));
+    if (selectedQuestions.length === 0) return;
+
+    const headers = ["question", "option1", "option2", "option3", "option4", "correct_option", "difficulty", "class", "topic", "sub_topic"];
+    
+    const escapeCsvField = (val: string) => {
+      if (val === undefined || val === null) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows = selectedQuestions.map(q => {
+      const tName = topics.find(t => t.id === q.topic_id)?.name ?? q.topic_name ?? "General";
+      const stName = subTopics.find(st => st.id === q.sub_topic_id)?.name ?? q.sub_topic_name ?? "";
+      
+      return [
+        escapeCsvField(q.question),
+        escapeCsvField(q.option1),
+        escapeCsvField(q.option2),
+        escapeCsvField(q.option3),
+        escapeCsvField(q.option4),
+        escapeCsvField(q.correct_option),
+        escapeCsvField(q.difficulty || "easy"),
+        escapeCsvField(q.class || "Class 10"),
+        escapeCsvField(tName),
+        escapeCsvField(stName)
+      ].join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `selected_questions_${Date.now()}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDeleteSelected = async () => {
+    const selectedQuestions = filteredQuestions.filter(q => selectedIds.includes(q.id || ""));
+    const deletableQuestions = selectedQuestions.filter(q => user?.role === "Admin" || q.created_by === user?.userId);
+
+    if (deletableQuestions.length === 0) {
+      alert("You do not have permission to delete any of the selected questions.");
+      return;
+    }
+
+    const totalCount = selectedQuestions.length;
+    const deletableCount = deletableQuestions.length;
+    const nonDeletableCount = totalCount - deletableCount;
+
+    let confirmationMsg = "";
+    if (nonDeletableCount > 0) {
+      confirmationMsg = `You selected ${totalCount} questions. You only have permission to delete ${deletableCount} of them.\n\nAre you sure you want to delete these ${deletableCount} questions? The other ${nonDeletableCount} question(s) will be skipped.`;
+    } else {
+      confirmationMsg = `Are you sure you want to delete the ${deletableCount} selected question(s)?`;
+    }
+
+    if (confirm(confirmationMsg)) {
+      setIsDeletingSelected(true);
+      try {
+        await Promise.all(deletableQuestions.map(q => deleteQuestion(q.id || "")));
+        await queryClient.invalidateQueries({ queryKey: ["questions"] });
+        setSelectedIds([]);
+        setToast(`${deletableCount} question(s) deleted successfully`);
+        window.setTimeout(() => setToast(""), 1800);
+      } catch (err) {
+        alert("An error occurred while deleting selected questions: " + getErrorMessage(err));
+      } finally {
+        setIsDeletingSelected(false);
+      }
+    }
+  };
+
   // Handlers
   const handleOpenAddModal = () => {
     setEditingIndex(null);
@@ -669,7 +775,12 @@ export const TeacherDashboard = () => {
     setEditingIndex(index);
     setEditingQuestionId(question.id ?? null);
     setFormError("");
+    const passage = question.passage_id ? passages.find(p => p.id === question.passage_id) : null;
     reset({
+      type: question.type,
+      passage_id: question.passage_id ?? "",
+      passage_title: passage?.title ?? "",
+      passage_content: passage?.content ?? "",
       question: question.question,
       option1: question.option1,
       option2: question.option2,
@@ -685,6 +796,7 @@ export const TeacherDashboard = () => {
       image_url: question.image_url ?? "",
       class: question.class ?? "Class 10",
     });
+    setSubQuestions([{ question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1" }]);
     setModalOpen(true);
   };
 
@@ -700,56 +812,148 @@ export const TeacherDashboard = () => {
     }
 
     if (values.type === "passage_sub_question") {
-      if (values.passage_id === "new" && !values.passage_title?.trim()) {
-        setFormError("Passage title is required for a new passage");
+      if (!values.passage_title?.trim()) {
+        setFormError("Passage title is required");
         return;
       }
-      if (values.passage_id === "new" && !values.passage_content?.trim()) {
-        setFormError("Passage content is required for a new passage");
+      if (!values.passage_content?.trim()) {
+        setFormError("Passage content is required");
         return;
       }
-      if (!values.passage_id) {
-        setFormError("Please select or create a passage for this question");
-        return;
+      if (editingQuestionId === null) {
+        // Validate all subQuestions in state
+        for (let i = 0; i < subQuestions.length; i++) {
+          const q = subQuestions[i];
+          if (!q.question.trim()) {
+            setFormError(`Question ${i + 1} Prompt is required`);
+            return;
+          }
+          if (!q.option1.trim()) {
+            setFormError(`Question ${i + 1} Option 1 is required`);
+            return;
+          }
+          if (!q.option2.trim()) {
+            setFormError(`Question ${i + 1} Option 2 is required`);
+            return;
+          }
+          if (!q.option3.trim()) {
+            setFormError(`Question ${i + 1} Option 3 is required`);
+            return;
+          }
+          if (!q.option4.trim()) {
+            setFormError(`Question ${i + 1} Option 4 is required`);
+            return;
+          }
+        }
+      } else {
+        // When editing, the single question form fields are edited
+        if (!values.question?.trim()) {
+          setFormError("Question Prompt is required");
+          return;
+        }
+        if (!values.option1?.trim()) {
+          setFormError("Option 1 is required");
+          return;
+        }
+        if (!values.option2?.trim()) {
+          setFormError("Option 2 is required");
+          return;
+        }
+        if (!values.option3?.trim()) {
+          setFormError("Option 3 is required");
+          return;
+        }
+        if (!values.option4?.trim()) {
+          setFormError("Option 4 is required");
+          return;
+        }
       }
     }
 
     try {
       let finalPassageId = values.passage_id;
 
-      if (values.type === "passage_sub_question" && values.passage_id === "new") {
-        const newPassage = await createPassage({
-          title: values.passage_title,
-          content: values.passage_content,
-          subject_id: teacherSubject.id,
-          class: values.class,
-        });
-        finalPassageId = newPassage.id;
-        setValue("passage_id", finalPassageId);
-        setValue("passage_title", "");
-        setValue("passage_content", "");
-        await queryClient.invalidateQueries({ queryKey: ["passages"] });
+      if (values.type === "passage_sub_question") {
+        if (editingQuestionId !== null && finalPassageId) {
+          await updatePassage(finalPassageId, {
+            title: values.passage_title,
+            content: values.passage_content,
+          });
+          await queryClient.invalidateQueries({ queryKey: ["passages"] });
+        } else {
+          const newPassage = await createPassage({
+            title: values.passage_title,
+            content: values.passage_content,
+            subject_id: teacherSubject.id,
+            class: values.class,
+          });
+          finalPassageId = newPassage.id;
+          await queryClient.invalidateQueries({ queryKey: ["passages"] });
+        }
       }
 
-      const payload: Question = {
-        ...values,
-        difficulty: values.difficulty || undefined,
-        topic_id: values.topic_id || undefined,
-        sub_topic_id: values.sub_topic_id || undefined,
-        new_topic_name: values.topic_id === "new" ? values.new_topic_name?.trim() : undefined,
-        new_sub_topic_name: (values.topic_id === "new" || values.sub_topic_id === "new") ? values.new_sub_topic_name?.trim() : undefined,
-        subject_id: teacherSubject.id,
-        media_url: values.media_url || undefined,
-        image_url: values.image_url || "",
-        type: values.type || "mcq",
-        passage_id: values.type === "passage_sub_question" ? finalPassageId : undefined,
-        test_id: "",
-      };
+      if (values.type === "passage_sub_question" && editingQuestionId === null) {
+        // Bulk save passage sub questions
+        const createPromises = subQuestions.map((q) => {
+          const payload: Question = {
+            question: q.question,
+            option1: q.option1,
+            option2: q.option2,
+            option3: q.option3,
+            option4: q.option4,
+            correct_option: q.correct_option,
+            difficulty: values.difficulty || undefined,
+            topic_id: values.topic_id || undefined,
+            sub_topic_id: values.sub_topic_id || undefined,
+            new_topic_name: values.topic_id === "new" ? values.new_topic_name?.trim() : undefined,
+            new_sub_topic_name: (values.topic_id === "new" || values.sub_topic_id === "new") ? values.new_sub_topic_name?.trim() : undefined,
+            subject_id: teacherSubject.id,
+            media_url: values.media_url || undefined,
+            image_url: values.image_url || "",
+            type: "passage_sub_question",
+            passage_id: finalPassageId,
+            test_id: "",
+            class: values.class,
+          };
+          return createQuestion(payload);
+        });
 
-      if (editingQuestionId) {
-        updateMutation.mutate({ id: editingQuestionId, payload });
+        await Promise.all(createPromises);
+        await queryClient.invalidateQueries({ queryKey: ["questions"] });
+        setToast("Passage and questions created successfully");
+        setModalOpen(false);
+        setAddSubTab(null);
+        reset(emptyQuestion);
+        setSubQuestions([{ question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1" }]);
+        window.setTimeout(() => setToast(""), 1800);
       } else {
-        createMutation.mutate(payload);
+        // Single MCQ or single Question edit
+        const payload: Question = {
+          ...values,
+          question: values.question || "",
+          option1: values.option1 || "",
+          option2: values.option2 || "",
+          option3: values.option3 || "",
+          option4: values.option4 || "",
+          correct_option: values.correct_option || "option1",
+          difficulty: values.difficulty || undefined,
+          topic_id: values.topic_id || undefined,
+          sub_topic_id: values.sub_topic_id || undefined,
+          new_topic_name: values.topic_id === "new" ? values.new_topic_name?.trim() : undefined,
+          new_sub_topic_name: (values.topic_id === "new" || values.sub_topic_id === "new") ? values.new_sub_topic_name?.trim() : undefined,
+          subject_id: teacherSubject.id,
+          media_url: values.media_url || undefined,
+          image_url: values.image_url || "",
+          type: values.type || "mcq",
+          passage_id: values.type === "passage_sub_question" ? finalPassageId : undefined,
+          test_id: "",
+        };
+
+        if (editingQuestionId) {
+          updateMutation.mutate({ id: editingQuestionId, payload });
+        } else {
+          createMutation.mutate(payload);
+        }
       }
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -975,117 +1179,218 @@ export const TeacherDashboard = () => {
                       </label>
                     </div>
 
-                    {/* Passage Selection / Creation */}
+                    {/* Passage Creation */}
                     {selectedType === "passage_sub_question" && (
-                      <div className="space-y-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/30 dark:bg-slate-950/10">
+                      <div className="space-y-4 border border-dashed border-slate-205 dark:border-slate-800 rounded-xl p-4 bg-slate-50/30 dark:bg-slate-950/10">
                         <div className="space-y-2">
                           <label className="block">
-                            <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Select Comprehension Passage</span>
-                            <select
-                              className="h-11 w-full appearance-none rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm text-slate-750 dark:text-slate-200 outline-none transition focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 cursor-pointer font-semibold"
-                              {...register("passage_id")}
-                            >
-                              <option value="">-- Choose existing passage --</option>
-                              {passages
-                                .filter((p: Passage) => !watchedClass || p.class === watchedClass)
-                                .map((p: Passage) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.title}
-                                  </option>
-                                ))}
-                              <option value="new">+ Create New Passage</option>
-                            </select>
+                            <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Title</span>
+                            <input
+                              type="text"
+                              className="h-11 w-full rounded-xl border border-slate-250 dark:border-slate-805 bg-white dark:bg-slate-950 px-4 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold"
+                              placeholder="Enter a descriptive title for this passage"
+                              {...register("passage_title")}
+                            />
+                            {errors.passage_title?.message ? (
+                              <span className="mt-1 block text-xs font-bold text-rose-500">{errors.passage_title.message}</span>
+                            ) : null}
                           </label>
                         </div>
 
-                        {selectedPassageId === "new" && (
-                          <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-850 animate-fade-in">
-                            <Input
-                              label="Passage Title"
-                              placeholder="Enter a descriptive title for this passage"
-                              error={errors.passage_title?.message}
-                              {...register("passage_title")}
+                        <div className="space-y-2">
+                          <label className="block">
+                            <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Content</span>
+                            <textarea
+                              className="h-40 w-full resize-none rounded-xl border border-slate-250 dark:border-slate-805/80 dark:bg-slate-955 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold leading-relaxed"
+                              placeholder="Enter the full comprehension passage text here..."
+                              {...register("passage_content")}
                             />
-                            <div className="space-y-2">
-                              <label className="block">
-                                <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Content</span>
-                                <textarea
-                                  className="h-40 w-full resize-none rounded-xl border border-slate-250 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold leading-relaxed"
-                                  placeholder="Enter the full comprehension passage text here..."
-                                  {...register("passage_content")}
-                                />
-                              </label>
-                            </div>
-                          </div>
-                        )}
+                            {errors.passage_content?.message ? (
+                              <span className="mt-1 block text-xs font-bold text-rose-500">{errors.passage_content.message}</span>
+                            ) : null}
+                          </label>
+                        </div>
                       </div>
                     )}
 
-                    {/* Prompt Box */}
-                    <div className="space-y-2">
-                      <label className="block">
-                        <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Prompt</span>
-                        <textarea
-                          className="h-32 w-full resize-none rounded-xl border border-slate-250 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold leading-relaxed"
-                          placeholder="Enter the question text or problem description here..."
-                          {...register("question")}
-                        />
-                        {errors.question?.message ? (
-                          <span className="mt-1 block text-xs font-bold text-rose-500">{errors.question.message}</span>
-                        ) : null}
-                      </label>
-                    </div>
+                    {selectedType === "passage_sub_question" ? (
+                      <div className="space-y-6">
+                        {subQuestions.map((subQ, subIdx) => (
+                          <div key={subIdx} className="space-y-4 p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/10 dark:bg-slate-900/10 relative">
+                            {subQuestions.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = subQuestions.filter((_, idx) => idx !== subIdx);
+                                  setSubQuestions(updated);
+                                }}
+                                className="absolute top-4 right-4 text-xs font-bold text-rose-500 hover:text-rose-700 cursor-pointer"
+                              >
+                                Remove Question
+                              </button>
+                            )}
+                            <h4 className="text-xs font-extrabold text-indigo-650 dark:text-indigo-400 uppercase tracking-wider">
+                              Question {subIdx + 1}
+                            </h4>
 
-                    {/* Options List */}
-                    <div className="space-y-3">
-                      <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Options (Select Correct Indicator)</span>
+                            {/* Question Prompt */}
+                            <div className="space-y-2">
+                              <label className="block">
+                                <span className="mb-2 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Prompt</span>
+                                <textarea
+                                  className="h-24 w-full resize-none rounded-xl border border-slate-250 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold leading-relaxed"
+                                  placeholder="Enter the question text or problem description here..."
+                                  value={subQ.question}
+                                  onChange={(e) => {
+                                    const updated = [...subQuestions];
+                                    updated[subIdx].question = e.target.value;
+                                    setSubQuestions(updated);
+                                  }}
+                                />
+                              </label>
+                            </div>
 
-                      {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => {
-                        const letter = String.fromCharCode(65 + idx); // A, B, C, D
-                        const isCorrect = correctOptionValue === opt;
+                            {/* Options List */}
+                            <div className="space-y-3">
+                              <span className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Options (Select Correct Indicator)</span>
+                              {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => {
+                                const letter = String.fromCharCode(65 + idx); // A, B, C, D
+                                const isCorrect = subQ.correct_option === opt;
+                                const colors = [
+                                  { text: "text-indigo-650 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
+                                  { text: "text-purple-650 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-100 dark:border-purple-900/40" },
+                                  { text: "text-amber-650 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-100 dark:border-amber-900/40" },
+                                  { text: "text-rose-650 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/40", border: "border-rose-100 dark:border-rose-900/40" },
+                                ][idx];
 
-                        // Harmonized vibrant colors for badges
-                        const colors = [
-                          { text: "text-indigo-650 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
-                          { text: "text-purple-650 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-100 dark:border-purple-900/40" },
-                          { text: "text-amber-650 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-100 dark:border-amber-900/40" },
-                          { text: "text-rose-650 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/40", border: "border-rose-100 dark:border-rose-900/40" },
-                        ][idx];
-
-                        return (
-                          <div
-                            key={opt}
-                            className={`flex items-center gap-3.5 p-3.5 rounded-2xl border-2 transition-all duration-250 ${isCorrect
-                                ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-950/10 shadow-sm"
-                                : "border-slate-150 dark:border-slate-800/80 hover:border-slate-250 dark:hover:border-slate-700 bg-slate-50/20 dark:bg-slate-900/30"
-                              }`}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => setValue("correct_option", opt)}
-                              className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-xs border shrink-0 transition-all ${isCorrect
-                                  ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                                  : `${colors.bg} ${colors.border} ${colors.text} hover:scale-105`
-                                }`}
-                              title={`Set Option ${letter} as correct`}
-                            >
-                              {isCorrect ? "✓" : letter}
-                            </button>
-                            <div className="flex-1">
-                              <Input
-                                placeholder={`Option ${idx + 1}`}
-                                className={`h-10 text-sm font-semibold transition-all focus:ring-4 focus:ring-indigo-550/10 ${isCorrect
-                                    ? "border-emerald-250 dark:border-emerald-900 focus:border-emerald-500"
-                                    : "border-slate-200 dark:border-slate-850 focus:border-indigo-500"
-                                  }`}
-                                error={errors[opt]?.message}
-                                {...register(opt)}
-                              />
+                                return (
+                                  <div
+                                    key={opt}
+                                    className={`flex items-center gap-3.5 p-2 px-3 rounded-2xl border-2 transition-all duration-250 ${isCorrect
+                                      ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-950/10 shadow-sm"
+                                      : "border-slate-150 dark:border-slate-800/80 hover:border-slate-250 dark:hover:border-slate-700 bg-slate-50/20 dark:bg-slate-900/30"
+                                      }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = [...subQuestions];
+                                        updated[subIdx].correct_option = opt;
+                                        setSubQuestions(updated);
+                                      }}
+                                      className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-xs border shrink-0 transition-all ${isCorrect
+                                        ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                                        : `${colors.bg} ${colors.border} ${colors.text} hover:scale-105`
+                                        }`}
+                                      title={`Set Option ${letter} as correct`}
+                                    >
+                                      {isCorrect ? "✓" : letter}
+                                    </button>
+                                    <div className="flex-1">
+                                      <input
+                                        type="text"
+                                        placeholder={`Option ${idx + 1}`}
+                                        className={`h-9 w-full rounded-md px-3 text-sm font-semibold border transition-all focus:outline-none focus:ring-4 focus:ring-indigo-550/10 dark:bg-slate-905 dark:text-slate-205 ${isCorrect
+                                          ? "border-emerald-250 dark:border-emerald-900 focus:border-emerald-500"
+                                          : "border-slate-200 dark:border-slate-850 focus:border-indigo-505"
+                                          }`}
+                                        value={subQ[opt]}
+                                        onChange={(e) => {
+                                          const updated = [...subQuestions];
+                                          updated[subIdx][opt] = e.target.value;
+                                          setSubQuestions(updated);
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        ))}
+
+                        {/* Add More Question button */}
+                        <div className="pt-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                              setSubQuestions([...subQuestions, { question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1" }]);
+                            }}
+                            className="w-full h-11 text-xs font-bold border border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex items-center justify-center gap-1.5 hover:bg-slate-50 dark:hover:bg-slate-800"
+                          >
+                            <Plus className="h-4 w-4 text-emerald-500" />
+                            Add More Question
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Prompt Box */}
+                        <div className="space-y-2">
+                          <label className="block">
+                            <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Prompt</span>
+                            <textarea
+                              className="h-32 w-full resize-none rounded-xl border border-slate-250 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold leading-relaxed"
+                              placeholder="Enter the question text or problem description here..."
+                              {...register("question")}
+                            />
+                            {errors.question?.message ? (
+                              <span className="mt-1 block text-xs font-bold text-rose-500">{errors.question.message}</span>
+                            ) : null}
+                          </label>
+                        </div>
+
+                        {/* Options List */}
+                        <div className="space-y-3">
+                          <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Options (Select Correct Indicator)</span>
+
+                          {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => {
+                            const letter = String.fromCharCode(65 + idx); // A, B, C, D
+                            const isCorrect = correctOptionValue === opt;
+                            const colors = [
+                              { text: "text-indigo-650 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
+                              { text: "text-purple-650 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-100 dark:border-purple-900/40" },
+                              { text: "text-amber-650 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-100 dark:border-amber-900/40" },
+                              { text: "text-rose-650 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/40", border: "border-rose-100 dark:border-rose-900/40" },
+                            ][idx];
+
+                            return (
+                              <div
+                                key={opt}
+                                className={`flex items-center gap-3.5 p-3.5 rounded-2xl border-2 transition-all duration-250 ${isCorrect
+                                  ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-950/10 shadow-sm"
+                                  : "border-slate-150 dark:border-slate-800/80 hover:border-slate-250 dark:hover:border-slate-700 bg-slate-50/20 dark:bg-slate-900/30"
+                                  }`}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => setValue("correct_option", opt)}
+                                  className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-xs border shrink-0 transition-all ${isCorrect
+                                    ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                                    : `${colors.bg} ${colors.border} ${colors.text} hover:scale-105`
+                                    }`}
+                                  title={`Set Option ${letter} as correct`}
+                                >
+                                  {isCorrect ? "✓" : letter}
+                                </button>
+                                <div className="flex-1">
+                                  <Input
+                                    placeholder={`Option ${idx + 1}`}
+                                    className={`h-10 text-sm font-semibold transition-all focus:ring-4 focus:ring-indigo-550/10 ${isCorrect
+                                      ? "border-emerald-250 dark:border-emerald-900 focus:border-emerald-500"
+                                      : "border-slate-200 dark:border-slate-850 focus:border-indigo-500"
+                                      }`}
+                                    error={errors[opt]?.message}
+                                    {...register(opt)}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Right Column: Meta & Image */}
@@ -1517,10 +1822,37 @@ export const TeacherDashboard = () => {
 
             {/* Questions Table Section */}
             <div>
-              <h2 className="mb-4 text-base font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-indigo-500 animate-pulse" />
-                Manage Questions Inventory
-              </h2>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-indigo-500 animate-pulse" />
+                  Manage Questions Inventory
+                </h2>
+
+                {selectedIds.length > 0 && (
+                  <div className="flex items-center gap-3 bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-150/50 dark:border-indigo-900/40 px-4 py-2 rounded-xl animate-fade-in">
+                    <span className="text-xs font-bold text-slate-650 dark:text-slate-400">
+                      {selectedIds.length} question{selectedIds.length > 1 ? "s" : ""} selected:
+                    </span>
+                    <Button
+                      variant="secondary"
+                      className="h-8 rounded-lg px-3 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-900 font-bold transition-all shadow-sm hover:shadow active:scale-95 flex items-center gap-1.5"
+                      onClick={downloadCsv}
+                      icon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+                    >
+                      Download CSV
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="h-8 rounded-lg px-3 text-xs text-rose-650 hover:bg-rose-50 dark:hover:bg-rose-955/40 border border-rose-200 dark:border-rose-900/40 font-bold transition-all hover:shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                      onClick={handleDeleteSelected}
+                      disabled={isDeletingSelected}
+                      icon={<Trash2 className="h-3.5 w-3.5 text-rose-555" />}
+                    >
+                      {isDeletingSelected ? "Deleting..." : "Delete Selected"}
+                    </Button>
+                  </div>
+                )}
+              </div>
 
               {isLoadingQuestions ? (
                 <div className="flex h-64 items-center justify-center text-slate-550 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -1542,6 +1874,22 @@ export const TeacherDashboard = () => {
                     <table className="w-full text-left text-sm relative">
                       <thead className="bg-slate-50/80 dark:bg-slate-950/60 text-xs font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-850 sticky top-0 backdrop-blur-md z-10">
                         <tr>
+                          <th className="px-6 py-4.5 w-12 text-center">
+                            {selectedIds.length > 0 && (
+                              <input
+                                type="checkbox"
+                                checked={filteredQuestions.length > 0 && selectedIds.length === filteredQuestions.length}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedIds(filteredQuestions.map(q => q.id).filter(Boolean) as string[]);
+                                  } else {
+                                    setSelectedIds([]);
+                                  }
+                                }}
+                                className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-650 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                              />
+                            )}
+                          </th>
                           <th className="px-6 py-4.5 w-14 text-center">#</th>
                           <th className="px-6 py-4.5">Question Prompt</th>
                           <th className="px-6 py-4.5 w-24">Image</th>
@@ -1559,8 +1907,23 @@ export const TeacherDashboard = () => {
                               diffLower === "medium" ? "yellow" :
                                 (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
 
+                          const isSelected = selectedIds.includes(q.id || "");
                           return (
-                            <tr key={q.id ?? index} className="group odd:bg-white/40 even:bg-slate-55/10 dark:odd:bg-slate-900/20 dark:even:bg-slate-900/5 hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10 transition-all duration-200">
+                            <tr key={q.id ?? index} className={`group odd:bg-white/40 even:bg-slate-55/10 dark:odd:bg-slate-900/20 dark:even:bg-slate-900/5 hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10 transition-all duration-200 ${isSelected ? "bg-indigo-50/10 dark:bg-indigo-950/5" : ""}`}>
+                              <td className="px-6 py-4.5 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      if (q.id) setSelectedIds([...selectedIds, q.id]);
+                                    } else {
+                                      setSelectedIds(selectedIds.filter(id => id !== q.id));
+                                    }
+                                  }}
+                                  className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-650 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                                />
+                              </td>
                               <td className="px-6 py-4.5 text-center font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">{index + 1}</td>
                               <td className="px-6 py-4.5">
                                 <div
@@ -1868,93 +2231,170 @@ export const TeacherDashboard = () => {
               </label>
             </div>
 
-            {/* Passage Selection / Creation */}
+            {/* Passage Creation */}
             {selectedType === "passage_sub_question" && (
               <div className="space-y-3 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50/30 dark:bg-slate-950/10">
                 <div className="space-y-1">
                   <label className="block">
-                    <span className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Select Comprehension Passage</span>
-                    <select
-                      className="h-10 w-full appearance-none rounded-md border border-slate-300 bg-white dark:bg-slate-950 px-3 text-sm text-slate-750 dark:text-slate-200 outline-none transition focus:border-indigo-550 focus:ring-4 focus:ring-indigo-550/10 cursor-pointer font-semibold"
-                      {...register("passage_id")}
-                    >
-                      <option value="">-- Choose existing passage --</option>
-                      {passages
-                        .filter((p: Passage) => !watchedClass || p.class === watchedClass)
-                        .map((p: Passage) => (
-                          <option key={p.id} value={p.id}>
-                            {p.title}
-                          </option>
-                        ))}
-                      <option value="new">+ Create New Passage</option>
-                    </select>
-                  </label>
-                </div>
-
-                {selectedPassageId === "new" && (
-                  <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-850 animate-fade-in">
-                    <Input
-                      label="Passage Title"
-                      placeholder="Enter passage title"
-                      error={errors.passage_title?.message}
+                    <span className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Title</span>
+                    <input
+                      type="text"
+                      className="h-10 w-full rounded-md border border-slate-300 dark:border-slate-805 bg-white dark:bg-slate-950 px-3 text-sm outline-none placeholder:text-slate-300 focus:border-indigo-550 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold"
+                      placeholder="Enter a descriptive title for this passage"
                       {...register("passage_title")}
                     />
-                    <div className="space-y-1">
-                      <label className="block">
-                        <span className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Content</span>
-                        <textarea
-                          className="h-28 w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none placeholder:text-slate-300 focus:border-indigo-550 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold"
-                          placeholder="Enter comprehension passage content..."
-                          {...register("passage_content")}
-                        />
-                      </label>
-                    </div>
-                  </div>
-                )}
+                    {errors.passage_title?.message ? (
+                      <span className="mt-1 block text-xs font-medium text-rose-500">{errors.passage_title.message}</span>
+                    ) : null}
+                  </label>
+                </div>
+                <div className="space-y-1">
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Content</span>
+                    <textarea
+                      className="h-28 w-full resize-none rounded-md border border-slate-300 dark:border-slate-805/80 dark:bg-slate-950 px-3 py-2 text-sm outline-none placeholder:text-slate-300 focus:border-indigo-550 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold"
+                      placeholder="Enter comprehension passage content..."
+                      {...register("passage_content")}
+                    />
+                    {errors.passage_content?.message ? (
+                      <span className="mt-1 block text-xs font-medium text-rose-500">{errors.passage_content.message}</span>
+                    ) : null}
+                  </label>
+                </div>
               </div>
             )}
 
-            {/* Question Text */}
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-slate-700">Question Prompt</span>
-              <textarea
-                className="h-24 w-full resize-none rounded-md border border-slate-300 px-4 py-3 text-sm outline-none placeholder:text-slate-300 focus:border-emerald-500"
-                placeholder="Type the question details here..."
-                {...register("question")}
-              />
-              {errors.question?.message ? (
-                <span className="mt-1 block text-xs text-rose-500">{errors.question.message}</span>
-              ) : null}
-            </label>
-
-            {/* Options */}
-            <div>
-              <span className="mb-2 block text-sm font-semibold text-slate-700">Options (Select the correct one)</span>
-              {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => (
-                <div key={opt} className="mb-2.5 flex items-center gap-3">
-                  <Controller
-                    name="correct_option"
-                    control={control}
-                    render={({ field }) => (
-                      <input
-                        type="radio"
-                        className="h-5 w-5 accent-emerald-500 shrink-0"
-                        checked={field.value === opt}
-                        onChange={() => field.onChange(opt)}
-                      />
+            {selectedType === "passage_sub_question" && editingQuestionId === null ? (
+              <div className="space-y-4">
+                {subQuestions.map((subQ, subIdx) => (
+                  <div key={subIdx} className="space-y-4 p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/10 dark:bg-slate-900/10 relative animate-fade-in">
+                    {subQuestions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = subQuestions.filter((_, idx) => idx !== subIdx);
+                          setSubQuestions(updated);
+                        }}
+                        className="absolute top-4 right-4 text-xs font-bold text-rose-500 hover:text-rose-700 cursor-pointer"
+                      >
+                        Remove
+                      </button>
                     )}
-                  />
-                  <div className="flex-1">
-                    <Input
-                      placeholder={`Option ${idx + 1}`}
-                      className="h-10 border-slate-300"
-                      error={errors[opt]?.message}
-                      {...register(opt)}
-                    />
+                    <h4 className="text-xs font-bold text-indigo-650 dark:text-indigo-400 uppercase tracking-wider">
+                      Question {subIdx + 1}
+                    </h4>
+
+                    {/* Question Prompt */}
+                    <div className="space-y-1">
+                      <label className="block">
+                        <span className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Prompt</span>
+                        <textarea
+                          className="h-20 w-full resize-none rounded-md border border-slate-305 dark:border-slate-800 dark:bg-slate-950 px-3 py-2 text-sm outline-none placeholder:text-slate-300 focus:border-emerald-500 font-semibold text-slate-800 dark:text-slate-200"
+                          placeholder="Type the question details here..."
+                          value={subQ.question}
+                          onChange={(e) => {
+                            const updated = [...subQuestions];
+                            updated[subIdx].question = e.target.value;
+                            setSubQuestions(updated);
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    {/* Options */}
+                    <div>
+                      <span className="mb-2 block text-xs font-semibold text-slate-750 dark:text-slate-300">Options</span>
+                      {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => (
+                        <div key={opt} className="mb-2.5 flex items-center gap-3">
+                          <input
+                            type="radio"
+                            className="h-5 w-5 accent-emerald-500 shrink-0 cursor-pointer"
+                            checked={subQ.correct_option === opt}
+                            onChange={() => {
+                              const updated = [...subQuestions];
+                              updated[subIdx].correct_option = opt;
+                              setSubQuestions(updated);
+                            }}
+                          />
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              placeholder={`Option ${idx + 1}`}
+                              className="h-10 w-full rounded-md px-3 text-sm font-semibold border border-slate-300 dark:border-slate-800 dark:bg-slate-905 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-550/10 focus:border-indigo-500"
+                              value={subQ[opt]}
+                              onChange={(e) => {
+                                const updated = [...subQuestions];
+                                updated[subIdx][opt] = e.target.value;
+                                setSubQuestions(updated);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
+                ))}
+
+                {/* Add More Question button */}
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setSubQuestions([...subQuestions, { question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1" }]);
+                    }}
+                    className="w-full h-10 text-xs font-bold border border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex items-center justify-center gap-1.5 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    <Plus className="h-4 w-4 text-emerald-500" />
+                    Add More Question
+                  </Button>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <>
+                {/* Question Text */}
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-350">Question Prompt</span>
+                  <textarea
+                    className="h-24 w-full resize-none rounded-md border border-slate-300 dark:border-slate-800 dark:bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-300 focus:border-emerald-500 text-slate-800 dark:text-slate-200"
+                    placeholder="Type the question details here..."
+                    {...register("question")}
+                  />
+                  {errors.question?.message ? (
+                    <span className="mt-1 block text-xs text-rose-500">{errors.question.message}</span>
+                  ) : null}
+                </label>
+
+                {/* Options */}
+                <div>
+                  <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-355">Options (Select the correct one)</span>
+                  {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => (
+                    <div key={opt} className="mb-2.5 flex items-center gap-3">
+                      <Controller
+                        name="correct_option"
+                        control={control}
+                        render={({ field }) => (
+                          <input
+                            type="radio"
+                            className="h-5 w-5 accent-emerald-500 shrink-0 cursor-pointer"
+                            checked={field.value === opt}
+                            onChange={() => field.onChange(opt)}
+                          />
+                        )}
+                      />
+                      <div className="flex-1">
+                        <Input
+                          placeholder={`Option ${idx + 1}`}
+                          className="h-10 border-slate-300 dark:border-slate-800"
+                          error={errors[opt]?.message}
+                          {...register(opt)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
 
             {/* Classification */}
             <div className="grid gap-4 sm:grid-cols-4">

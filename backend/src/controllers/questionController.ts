@@ -156,14 +156,15 @@ export const createQuestion = async (request: IncomingMessage, response: ServerR
 
     const payload = await resolveTopicAndSubTopic(rawPayload);
     const newQuestion = new QuestionModel({
-      id: `q-pool-${Date.now()}`,
+      id: `q-pool-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       created_by: user ? user.userId : undefined,
       ...payload,
     });
     await newQuestion.save();
     json(response, 201, { success: true, data: newQuestion });
-  } catch (e) {
-    json(response, 400, { success: false, message: "Invalid JSON body or error resolving topics" });
+  } catch (e: any) {
+    console.error("Error in createQuestion:", e);
+    json(response, 400, { success: false, message: e.message || "Invalid JSON body or error resolving topics" });
   }
 };
 
@@ -215,8 +216,9 @@ export const updateQuestion = async (request: IncomingMessage, response: ServerR
     } else {
       json(response, 404, { success: false, message: "Question not found" });
     }
-  } catch (e) {
-    json(response, 400, { success: false, message: "Invalid JSON body or error resolving topics" });
+  } catch (e: any) {
+    console.error("Error in updateQuestion:", e);
+    json(response, 400, { success: false, message: e.message || "Invalid JSON body or error resolving topics" });
   }
 };
 

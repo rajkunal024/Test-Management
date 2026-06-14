@@ -52,12 +52,12 @@ export const questionSchema = z.object({
   passage_id: z.string().optional(),
   passage_title: z.string().optional(),
   passage_content: z.string().optional(),
-  question: z.string().min(1, "Question is required"),
-  option1: z.string().min(1, "Option 1 is required"),
-  option2: z.string().min(1, "Option 2 is required"),
-  option3: z.string().min(1, "Option 3 is required"),
-  option4: z.string().min(1, "Option 4 is required"),
-  correct_option: z.enum(["option1", "option2", "option3", "option4"]),
+  question: z.string().optional(),
+  option1: z.string().optional(),
+  option2: z.string().optional(),
+  option3: z.string().optional(),
+  option4: z.string().optional(),
+  correct_option: z.enum(["option1", "option2", "option3", "option4"]).optional(),
   difficulty: z.string().optional(),
   topic_id: z.string().optional(),
   sub_topic_id: z.string().optional(),
@@ -66,6 +66,27 @@ export const questionSchema = z.object({
   media_url: z.string().url("Enter a valid URL").or(z.literal("")).optional(),
   image_url: z.string().or(z.literal("")).optional(),
   class: z.string().min(1, "Class is required"),
+}).superRefine((data, ctx) => {
+  if (data.type !== "passage_sub_question") {
+    if (!data.question || data.question.trim() === "") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Question is required", path: ["question"] });
+    }
+    if (!data.option1 || data.option1.trim() === "") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Option 1 is required", path: ["option1"] });
+    }
+    if (!data.option2 || data.option2.trim() === "") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Option 2 is required", path: ["option2"] });
+    }
+    if (!data.option3 || data.option3.trim() === "") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Option 3 is required", path: ["option3"] });
+    }
+    if (!data.option4 || data.option4.trim() === "") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Option 4 is required", path: ["option4"] });
+    }
+    if (!data.correct_option) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Correct option is required", path: ["correct_option"] });
+    }
+  }
 });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;

@@ -65,7 +65,7 @@ export const createPassage = async (request: IncomingMessage, response: ServerRe
     }
 
     const newPassage = new PassageModel({
-      id: `passage-${Date.now()}`,
+      id: `passage-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       created_by: user ? user.userId : undefined,
       title: rawPayload.title,
       content: rawPayload.content,
