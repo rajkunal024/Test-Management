@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useTest } from "../hooks/useTests";
-import { fetchBulkQuestions, submitAttempt, getAllAttempts, uploadStreamFrame } from "../services/api";
+import { fetchBulkQuestions, submitAttempt, getAllAttempts, uploadStreamFrame, getPassageById } from "../services/api";
 import { Button } from "../components/ui/Button";
 import { Spinner } from "../components/ui/Spinner";
 import { Badge } from "../components/ui/Badge";
@@ -21,6 +21,7 @@ import { Modal } from "../components/ui/Modal";
 import { Toast } from "../components/ui/Toast";
 import { Logo } from "../components/layout/Logo";
 import { useAuthStore } from "../store/authStore";
+import { Passage } from "../types";
 
 const seedRandom = (seedStr: string) => {
   let h = 2166136261 >>> 0;
@@ -618,6 +619,29 @@ export const AttemptTestPage = () => {
   const [marked, setMarked] = useState<Record<string, boolean>>({});
   const [visited, setVisited] = useState<Record<string, boolean>>({ "0": true });
 
+  const currentQuestion = questions[currentIdx];
+
+  // Passage Caching State & Fetching Hook
+  const [passageCache, setPassageCache] = useState<Record<string, Passage>>({});
+  const [loadingPassage, setLoadingPassage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const pid = currentQuestion?.passage_id;
+    if (pid && !passageCache[pid] && loadingPassage !== pid) {
+      setLoadingPassage(pid);
+      getPassageById(pid)
+        .then((passage) => {
+          setPassageCache((prev) => ({ ...prev, [pid]: passage }));
+        })
+        .catch((err) => {
+          console.error("Error fetching passage:", err);
+        })
+        .finally(() => {
+          setLoadingPassage(null);
+        });
+    }
+  }, [currentQuestion?.passage_id, passageCache, loadingPassage]);
+
   // Refs to always hold latest values (avoid stale closures in timer callbacks)
   const answersRef = useRef<Record<string, string>>({});
   const timeSpentRef = useRef(0);
@@ -851,7 +875,6 @@ export const AttemptTestPage = () => {
     );
   }
 
-  const currentQuestion = questions[currentIdx];
   const totalQuestions = questions.length;
 
   if (totalQuestions === 0) {
@@ -1228,106 +1251,240 @@ export const AttemptTestPage = () => {
               </div>
             </div>
 
-            {/* Question Prompt */}
-            <div className="flex-1 mb-8">
-              <h2 className="text-base md:text-lg font-bold text-slate-800 leading-relaxed whitespace-pre-wrap mb-4">
-                {currentQuestion.question}
-              </h2>
-              {(currentQuestion.image_url || currentQuestion.media_url) && (
-                <div className="mt-4 mb-4 flex justify-start">
-                  <img
-                    src={currentQuestion.image_url || currentQuestion.media_url}
-                    alt="Question Graphic"
-                    loading="lazy"
-                    className="max-h-96 w-auto max-w-full rounded-lg border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Multiple Choice Options */}
-            <div className="grid gap-3 mb-8">
-              {(["option1", "option2", "option3", "option4"] as const).map((optKey, oIdx) => {
-                const optText = currentQuestion[optKey];
-                const optionLetter = String.fromCharCode(65 + oIdx); // A, B, C, D
-                const isSelected = answers[currentQuestion.id ?? ""] === optKey;
-
-                return (
-                  <button
-                    key={optKey}
-                    onClick={() => handleSelectOption(currentQuestion.id ?? "", optKey)}
-                    className={`flex items-center gap-4 w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ${isSelected
-                      ? "border-indigo-500 bg-indigo-50/50 shadow-sm text-indigo-900"
-                      : "border-slate-100 hover:border-slate-300 hover:bg-slate-50/30 text-slate-700"
-                      }`}
-                  >
-                    <div
-                      className={`h-7 w-7 rounded-lg flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${isSelected
-                        ? "bg-indigo-600 border-indigo-600 text-white"
-                        : "border-slate-200 bg-white text-slate-400"
-                        }`}
-                    >
-                      {optionLetter}
+            {currentQuestion.passage_id ? (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 min-h-0">
+                {/* Left Column: Passage Content */}
+                <div className="lg:col-span-6 overflow-y-auto pr-4 border-r border-slate-100 flex flex-col max-h-[65vh]">
+                  {loadingPassage === currentQuestion.passage_id || !passageCache[currentQuestion.passage_id] ? (
+                    <div className="flex flex-col items-center justify-center flex-1 py-12">
+                      <Spinner />
+                      <p className="mt-2 text-xs font-semibold text-slate-400">Loading passage context...</p>
                     </div>
-                    <span className="text-sm font-semibold leading-relaxed">{optText}</span>
-                  </button>
-                );
-              })}
-            </div>
+                  ) : (
+                    <>
+                      <div className="bg-gradient-to-r from-indigo-50 to-blue-50/50 rounded-xl p-5 border border-indigo-100/50 shadow-sm mb-4">
+                        <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-indigo-500 shrink-0" />
+                          {passageCache[currentQuestion.passage_id].title}
+                        </h3>
+                      </div>
+                      <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap font-medium p-2 overflow-y-auto">
+                        {passageCache[currentQuestion.passage_id].content}
+                      </div>
+                    </>
+                  )}
+                </div>
 
-            {/* Actions Footer */}
-            <div className="flex flex-wrap items-center justify-between border-t border-slate-100 pt-6 gap-4">
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  onClick={() => handleClearResponse(currentQuestion.id ?? "")}
-                  disabled={answers[currentQuestion.id ?? ""] === undefined}
-                  className="text-xs text-rose-600 hover:bg-rose-50 h-10 px-3.5"
-                >
-                  Clear Response
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => handleMarkReview(currentQuestion.id ?? "")}
-                  className={`text-xs h-10 px-4 ${marked[currentQuestion.id ?? ""]
-                    ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
-                    : "text-purple-600 hover:bg-purple-50"
-                    }`}
-                  icon={<Bookmark className="h-3.5 w-3.5" />}
-                >
-                  {marked[currentQuestion.id ?? ""] ? "Marked" : "Mark for Review"}
-                </Button>
+                {/* Right Column: Question Prompt & Options & Footer */}
+                <div className="lg:col-span-6 flex flex-col justify-between h-full min-h-0">
+                  <div className="flex-1 overflow-y-auto pr-2 max-h-[50vh]">
+                    {/* Question Prompt */}
+                    <div className="mb-6">
+                      <h2 className="text-base md:text-lg font-bold text-slate-800 leading-relaxed whitespace-pre-wrap mb-4">
+                        {currentQuestion.question}
+                      </h2>
+                      {(currentQuestion.image_url || currentQuestion.media_url) && (
+                        <div className="mt-4 mb-4 flex justify-start">
+                          <img
+                            src={currentQuestion.image_url || currentQuestion.media_url}
+                            alt="Question Graphic"
+                            loading="lazy"
+                            className="max-h-60 w-auto max-w-full rounded-lg border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Options */}
+                    <div className="grid gap-3 mb-6">
+                      {(["option1", "option2", "option3", "option4"] as const).map((optKey, oIdx) => {
+                        const optText = currentQuestion[optKey];
+                        const optionLetter = String.fromCharCode(65 + oIdx);
+                        const isSelected = answers[currentQuestion.id ?? ""] === optKey;
+
+                        return (
+                          <button
+                            key={optKey}
+                            onClick={() => handleSelectOption(currentQuestion.id ?? "", optKey)}
+                            className={`flex items-center gap-4 w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ${isSelected
+                              ? "border-indigo-500 bg-indigo-50/50 shadow-sm text-indigo-900"
+                              : "border-slate-100 hover:border-slate-300 hover:bg-slate-50/30 text-slate-700"
+                              }`}
+                          >
+                            <div
+                              className={`h-7 w-7 rounded-lg flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${isSelected
+                                ? "bg-indigo-600 border-indigo-600 text-white"
+                                : "border-slate-200 bg-white text-slate-400"
+                                }`}
+                            >
+                              {optionLetter}
+                            </div>
+                            <span className="text-sm font-semibold leading-relaxed">{optText}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="flex flex-wrap items-center justify-between border-t border-slate-100 pt-4 gap-4 mt-auto">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleClearResponse(currentQuestion.id ?? "")}
+                        disabled={answers[currentQuestion.id ?? ""] === undefined}
+                        className="text-xs text-rose-600 hover:bg-rose-50 h-10 px-3.5"
+                      >
+                        Clear Response
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleMarkReview(currentQuestion.id ?? "")}
+                        className={`text-xs h-10 px-4 ${marked[currentQuestion.id ?? ""]
+                          ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                          : "text-purple-600 hover:bg-purple-50"
+                          }`}
+                        icon={<Bookmark className="h-3.5 w-3.5" />}
+                      >
+                        {marked[currentQuestion.id ?? ""] ? "Marked" : "Mark for Review"}
+                      </Button>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        disabled={currentIdx === 0}
+                        onClick={handlePrev}
+                        className="h-10 text-xs px-3"
+                        icon={<ChevronLeft className="h-4 w-4" />}
+                      >
+                        Previous
+                      </Button>
+
+                      {currentIdx === totalQuestions - 1 ? (
+                        <Button
+                          onClick={handleManualSubmit}
+                          className="h-10 text-xs px-5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          Finish Test
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={handleNext}
+                          className="h-10 text-xs px-5 bg-indigo-600 hover:bg-indigo-700 text-white"
+                          icon={<ChevronRight className="h-4 w-4" />}
+                        >
+                          Save & Next
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
+            ) : (
+              <>
+                {/* Question Prompt */}
+                <div className="flex-1 mb-8">
+                  <h2 className="text-base md:text-lg font-bold text-slate-800 leading-relaxed whitespace-pre-wrap mb-4">
+                    {currentQuestion.question}
+                  </h2>
+                  {(currentQuestion.image_url || currentQuestion.media_url) && (
+                    <div className="mt-4 mb-4 flex justify-start">
+                      <img
+                        src={currentQuestion.image_url || currentQuestion.media_url}
+                        alt="Question Graphic"
+                        loading="lazy"
+                        className="max-h-96 w-auto max-w-full rounded-lg border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
+                      />
+                    </div>
+                  )}
+                </div>
 
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  disabled={currentIdx === 0}
-                  onClick={handlePrev}
-                  className="h-10 text-xs px-3"
-                  icon={<ChevronLeft className="h-4 w-4" />}
-                >
-                  Previous
-                </Button>
+                {/* Multiple Choice Options */}
+                <div className="grid gap-3 mb-8">
+                  {(["option1", "option2", "option3", "option4"] as const).map((optKey, oIdx) => {
+                    const optText = currentQuestion[optKey];
+                    const optionLetter = String.fromCharCode(65 + oIdx); // A, B, C, D
+                    const isSelected = answers[currentQuestion.id ?? ""] === optKey;
 
-                {currentIdx === totalQuestions - 1 ? (
-                  <Button
-                    onClick={handleManualSubmit}
-                    className="h-10 text-xs px-5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    Finish Test
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleNext}
-                    className="h-10 text-xs px-5 bg-indigo-600 hover:bg-indigo-700 text-white"
-                    icon={<ChevronRight className="h-4 w-4" />}
-                  >
-                    Save & Next
-                  </Button>
-                )}
-              </div>
-            </div>
+                    return (
+                      <button
+                        key={optKey}
+                        onClick={() => handleSelectOption(currentQuestion.id ?? "", optKey)}
+                        className={`flex items-center gap-4 w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ${isSelected
+                          ? "border-indigo-500 bg-indigo-50/50 shadow-sm text-indigo-900"
+                          : "border-slate-100 hover:border-slate-300 hover:bg-slate-50/30 text-slate-700"
+                          }`}
+                      >
+                        <div
+                          className={`h-7 w-7 rounded-lg flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${isSelected
+                            ? "bg-indigo-600 border-indigo-600 text-white"
+                            : "border-slate-200 bg-white text-slate-400"
+                            }`}
+                        >
+                          {optionLetter}
+                        </div>
+                        <span className="text-sm font-semibold leading-relaxed">{optText}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Actions Footer */}
+                <div className="flex flex-wrap items-center justify-between border-t border-slate-100 pt-6 gap-4">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleClearResponse(currentQuestion.id ?? "")}
+                      disabled={answers[currentQuestion.id ?? ""] === undefined}
+                      className="text-xs text-rose-600 hover:bg-rose-50 h-10 px-3.5"
+                    >
+                      Clear Response
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleMarkReview(currentQuestion.id ?? "")}
+                      className={`text-xs h-10 px-4 ${marked[currentQuestion.id ?? ""]
+                        ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                        : "text-purple-600 hover:bg-purple-50"
+                        }`}
+                      icon={<Bookmark className="h-3.5 w-3.5" />}
+                    >
+                      {marked[currentQuestion.id ?? ""] ? "Marked" : "Mark for Review"}
+                    </Button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      disabled={currentIdx === 0}
+                      onClick={handlePrev}
+                      className="h-10 text-xs px-3"
+                      icon={<ChevronLeft className="h-4 w-4" />}
+                    >
+                      Previous
+                    </Button>
+
+                    {currentIdx === totalQuestions - 1 ? (
+                      <Button
+                        onClick={handleManualSubmit}
+                        className="h-10 text-xs px-5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        Finish Test
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleNext}
+                        className="h-10 text-xs px-5 bg-indigo-600 hover:bg-indigo-700 text-white"
+                        icon={<ChevronRight className="h-4 w-4" />}
+                      >
+                        Save & Next
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </article>
         </main>
 

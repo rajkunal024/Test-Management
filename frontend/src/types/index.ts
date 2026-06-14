@@ -72,9 +72,19 @@ export interface Test {
   class?: string;
 }
 
+export interface Passage {
+  id: string;
+  title: string;
+  content: string;
+  subject_id: string;
+  class?: string;
+  created_by?: string;
+}
+
 export interface Question {
   id?: string;
-  type: "mcq";
+  type: "mcq" | "passage_sub_question";
+  passage_id?: string;
   question: string;
   option1: string;
   option2: string;

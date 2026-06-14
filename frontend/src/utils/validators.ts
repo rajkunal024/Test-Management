@@ -48,6 +48,10 @@ export const testSchema = z.object({
 });
 
 export const questionSchema = z.object({
+  type: z.enum(["mcq", "passage_sub_question"]).default("mcq").optional(),
+  passage_id: z.string().optional(),
+  passage_title: z.string().optional(),
+  passage_content: z.string().optional(),
   question: z.string().min(1, "Question is required"),
   option1: z.string().min(1, "Option 1 is required"),
   option2: z.string().min(1, "Option 2 is required"),

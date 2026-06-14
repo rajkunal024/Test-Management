@@ -4,6 +4,7 @@ import {
   AuthResponse,
   LoginRequest,
   Question,
+  Passage,
   Subject,
   SubTopic,
   Test,
@@ -181,6 +182,30 @@ export const updateQuestion = async (id: string, payload: Partial<Question>): Pr
 
 export const deleteQuestion = async (id: string): Promise<void> => {
   await api.delete(`/questions/${id}`);
+};
+
+export const getAllPassages = async (): Promise<Passage[]> => {
+  const { data } = await api.get<ApiEnvelope<Passage[]> | Passage[]>("/passages");
+  return unwrap(data);
+};
+
+export const getPassageById = async (id: string): Promise<Passage> => {
+  const { data } = await api.get<ApiEnvelope<Passage> | Passage>(`/passages/${id}`);
+  return unwrap(data);
+};
+
+export const createPassage = async (payload: Partial<Passage>): Promise<Passage> => {
+  const { data } = await api.post<ApiEnvelope<Passage> | Passage>("/passages", payload);
+  return unwrap(data);
+};
+
+export const updatePassage = async (id: string, payload: Partial<Passage>): Promise<Passage> => {
+  const { data } = await api.put<ApiEnvelope<Passage> | Passage>(`/passages/${id}`, payload);
+  return unwrap(data);
+};
+
+export const deletePassage = async (id: string): Promise<void> => {
+  await api.delete(`/passages/${id}`);
 };
 
 export const getAdminUsers = async (): Promise<User[]> => {

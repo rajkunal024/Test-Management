@@ -6,6 +6,7 @@ import { handleQuestionsRoutes } from "./questionRoutes.js";
 import { handleAttemptsRoutes } from "./attemptRoutes.js";
 import { handleUsersRoutes } from "./userRoutes.js";
 import { handleNotificationsRoutes } from "./notificationRoutes.js";
+import { handlePassagesRoutes } from "./passageRoutes.js";
 import { json } from "../middlewares/utils.js";
 
 export const routeRequest = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
@@ -35,6 +36,12 @@ export const routeRequest = async (request: IncomingMessage, response: ServerRes
   // Questions / bulk / pool routes
   if (path.startsWith("/api/questions")) {
     await handleQuestionsRoutes(request, response, path, method);
+    return;
+  }
+
+  // Passages routes
+  if (path.startsWith("/api/passages")) {
+    await handlePassagesRoutes(request, response, path, method);
     return;
   }
 

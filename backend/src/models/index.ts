@@ -64,9 +64,20 @@ export const AdminSchema = new Schema({
 });
 export const AdminModel = mongoose.model("Admin", AdminSchema);
 
+export const PassageSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  content: { type: String, required: true },
+  subject_id: { type: String, required: true },
+  class: { type: String },
+  created_by: { type: String }
+});
+export const PassageModel = mongoose.model("Passage", PassageSchema);
+
 export const QuestionSchema = new Schema({
   id: { type: String, required: true, unique: true },
   type: { type: String, default: "mcq" },
+  passage_id: { type: String, default: null },
   question: { type: String, required: true },
   option1: { type: String },
   option2: { type: String },

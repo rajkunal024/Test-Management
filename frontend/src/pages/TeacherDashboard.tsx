@@ -39,13 +39,19 @@ import {
   getActiveStreams,
   ActiveStream,
   uploadQuestionImage,
+  getAllPassages,
+  createPassage,
 } from "../services/api";
 import { useSubTopics, useTopics } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
-import { CorrectOption, Question } from "../types";
+import { CorrectOption, Question, Passage } from "../types";
 import { questionSchema, QuestionFormValues } from "../utils/validators";
 
 const emptyQuestion = {
+  type: "mcq" as const,
+  passage_id: "",
+  passage_title: "",
+  passage_content: "",
   question: "",
   option1: "",
   option2: "",
@@ -71,6 +77,10 @@ export const TeacherDashboard = () => {
     queryKey: ["questions"],
     queryFn: getAllQuestions,
   });
+  const { data: passages = [] } = useQuery({
+    queryKey: ["passages"],
+    queryFn: getAllPassages,
+  });
 
   // States
   const [modalOpen, setModalOpen] = useState(false);
@@ -85,7 +95,6 @@ export const TeacherDashboard = () => {
   const [csvText, setCsvText] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
-  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
 
   // URL routing tab parameters and local view states
   const [searchParams, setSearchParams] = useSearchParams();
@@ -321,6 +330,7 @@ export const TeacherDashboard = () => {
     reset,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<QuestionFormValues>({
     resolver: zodResolver(questionSchema),
@@ -332,6 +342,8 @@ export const TeacherDashboard = () => {
   const watchedClass = watch("class");
   const selectedDifficulty = watch("difficulty");
   const correctOptionValue = watch("correct_option");
+  const selectedType = watch("type") || "mcq";
+  const selectedPassageId = watch("passage_id");
   const filteredSubTopics = useMemo(() => {
     return subTopics.filter(st => st.topic_id === selectedTopicId);
   }, [subTopics, selectedTopicId]);
@@ -358,7 +370,7 @@ export const TeacherDashboard = () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      
+
       const res = await uploadQuestionImage(formData);
       setValue("image_url", res.image_url);
     } catch (err: any) {
@@ -473,36 +485,26 @@ export const TeacherDashboard = () => {
     return { total, easy, medium, hard };
   }, [questionsFilteredExceptDifficulty]);
 
-  const handleToggleSelect = (questionId: string) => {
-    setSelectedQuestionIds((prev) =>
-      prev.includes(questionId)
-        ? prev.filter((id) => id !== questionId)
-        : [...prev, questionId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    const allIds = filteredQuestions.map((q) => q.id || q.question).filter(Boolean) as string[];
-    setSelectedQuestionIds(allIds);
-  };
-
-  const handleClearSelection = () => {
-    setSelectedQuestionIds([]);
-  };
-
-  useEffect(() => {
-    setSelectedQuestionIds([]);
-  }, [activeTab, search, difficultyFilter, topicFilter, effectiveClassFilter]);
-
   // Mutations
   const createMutation = useMutation({
     mutationFn: createQuestion,
-    onSuccess: async () => {
+    onSuccess: async (data, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["questions"] });
       setToast("Question created successfully");
-      setModalOpen(false);
-      setAddSubTab(null);
-      reset(emptyQuestion);
+      if (variables.type === "passage_sub_question" && variables.passage_id) {
+        reset({
+          ...emptyQuestion,
+          type: "passage_sub_question",
+          passage_id: variables.passage_id,
+          class: variables.class,
+          topic_id: variables.topic_id,
+          sub_topic_id: variables.sub_topic_id,
+        });
+      } else {
+        setModalOpen(false);
+        setAddSubTab(null);
+        reset(emptyQuestion);
+      }
       window.setTimeout(() => setToast(""), 1800);
     },
     onError: (err) => setFormError(getErrorMessage(err)),
@@ -532,88 +534,7 @@ export const TeacherDashboard = () => {
     onError: (err) => alert(getErrorMessage(err)),
   });
 
-  const deleteBulkMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      await Promise.all(ids.map((id) => deleteQuestion(id)));
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["questions"] });
-      setSelectedQuestionIds([]);
-      setToast("Selected questions deleted successfully");
-      window.setTimeout(() => setToast(""), 1800);
-    },
-    onError: (err) => alert(getErrorMessage(err)),
-  });
-
   // Handlers
-  const handleBulkDelete = () => {
-    if (selectedQuestionIds.length === 0) return;
-    if (
-      confirm(
-        `Are you sure you want to delete the ${selectedQuestionIds.length} selected question(s) from database and dashboard?`
-      )
-    ) {
-      deleteBulkMutation.mutate(selectedQuestionIds);
-    }
-  };
-
-  const handleDownloadCsv = () => {
-    if (selectedQuestionIds.length === 0) return;
-
-    const selectedQuestions = subjectQuestions.filter((q) =>
-      selectedQuestionIds.includes(q.id || q.question)
-    );
-
-    const headers = [
-      "question",
-      "option1",
-      "option2",
-      "option3",
-      "option4",
-      "correct_option",
-      "difficulty",
-      "class",
-      "topic",
-      "sub_topic",
-    ];
-
-    const escapeCsvValue = (val: string) => {
-      if (!val) return '""';
-      const cleanVal = val.replace(/"/g, '""');
-      return `"${cleanVal}"`;
-    };
-
-    const csvRows = [
-      headers.join(","),
-      ...selectedQuestions.map((q) => {
-        const topicName = topics.find((t) => t.id === q.topic_id)?.name ?? "";
-        const row = [
-          q.question,
-          q.option1,
-          q.option2,
-          q.option3,
-          q.option4,
-          q.correct_option,
-          q.difficulty || "easy",
-          q.class || "Class 10",
-          topicName,
-          q.sub_topic_name || "",
-        ];
-        return row.map(escapeCsvValue).join(",");
-      }),
-    ];
-
-    const csvContent = csvRows.join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `selected_questions_${Date.now()}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
   const handleOpenAddModal = () => {
     setEditingIndex(null);
     setEditingQuestionId(null);
@@ -767,7 +688,7 @@ export const TeacherDashboard = () => {
     setModalOpen(true);
   };
 
-  const handleSaveQuestion: SubmitHandler<QuestionFormValues> = (values) => {
+  const handleSaveQuestion: SubmitHandler<QuestionFormValues> = async (values) => {
     setFormError("");
     if (values.topic_id === "new" && !values.new_topic_name?.trim()) {
       setFormError("New topic name is required");
@@ -778,24 +699,60 @@ export const TeacherDashboard = () => {
       return;
     }
 
-    const payload: Question = {
-      ...values,
-      difficulty: values.difficulty || undefined,
-      topic_id: values.topic_id || undefined,
-      sub_topic_id: values.sub_topic_id || undefined,
-      new_topic_name: values.topic_id === "new" ? values.new_topic_name?.trim() : undefined,
-      new_sub_topic_name: (values.topic_id === "new" || values.sub_topic_id === "new") ? values.new_sub_topic_name?.trim() : undefined,
-      subject_id: teacherSubject.id,
-      media_url: values.media_url || undefined,
-      image_url: values.image_url || "",
-      type: "mcq",
-      test_id: "", // Or unlinked initially
-    };
+    if (values.type === "passage_sub_question") {
+      if (values.passage_id === "new" && !values.passage_title?.trim()) {
+        setFormError("Passage title is required for a new passage");
+        return;
+      }
+      if (values.passage_id === "new" && !values.passage_content?.trim()) {
+        setFormError("Passage content is required for a new passage");
+        return;
+      }
+      if (!values.passage_id) {
+        setFormError("Please select or create a passage for this question");
+        return;
+      }
+    }
 
-    if (editingQuestionId) {
-      updateMutation.mutate({ id: editingQuestionId, payload });
-    } else {
-      createMutation.mutate(payload);
+    try {
+      let finalPassageId = values.passage_id;
+
+      if (values.type === "passage_sub_question" && values.passage_id === "new") {
+        const newPassage = await createPassage({
+          title: values.passage_title,
+          content: values.passage_content,
+          subject_id: teacherSubject.id,
+          class: values.class,
+        });
+        finalPassageId = newPassage.id;
+        setValue("passage_id", finalPassageId);
+        setValue("passage_title", "");
+        setValue("passage_content", "");
+        await queryClient.invalidateQueries({ queryKey: ["passages"] });
+      }
+
+      const payload: Question = {
+        ...values,
+        difficulty: values.difficulty || undefined,
+        topic_id: values.topic_id || undefined,
+        sub_topic_id: values.sub_topic_id || undefined,
+        new_topic_name: values.topic_id === "new" ? values.new_topic_name?.trim() : undefined,
+        new_sub_topic_name: (values.topic_id === "new" || values.sub_topic_id === "new") ? values.new_sub_topic_name?.trim() : undefined,
+        subject_id: teacherSubject.id,
+        media_url: values.media_url || undefined,
+        image_url: values.image_url || "",
+        type: values.type || "mcq",
+        passage_id: values.type === "passage_sub_question" ? finalPassageId : undefined,
+        test_id: "",
+      };
+
+      if (editingQuestionId) {
+        updateMutation.mutate({ id: editingQuestionId, payload });
+      } else {
+        createMutation.mutate(payload);
+      }
+    } catch (err) {
+      setFormError(getErrorMessage(err));
     }
   };
 
@@ -1004,6 +961,66 @@ export const TeacherDashboard = () => {
                 <form onSubmit={handleSubmit(handleSaveQuestion)} className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-8">
                   {/* Left Column: Prompt & Choices */}
                   <div className="space-y-6">
+                    {/* Question Type Selection */}
+                    <div className="space-y-2">
+                      <label className="block">
+                        <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Type</span>
+                        <select
+                          className="h-11 w-full appearance-none rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm text-slate-750 dark:text-slate-200 outline-none transition focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 cursor-pointer font-semibold"
+                          {...register("type")}
+                        >
+                          <option value="mcq">Standard Single MCQ</option>
+                          <option value="passage_sub_question">Passage-based Question</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    {/* Passage Selection / Creation */}
+                    {selectedType === "passage_sub_question" && (
+                      <div className="space-y-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/30 dark:bg-slate-950/10">
+                        <div className="space-y-2">
+                          <label className="block">
+                            <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Select Comprehension Passage</span>
+                            <select
+                              className="h-11 w-full appearance-none rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm text-slate-750 dark:text-slate-200 outline-none transition focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 cursor-pointer font-semibold"
+                              {...register("passage_id")}
+                            >
+                              <option value="">-- Choose existing passage --</option>
+                              {passages
+                                .filter((p: Passage) => !watchedClass || p.class === watchedClass)
+                                .map((p: Passage) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.title}
+                                  </option>
+                                ))}
+                              <option value="new">+ Create New Passage</option>
+                            </select>
+                          </label>
+                        </div>
+
+                        {selectedPassageId === "new" && (
+                          <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-850 animate-fade-in">
+                            <Input
+                              label="Passage Title"
+                              placeholder="Enter a descriptive title for this passage"
+                              error={errors.passage_title?.message}
+                              {...register("passage_title")}
+                            />
+                            <div className="space-y-2">
+                              <label className="block">
+                                <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Content</span>
+                                <textarea
+                                  className="h-40 w-full resize-none rounded-xl border border-slate-250 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold leading-relaxed"
+                                  placeholder="Enter the full comprehension passage text here..."
+                                  {...register("passage_content")}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Prompt Box */}
                     <div className="space-y-2">
                       <label className="block">
@@ -1022,11 +1039,11 @@ export const TeacherDashboard = () => {
                     {/* Options List */}
                     <div className="space-y-3">
                       <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Options (Select Correct Indicator)</span>
-                      
+
                       {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => {
                         const letter = String.fromCharCode(65 + idx); // A, B, C, D
                         const isCorrect = correctOptionValue === opt;
-                        
+
                         // Harmonized vibrant colors for badges
                         const colors = [
                           { text: "text-indigo-650 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
@@ -1036,22 +1053,20 @@ export const TeacherDashboard = () => {
                         ][idx];
 
                         return (
-                          <div 
-                            key={opt} 
-                            className={`flex items-center gap-3.5 p-3.5 rounded-2xl border-2 transition-all duration-250 ${
-                              isCorrect 
-                                ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-950/10 shadow-sm" 
+                          <div
+                            key={opt}
+                            className={`flex items-center gap-3.5 p-3.5 rounded-2xl border-2 transition-all duration-250 ${isCorrect
+                                ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-950/10 shadow-sm"
                                 : "border-slate-150 dark:border-slate-800/80 hover:border-slate-250 dark:hover:border-slate-700 bg-slate-50/20 dark:bg-slate-900/30"
-                            }`}
+                              }`}
                           >
                             <button
                               type="button"
                               onClick={() => setValue("correct_option", opt)}
-                              className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-xs border shrink-0 transition-all ${
-                                isCorrect 
-                                  ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20" 
+                              className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-xs border shrink-0 transition-all ${isCorrect
+                                  ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20"
                                   : `${colors.bg} ${colors.border} ${colors.text} hover:scale-105`
-                              }`}
+                                }`}
                               title={`Set Option ${letter} as correct`}
                             >
                               {isCorrect ? "✓" : letter}
@@ -1059,11 +1074,10 @@ export const TeacherDashboard = () => {
                             <div className="flex-1">
                               <Input
                                 placeholder={`Option ${idx + 1}`}
-                                className={`h-10 text-sm font-semibold transition-all focus:ring-4 focus:ring-indigo-550/10 ${
-                                  isCorrect 
-                                    ? "border-emerald-250 dark:border-emerald-900 focus:border-emerald-500" 
+                                className={`h-10 text-sm font-semibold transition-all focus:ring-4 focus:ring-indigo-550/10 ${isCorrect
+                                    ? "border-emerald-250 dark:border-emerald-900 focus:border-emerald-500"
                                     : "border-slate-200 dark:border-slate-850 focus:border-indigo-500"
-                                }`}
+                                  }`}
                                 error={errors[opt]?.message}
                                 {...register(opt)}
                               />
@@ -1090,11 +1104,10 @@ export const TeacherDashboard = () => {
                                 e.preventDefault();
                                 setValue("class", cls);
                               }}
-                              className={`py-2.5 px-3.5 rounded-xl text-xs font-bold border transition-all duration-205 ${
-                                isActive
+                              className={`py-2.5 px-3.5 rounded-xl text-xs font-bold border transition-all duration-205 ${isActive
                                   ? "bg-indigo-605 border-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]"
                                   : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                              }`}
+                                }`}
                             >
                               {cls}
                             </button>
@@ -1121,11 +1134,10 @@ export const TeacherDashboard = () => {
                                 e.preventDefault();
                                 setValue("difficulty", diff.value);
                               }}
-                              className={`py-2.5 px-1.5 rounded-xl text-xs font-bold border text-center transition-all duration-205 ${
-                                isActive
+                              className={`py-2.5 px-1.5 rounded-xl text-xs font-bold border text-center transition-all duration-205 ${isActive
                                   ? `${diff.activeClass} shadow-md scale-[1.02]`
                                   : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                              }`}
+                                }`}
                             >
                               {diff.label}
                             </button>
@@ -1414,8 +1426,8 @@ export const TeacherDashboard = () => {
               <article
                 onClick={() => setDifficultyFilter("all")}
                 className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "all"
-                    ? "border-indigo-500 bg-indigo-50/20 dark:border-indigo-855 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20"
-                    : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-slate-350 dark:hover:border-slate-700 shadow-sm"
+                  ? "border-indigo-500 bg-indigo-50/20 dark:border-indigo-855 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20"
+                  : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-slate-350 dark:hover:border-slate-700 shadow-sm"
                   }`}
               >
                 <div className="p-2 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl text-indigo-500 mb-2.5 group-hover:scale-110 transition-transform">
@@ -1429,8 +1441,8 @@ export const TeacherDashboard = () => {
               <article
                 onClick={() => setDifficultyFilter("easy")}
                 className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "easy"
-                    ? "border-emerald-500 bg-emerald-50/20 dark:border-emerald-855 dark:bg-emerald-955/20 ring-2 ring-emerald-500/20"
-                    : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-emerald-300 dark:hover:border-emerald-900/40 shadow-sm"
+                  ? "border-emerald-500 bg-emerald-50/20 dark:border-emerald-855 dark:bg-emerald-955/20 ring-2 ring-emerald-500/20"
+                  : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-emerald-300 dark:hover:border-emerald-900/40 shadow-sm"
                   }`}
               >
                 <div className="p-2 bg-emerald-50 dark:bg-emerald-950/50 rounded-xl text-emerald-500 mb-2.5 group-hover:scale-110 transition-transform">
@@ -1444,8 +1456,8 @@ export const TeacherDashboard = () => {
               <article
                 onClick={() => setDifficultyFilter("medium")}
                 className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "medium"
-                    ? "border-amber-500 bg-amber-50/20 dark:border-amber-855 dark:bg-amber-955/20 ring-2 ring-amber-500/20"
-                    : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-amber-300 dark:hover:border-amber-900/40 shadow-sm"
+                  ? "border-amber-500 bg-amber-50/20 dark:border-amber-855 dark:bg-amber-955/20 ring-2 ring-amber-500/20"
+                  : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-amber-300 dark:hover:border-amber-900/40 shadow-sm"
                   }`}
               >
                 <div className="p-2 bg-amber-50 dark:bg-amber-955/50 rounded-xl text-amber-500 mb-2.5 group-hover:scale-110 transition-transform">
@@ -1459,8 +1471,8 @@ export const TeacherDashboard = () => {
               <article
                 onClick={() => setDifficultyFilter("hard")}
                 className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "hard"
-                    ? "border-rose-500 bg-rose-50/20 dark:border-rose-855 dark:bg-rose-955/20 ring-2 ring-rose-500/20"
-                    : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-rose-300 dark:hover:border-rose-900/40 shadow-sm"
+                  ? "border-rose-500 bg-rose-50/20 dark:border-rose-855 dark:bg-rose-955/20 ring-2 ring-rose-500/20"
+                  : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-rose-300 dark:hover:border-rose-900/40 shadow-sm"
                   }`}
               >
                 <div className="p-2 bg-rose-50 dark:bg-rose-955/50 rounded-xl text-rose-500 mb-2.5 group-hover:scale-110 transition-transform">
@@ -1525,114 +1537,31 @@ export const TeacherDashboard = () => {
                   </div>
                 </div>
               ) : (
-                <>
-                  {selectedQuestionIds.length > 0 && (
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100/60 dark:border-indigo-900/40 rounded-xl p-3.5 mb-4 animate-fade-in shadow-sm gap-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                          {selectedQuestionIds.length} question{selectedQuestionIds.length > 1 ? "s" : ""} selected
-                        </span>
-                        {selectedQuestionIds.length < filteredQuestions.length && (
-                          <>
-                            <span className="text-slate-300 dark:text-slate-750">|</span>
-                            <button
-                              type="button"
-                              onClick={handleSelectAll}
-                              className="text-xs font-extrabold text-indigo-650 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-305 underline cursor-pointer font-sans"
-                            >
-                              Select All {filteredQuestions.length} Questions
-                            </button>
-                          </>
-                        )}
-                        <span className="text-slate-300 dark:text-slate-750">|</span>
-                        <button
-                          type="button"
-                          onClick={handleClearSelection}
-                          className="text-xs font-extrabold text-rose-650 hover:text-rose-705 dark:text-rose-455 dark:hover:text-rose-350 underline cursor-pointer font-sans"
-                        >
-                          Clear Selection
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-2 sm:ml-auto">
-                        <button
-                          type="button"
-                          onClick={handleDownloadCsv}
-                          className="h-8.5 rounded-lg px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-sm hover:shadow flex items-center gap-1.5 active:scale-95 cursor-pointer font-sans"
-                        >
-                          <FileSpreadsheet className="h-3.5 w-3.5 text-white" />
-                          Download CSV
-                        </button>
-                        <button
-                          type="button"
-                          disabled={deleteBulkMutation.isPending}
-                          onClick={handleBulkDelete}
-                          className="h-8.5 rounded-lg px-3 text-xs bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 text-white font-bold transition-all shadow-sm hover:shadow flex items-center gap-1.5 active:scale-95 cursor-pointer font-sans"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          {deleteBulkMutation.isPending ? "Deleting..." : "Delete Selected"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  <div className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md shadow-md mb-10 transition-all hover:shadow-lg">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm relative">
-                        <thead className="bg-slate-50/80 dark:bg-slate-950/60 text-xs font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-850 sticky top-0 backdrop-blur-md z-10">
-                          <tr>
-                            <th className="px-6 py-4.5 w-12 text-center">
-                              {selectedQuestionIds.length > 0 && (
-                                <input
-                                  type="checkbox"
-                                  checked={selectedQuestionIds.length === filteredQuestions.filter(q => q.id || q.question).length}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      handleSelectAll();
-                                    } else {
-                                      handleClearSelection();
-                                    }
-                                  }}
-                                  className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
-                                  title="Select All"
-                                />
-                              )}
-                            </th>
-                            <th className="px-6 py-4.5 w-14 text-center">#</th>
-                            <th className="px-6 py-4.5">Question Prompt</th>
-                            <th className="px-6 py-4.5 w-24">Image</th>
-                            <th className="px-6 py-4.5 w-44">Topic</th>
-                            <th className="px-6 py-4.5 w-32">Difficulty</th>
-                            <th className="px-6 py-4.5 w-40 text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                          {filteredQuestions.map((q, index) => {
-                            const qKey = q.id || q.question;
-                            const isSelected = selectedQuestionIds.includes(qKey);
-                            const topicName = topics.find(t => t.id === q.topic_id)?.name ?? "General";
-                            const diffLower = (q.difficulty || "").toLowerCase().trim();
-                            const difficultyColor =
-                              diffLower === "easy" ? "green" :
-                                diffLower === "medium" ? "yellow" :
-                                  (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
+                <div className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md shadow-md mb-10 transition-all hover:shadow-lg">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm relative">
+                      <thead className="bg-slate-50/80 dark:bg-slate-950/60 text-xs font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-850 sticky top-0 backdrop-blur-md z-10">
+                        <tr>
+                          <th className="px-6 py-4.5 w-14 text-center">#</th>
+                          <th className="px-6 py-4.5">Question Prompt</th>
+                          <th className="px-6 py-4.5 w-24">Image</th>
+                          <th className="px-6 py-4.5 w-44">Topic</th>
+                          <th className="px-6 py-4.5 w-32">Difficulty</th>
+                          <th className="px-6 py-4.5 w-40 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                        {filteredQuestions.map((q, index) => {
+                          const topicName = topics.find(t => t.id === q.topic_id)?.name ?? "General";
+                          const diffLower = (q.difficulty || "").toLowerCase().trim();
+                          const difficultyColor =
+                            diffLower === "easy" ? "green" :
+                              diffLower === "medium" ? "yellow" :
+                                (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
 
-                            return (
-                              <tr
-                                key={q.id ?? index}
-                                className={`group transition-all duration-200 ${
-                                  isSelected
-                                    ? "bg-indigo-50/30 dark:bg-indigo-950/20 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30"
-                                    : "odd:bg-white/40 even:bg-slate-55/10 dark:odd:bg-slate-900/20 dark:even:bg-slate-900/5 hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10"
-                                }`}
-                              >
-                                <td className="px-6 py-4.5 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => handleToggleSelect(qKey)}
-                                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
-                                  />
-                                </td>
-                                <td className="px-6 py-4.5 text-center font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">{index + 1}</td>
+                          return (
+                            <tr key={q.id ?? index} className="group odd:bg-white/40 even:bg-slate-55/10 dark:odd:bg-slate-900/20 dark:even:bg-slate-900/5 hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10 transition-all duration-200">
+                              <td className="px-6 py-4.5 text-center font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">{index + 1}</td>
                               <td className="px-6 py-4.5">
                                 <div
                                   className="font-bold text-slate-800 dark:text-slate-200 leading-relaxed max-w-xl group-hover:text-indigo-650 dark:group-hover:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline cursor-pointer transition-all"
@@ -1712,7 +1641,6 @@ export const TeacherDashboard = () => {
                     </table>
                   </div>
                 </div>
-                </>
               )}
             </div>
           </div>
@@ -1926,6 +1854,66 @@ export const TeacherDashboard = () => {
           }
         >
           <form className="space-y-4" onSubmit={handleSubmit(handleSaveQuestion)}>
+            {/* Question Type Selection */}
+            <div className="space-y-2">
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Type</span>
+                <select
+                  className="h-10 w-full appearance-none rounded-md border border-slate-300 bg-white dark:bg-slate-950 px-3 text-sm text-slate-750 dark:text-slate-200 outline-none transition focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 cursor-pointer font-semibold"
+                  {...register("type")}
+                >
+                  <option value="mcq">Standard Single MCQ</option>
+                  <option value="passage_sub_question">Passage-based Question</option>
+                </select>
+              </label>
+            </div>
+
+            {/* Passage Selection / Creation */}
+            {selectedType === "passage_sub_question" && (
+              <div className="space-y-3 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50/30 dark:bg-slate-950/10">
+                <div className="space-y-1">
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Select Comprehension Passage</span>
+                    <select
+                      className="h-10 w-full appearance-none rounded-md border border-slate-300 bg-white dark:bg-slate-950 px-3 text-sm text-slate-750 dark:text-slate-200 outline-none transition focus:border-indigo-550 focus:ring-4 focus:ring-indigo-550/10 cursor-pointer font-semibold"
+                      {...register("passage_id")}
+                    >
+                      <option value="">-- Choose existing passage --</option>
+                      {passages
+                        .filter((p: Passage) => !watchedClass || p.class === watchedClass)
+                        .map((p: Passage) => (
+                          <option key={p.id} value={p.id}>
+                            {p.title}
+                          </option>
+                        ))}
+                      <option value="new">+ Create New Passage</option>
+                    </select>
+                  </label>
+                </div>
+
+                {selectedPassageId === "new" && (
+                  <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-850 animate-fade-in">
+                    <Input
+                      label="Passage Title"
+                      placeholder="Enter passage title"
+                      error={errors.passage_title?.message}
+                      {...register("passage_title")}
+                    />
+                    <div className="space-y-1">
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Content</span>
+                        <textarea
+                          className="h-28 w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none placeholder:text-slate-300 focus:border-indigo-550 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold"
+                          placeholder="Enter comprehension passage content..."
+                          {...register("passage_content")}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Question Text */}
             <label className="block">
               <span className="mb-2 block text-sm font-semibold text-slate-700">Question Prompt</span>
@@ -2123,6 +2111,24 @@ export const TeacherDashboard = () => {
         >
           {previewQuestion && (
             <div className="space-y-5">
+              {previewQuestion.passage_id && (
+                (() => {
+                  const p = passages.find((x: Passage) => x.id === previewQuestion.passage_id);
+                  if (!p) return null;
+                  return (
+                    <div className="bg-indigo-50/50 dark:bg-slate-800/40 rounded-xl p-4 border border-indigo-100/50 dark:border-slate-800 shadow-inner mb-2 animate-fade-in">
+                      <div className="flex items-center gap-2 mb-2 text-indigo-700 dark:text-indigo-400 font-extrabold text-xs uppercase tracking-wider">
+                        <BookOpen className="h-4 w-4 text-indigo-500 shrink-0" />
+                        Passage Context: {p.title}
+                      </div>
+                      <div className="text-xs text-slate-650 dark:text-slate-350 leading-relaxed font-semibold max-h-40 overflow-y-auto whitespace-pre-wrap">
+                        {p.content}
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+
               <div className="text-slate-800 dark:text-slate-200 text-sm font-bold border-b border-slate-100 dark:border-slate-800/80 pb-3 whitespace-pre-wrap leading-relaxed">
                 {previewQuestion.question}
               </div>
@@ -2145,17 +2151,15 @@ export const TeacherDashboard = () => {
                   return (
                     <div
                       key={optKey}
-                      className={`flex items-center gap-3 p-3 rounded-lg border text-xs font-semibold ${
-                        isCorrect
+                      className={`flex items-center gap-3 p-3 rounded-lg border text-xs font-semibold ${isCorrect
                           ? "border-emerald-500 bg-emerald-50/25 text-emerald-800 dark:text-emerald-400"
                           : "border-slate-100 dark:border-slate-800/60 text-slate-600 dark:text-slate-400"
-                      }`}
+                        }`}
                     >
-                      <span className={`h-6 w-6 rounded flex items-center justify-center font-bold border ${
-                        isCorrect
+                      <span className={`h-6 w-6 rounded flex items-center justify-center font-bold border ${isCorrect
                           ? "bg-emerald-600 border-emerald-600 text-white"
                           : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400"
-                      }`}>
+                        }`}>
                         {optLetter}
                       </span>
                       <span>{optText}</span>
