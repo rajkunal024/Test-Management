@@ -57,7 +57,7 @@ export const questionSchema = z.object({
   option2: z.string().optional(),
   option3: z.string().optional(),
   option4: z.string().optional(),
-  correct_option: z.enum(["option1", "option2", "option3", "option4"]).optional(),
+  correct_option: z.string().optional(),
   difficulty: z.string().optional(),
   topic_id: z.string().optional(),
   sub_topic_id: z.string().optional(),

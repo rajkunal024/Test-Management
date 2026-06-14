@@ -109,6 +109,8 @@ export const ResultSchema = new Schema({
   submitted_at: { type: Date, default: Date.now },
   test_copy: [{
     id: { type: String },
+    type: { type: String, default: "mcq" },
+    passage_id: { type: String, default: null },
     question: { type: String },
     option1: { type: String },
     option2: { type: String },

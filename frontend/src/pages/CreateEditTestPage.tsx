@@ -1117,53 +1117,6 @@ export const CreateEditTestPage = () => {
                       )}
                     </div>
                   </div>
-
-                  {/* Difficulty selector */}
-                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-6 shadow-sm space-y-6 lg:col-span-2">
-                    <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
-                      <Award className="h-5 w-5 text-indigo-500" />
-                      <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Difficulty Matrix</h3>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {(["easy", "medium", "hard"] as const).map((diff) => {
-                        const isSelected = csvForm.difficulty === diff;
-                        const colors = {
-                          easy: {
-                            active: "border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 ring-2 ring-emerald-500/20 shadow-sm",
-                            inactive: "border-slate-200 dark:border-slate-800 hover:border-emerald-350 dark:hover:border-emerald-900/50 hover:bg-emerald-50/5 dark:hover:bg-emerald-950/5"
-                          },
-                          medium: {
-                            active: "border-amber-500 bg-amber-50/30 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 ring-2 ring-amber-500/20 shadow-sm",
-                            inactive: "border-slate-200 dark:border-slate-800 hover:border-amber-350 dark:hover:border-amber-900/50 hover:bg-amber-50/5 dark:hover:bg-amber-950/5"
-                          },
-                          hard: {
-                            active: "border-rose-500 bg-rose-50/30 dark:bg-rose-950/20 text-rose-700 dark:text-rose-450 ring-2 ring-rose-500/20 shadow-sm",
-                            inactive: "border-slate-200 dark:border-slate-800 hover:border-rose-350 dark:hover:border-rose-900/50 hover:bg-rose-50/5 dark:hover:bg-rose-950/5"
-                          }
-                        };
-                        return (
-                          <label
-                            key={diff}
-                            className={`flex flex-col items-center justify-center p-4.5 rounded-xl border text-center transition-all duration-350 cursor-pointer ${
-                              isSelected ? colors[diff].active : colors[diff].inactive
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="difficulty"
-                              checked={isSelected}
-                              onChange={() => setCsvForm(p => ({ ...p, difficulty: diff }))}
-                              className="sr-only"
-                            />
-                            <span className="text-xs font-bold uppercase tracking-wider block">
-                              {diff === "hard" ? "Difficult" : diff}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Scoring Setup */}
@@ -1561,61 +1514,7 @@ export const CreateEditTestPage = () => {
                 </div>
               </div>
 
-              {/* Card 3: Difficulty Selector */}
-              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-6 shadow-sm space-y-6">
-                <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
-                  <Award className="h-5 w-5 text-indigo-500" />
-                  <h3 className="text-base font-extrabold text-slate-855 dark:text-slate-100 tracking-tight">Difficulty Matrix</h3>
-                </div>
 
-                <Controller
-                  name="difficulty"
-                  control={control}
-                  render={({ field }) => (
-                    <div className="space-y-4">
-                      <span className="block text-sm font-bold text-slate-705 dark:text-slate-350">Slot Target Difficulty</span>
-                      <div className="grid grid-cols-3 gap-3.5">
-                        {(["easy", "medium", "hard"] as const).map((difficulty) => {
-                          const isSelected = selectedDifficulty === difficulty;
-                          const colors = {
-                            easy: {
-                              active: "border-emerald-500 bg-emerald-50/30 dark:bg-emerald-955/20 text-emerald-700 dark:text-emerald-400 ring-2 ring-emerald-500/20 shadow-sm",
-                              inactive: "border-slate-200 dark:border-slate-800 hover:border-emerald-350 dark:hover:border-emerald-900 hover:bg-emerald-50/5 dark:hover:bg-emerald-950/5"
-                            },
-                            medium: {
-                              active: "border-amber-500 bg-amber-50/30 dark:bg-amber-955/20 text-amber-700 dark:text-amber-400 ring-2 ring-amber-500/20 shadow-sm",
-                              inactive: "border-slate-200 dark:border-slate-805 hover:border-amber-350 dark:hover:border-amber-900 hover:bg-emerald-50/5 dark:hover:bg-emerald-950/5"
-                            },
-                            hard: {
-                              active: "border-rose-500 bg-rose-50/30 dark:bg-rose-955/20 text-rose-700 dark:text-rose-455 ring-2 ring-rose-500/20 shadow-sm",
-                              inactive: "border-slate-200 dark:border-slate-805 hover:border-rose-350 dark:hover:border-rose-900 hover:bg-emerald-50/5 dark:hover:bg-emerald-950/5"
-                            }
-                          };
-                          return (
-                            <label
-                              key={difficulty}
-                              className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all duration-355 cursor-pointer ${
-                                isSelected ? colors[difficulty].active : colors[difficulty].inactive
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name="manual-difficulty"
-                                checked={isSelected}
-                                onChange={() => field.onChange(difficulty)}
-                                className="sr-only"
-                              />
-                              <span className="text-xs font-bold uppercase tracking-wider block">
-                                {difficulty === "hard" ? "Difficult" : difficulty}
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                />
-              </div>
             </div>
 
             {/* Card 4: Scoring Setup */}

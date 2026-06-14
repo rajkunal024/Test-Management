@@ -404,7 +404,11 @@ export const MonitorTestPage = () => {
                   }
 
                   return filteredQuestions.map((item: any, idx: number) => {
-                    const isCorrect = item.selected_option === item.correct_option;
+                    const correctParts = (item.correct_option || "").split(",").map((o: string) => o.trim()).filter(Boolean).sort();
+                    const selectedParts = (item.selected_option || "").split(",").map((o: string) => o.trim()).filter(Boolean).sort();
+                    const isCorrect = correctParts.length > 0 &&
+                                      selectedParts.length === correctParts.length &&
+                                      selectedParts.every((val: string, index: number) => val === correctParts[index]);
                     const isUnattempted = !item.selected_option;
 
                     let statusBorder = "border-slate-200";
@@ -439,14 +443,20 @@ export const MonitorTestPage = () => {
                         <div className="grid gap-2 text-xs md:grid-cols-2">
                           {["option1", "option2", "option3", "option4"].map((optKey, oIdx) => {
                             const optText = item[optKey];
-                            const isSelected = item.selected_option === optKey;
-                            const isCorrectOpt = item.correct_option === optKey;
+                            const isSelected = item.selected_option
+                              ? item.selected_option.split(",").map((o: string) => o.trim()).includes(optKey)
+                              : false;
+                            const isCorrectOpt = item.correct_option
+                              ? item.correct_option.split(",").map((o: string) => o.trim()).includes(optKey)
+                              : false;
 
                             let optStyle = "border-slate-100 text-slate-500 bg-white";
                             if (isSelected) {
-                              optStyle = isCorrect
-                                ? "border-emerald-400 bg-emerald-50 text-emerald-800"
-                                : "border-rose-400 bg-rose-50 text-rose-800";
+                              if (isCorrectOpt) {
+                                optStyle = "border-emerald-400 bg-emerald-50 text-emerald-800";
+                              } else {
+                                optStyle = "border-rose-400 bg-rose-50 text-rose-800";
+                              }
                             } else if (isCorrectOpt) {
                               optStyle = "border-emerald-300 bg-emerald-50/20 text-emerald-700";
                             }

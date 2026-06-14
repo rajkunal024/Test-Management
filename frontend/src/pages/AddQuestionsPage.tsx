@@ -316,7 +316,33 @@ export const AddQuestionsPage = () => {
                   </div>
                 ) : (
                   <div className="flex-1 flex flex-col justify-between">
-                    <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-1.5 scrollbar-thin">
+                    <div className="flex items-center justify-between mb-3.5 px-2 border-b border-slate-100 dark:border-slate-800/60 pb-2.5 shrink-0">
+                      <label className="flex items-center gap-2.5 cursor-pointer font-bold text-xs text-slate-650 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedPoolIds.length === availablePoolQuestions.length && availablePoolQuestions.length > 0}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPoolIds(availablePoolQuestions.map((q) => q.id ?? "").filter(Boolean));
+                            } else {
+                              setSelectedPoolIds([]);
+                            }
+                          }}
+                          className="h-4 w-4 rounded text-indigo-650 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer border-slate-300 dark:border-slate-700"
+                        />
+                        <span>Select All ({availablePoolQuestions.length})</span>
+                      </label>
+                      {selectedPoolIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPoolIds([])}
+                          className="text-[10px] text-indigo-600 dark:text-indigo-400 font-extrabold hover:underline"
+                        >
+                          Clear Selection
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-3.5 max-h-[46vh] overflow-y-auto pr-1.5 scrollbar-thin">
                       {availablePoolQuestions.map((q) => {
                         const isSelected = selectedPoolIds.includes(q.id ?? "");
                         return (

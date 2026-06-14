@@ -134,6 +134,8 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
 
     const test_copy = questions.map((q: any) => ({
       id: q.id,
+      type: q.type || "mcq",
+      passage_id: q.passage_id || null,
       question: q.question,
       option1: q.option1,
       option2: q.option2,
@@ -150,13 +152,29 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
       if (selected === undefined || selected === null || selected === "") {
         unattempted++;
         score += Number(test.unattempt_marks ?? 0);
-      } else if (selected === q.correct_option) {
-        correct_answers++;
-        score += Number(test.correct_marks ?? 0);
       } else {
-        wrong_answers++;
-        const penalty = Number(test.wrong_marks ?? 0);
-        score += penalty < 0 ? penalty : -penalty;
+        const correctParts = (q.correct_option || "").split(",").map((o: string) => o.trim()).filter(Boolean).sort();
+        const selectedParts = (selected || "").split(",").map((o: string) => o.trim()).filter(Boolean).sort();
+
+        const isMatch = correctParts.length > 0 &&
+                        selectedParts.length === correctParts.length &&
+                        selectedParts.every((val: string, index: number) => val === correctParts[index]);
+
+        const isMSQ = (q.correct_option || "").includes(",");
+
+        if (isMatch) {
+          correct_answers++;
+          score += Number(test.correct_marks ?? 0);
+        } else {
+          wrong_answers++;
+          if (isMSQ) {
+            // MSQ incorrect attempt receives exactly 0 marks
+            score += 0;
+          } else {
+            const penalty = Number(test.wrong_marks ?? 0);
+            score += penalty < 0 ? penalty : -penalty;
+          }
+        }
       }
     });
 

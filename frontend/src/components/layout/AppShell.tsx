@@ -178,65 +178,34 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
   return (
     <div className="min-h-screen bg-white text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
       <aside
-        className={`fixed inset-y-0 left-0 z-30 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 transition-all duration-300 ${
-          navHidden
+        className={`fixed inset-y-0 left-0 z-30 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 transition-all duration-300 ${navHidden
             ? "w-0 -translate-x-full border-r-0 opacity-0 pointer-events-none"
             : compactRail
-            ? "w-[156px] lg:block hidden"
-            : "w-[252px] lg:block hidden"
-        }`}
+              ? "w-[64px] lg:block hidden"
+              : "w-[252px] lg:block hidden"
+          }`}
       >
-        <div className={`${compactRail ? "px-4" : "px-7"} flex h-[100px] items-center border-b border-slate-100 dark:border-slate-800/80`}>
-          <Link to="/dashboard" className="cursor-pointer hover:opacity-85 transition flex items-center">
+        <div className={`${compactRail ? "px-0 justify-center" : "px-7"} flex h-[100px] items-center border-b border-slate-100 dark:border-slate-800/80`}>
+          <Link to="/dashboard" className="cursor-pointer hover:opacity-85 transition flex items-center justify-center w-full">
             <Logo compact={compactRail} />
           </Link>
         </div>
         {compactRail ? (
-          <div className="flex">
-            <div className="w-6 border-r border-slate-100 dark:border-slate-800 pt-16">
-              <div className="flex flex-col items-center gap-5">
-                {railIcons.map((Icon, index) => (
-                  <Icon key={index} className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
-                ))}
+          <nav className="flex flex-col items-center gap-6 py-8">
+            {railIcons.map((Icon, index) => (
+              <div key={index} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition cursor-pointer">
+                <Icon className="h-5 w-5" />
               </div>
-            </div>
-            <nav className="flex-1 px-3 pt-14">
-              {user?.role === "Admin" && (
-                <>
-                  <NavLink
-                    to="/tests/create"
-                    className="mb-3 flex items-center justify-between rounded-md px-2 py-2 text-[11px] font-medium text-slate-600 dark:text-slate-350"
-                  >
-                    Question creation
-                    <span className="text-primary-500">≪</span>
-                  </NavLink>
-                  <p className="mb-4 px-2 text-[11px] text-slate-500 dark:text-slate-400">Total Questions . 50</p>
-                  {["Question 1", "Question 2", "Question 3", "Question x", "Question x", "Question 6"].map((label, index) => (
-                    <div
-                      key={`${label}-${index}`}
-                      className={`mb-2 flex h-7 items-center justify-between rounded-md border px-2 text-[10px] ${
-                        index < 4
-                          ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800/80 dark:bg-emerald-950/20 dark:text-emerald-450"
-                          : "border-slate-200 bg-slate-50 text-slate-300 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-500"
-                      }`}
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                      <span className="flex-1 pl-2">{label}</span>
-                      <span>›</span>
-                    </div>
-                  ))}
-                </>
-              )}
-            </nav>
-          </div>
+            ))}
+          </nav>
         ) : (
           <nav className="space-y-2 px-3 py-8">
             {currentSidebarItems.map(({ label, icon: Icon, to }) => {
               const currentPath = location.pathname + location.search;
-              
+
               const isAddTab = to === "/dashboard?tab=add";
               const isViewTab = to === "/dashboard?tab=view";
-              
+
               let isActive = false;
               if (isAddTab) {
                 isActive = currentPath === "/dashboard" || currentPath === "/dashboard?tab=add" || currentPath.includes("tab=add");
@@ -258,11 +227,10 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                 <div key={label} className="space-y-1">
                   <Link
                     to={isViewTab ? "/dashboard?tab=view&class=all" : to}
-                    className={`relative flex h-12 items-center gap-3 rounded-md px-4 text-sm font-semibold transition-all ${
-                      isActive
+                    className={`relative flex h-12 items-center gap-3 rounded-md px-4 text-sm font-semibold transition-all ${isActive
                         ? "bg-primary-50 text-primary-700 dark:bg-primary-950/30 dark:text-primary-400"
                         : "text-slate-500 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-850 dark:hover:text-slate-200"
-                    }`}
+                      }`}
                   >
                     {isActive ? <span className="absolute left-0 h-9 w-1 rounded-r-full bg-primary-600" /> : null}
                     <Icon className="h-5 w-5" />
@@ -273,17 +241,16 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                     <div className="pl-6 space-y-1 mt-1">
                       {subItems.map((sub) => {
                         const subUrl = `/dashboard?tab=view&class=${encodeURIComponent(sub.classVal)}`;
-                        const isSubActive = searchParams.get("class") === sub.classVal || 
+                        const isSubActive = searchParams.get("class") === sub.classVal ||
                           (!searchParams.get("class") && sub.classVal === "all");
                         return (
                           <Link
                             key={sub.label}
                             to={subUrl}
-                            className={`flex h-9 items-center gap-2 rounded-md px-4 text-xs font-semibold transition-all ${
-                              isSubActive
+                            className={`flex h-9 items-center gap-2 rounded-md px-4 text-xs font-semibold transition-all ${isSubActive
                                 ? "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
                                 : "text-slate-400 hover:bg-slate-50 hover:text-slate-650 dark:text-slate-500 dark:hover:bg-slate-850/50 dark:hover:text-slate-300"
-                            }`}
+                              }`}
                           >
                             <span className={`h-1.5 w-1.5 rounded-full ${isSubActive ? "bg-primary-600 dark:bg-primary-400 animate-pulse" : "bg-slate-300 dark:bg-slate-700"}`} />
                             {sub.label}
@@ -300,9 +267,8 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
       </aside>
 
       <header
-        className={`fixed right-0 top-0 z-20 flex h-[100px] items-center justify-between border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 px-7 transition-all duration-300 ${
-          navHidden ? "left-0" : compactRail ? "left-0 lg:left-[156px]" : "left-0 lg:left-[252px]"
-        }`}
+        className={`fixed right-0 top-0 z-20 flex h-[100px] items-center justify-between border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 px-7 transition-all duration-300 ${navHidden ? "left-0" : compactRail ? "left-0 lg:left-[64px]" : "left-0 lg:left-[252px]"
+          }`}
       >
         {/* Toggle Button for Navigation Panel */}
         <button
@@ -344,14 +310,14 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                 <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full border-2 border-white bg-indigo-600 dark:border-slate-900 animate-pulse" />
               )}
             </button>
-            
+
             {dropdownOpen && (
               <div className="absolute right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-4 shadow-xl z-50 max-h-[380px] overflow-y-auto transform origin-top-right transition-all duration-200 ease-out">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-3">
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Notifications</span>
                   <div className="flex items-center gap-2">
                     {notifications.length > 0 && (
-                      <button 
+                      <button
                         onClick={() => clearNotificationsMutation.mutate()}
                         disabled={clearNotificationsMutation.isPending}
                         className="text-[10px] font-bold text-rose-500 hover:text-rose-700 transition-colors duration-200 lowercase cursor-pointer"
@@ -366,24 +332,22 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                     )}
                   </div>
                 </div>
-                
+
                 <div className={`space-y-2 transition-all duration-300 ease-in-out ${clearNotificationsMutation.isPending ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100"}`}>
                   {notifications.length === 0 ? (
                     <p className="text-xs text-slate-400 py-6 text-center">No notifications yet</p>
                   ) : (
                     notifications.map((n) => (
-                      <div 
-                        key={n.id} 
-                        className={`p-3 rounded-lg border text-left transition duration-155 ${
-                          n.read 
-                            ? "border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/20" 
+                      <div
+                        key={n.id}
+                        className={`p-3 rounded-lg border text-left transition duration-155 ${n.read
+                            ? "border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/20"
                             : "border-indigo-100 bg-indigo-50/20 dark:border-indigo-900/30 dark:bg-indigo-950/30"
-                        }`}
+                          }`}
                       >
                         <div className="flex justify-between items-start gap-2 mb-1">
-                          <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
-                            n.type === "test_live" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-450" : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400"
-                          }`}>
+                          <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${n.type === "test_live" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-450" : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400"
+                            }`}>
                             {n.type === "test_live" ? "Exam Live" : "Results Out"}
                           </span>
                           <span className="text-[9px] font-medium text-slate-400">
@@ -394,16 +358,16 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                         {user?.role === "Student" && (
                           <div className="mt-2 text-right">
                             {n.type === "test_live" ? (
-                              <Link 
-                                to={`/tests/${n.test_id}/attempt`} 
+                              <Link
+                                to={`/tests/${n.test_id}/attempt`}
                                 onClick={() => setDropdownOpen(false)}
                                 className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                               >
                                 Attempt Test →
                               </Link>
                             ) : (
-                              <Link 
-                                to={`/tests/${n.test_id}/result`} 
+                              <Link
+                                to={`/tests/${n.test_id}/result`}
                                 onClick={() => setDropdownOpen(false)}
                                 className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                               >
@@ -571,7 +535,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
         </div>
       </Modal>
 
-      <main className={`min-h-screen pt-[100px] transition-all duration-300 ${navHidden ? "pl-0" : compactRail ? "lg:pl-[156px]" : "lg:pl-[252px]"}`}>{children}</main>
+      <main className={`min-h-screen pt-[100px] transition-all duration-300 ${navHidden ? "pl-0" : compactRail ? "lg:pl-[64px]" : "lg:pl-[252px]"}`}>{children}</main>
     </div>
   );
 };

@@ -11,6 +11,12 @@ import {
   AlertTriangle,
   RotateCcw,
   Sparkles,
+  Sun,
+  Moon,
+  Info,
+  MessageSquare,
+  LayoutGrid,
+  Check,
 } from "lucide-react";
 import { useTest } from "../hooks/useTests";
 import { fetchBulkQuestions, submitAttempt, getAllAttempts, uploadStreamFrame, getPassageById } from "../services/api";
@@ -109,10 +115,37 @@ export const AttemptTestPage = () => {
     };
   }, [envChecked]);
 
+  // Theme state
+  const [isDark, setIsDark] = useState(() => {
+    return document.documentElement.classList.contains("dark") || localStorage.getItem("theme") === "dark";
+  });
+
+  const toggleTheme = () => {
+    const nextDark = !isDark;
+    setIsDark(nextDark);
+    if (nextDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [isDark]);
+
   // Proctoring States and Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hiddenVideoRef = useRef<HTMLVideoElement | null>(null);
   const proctorCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  const navigatorSidebarRef = useRef<HTMLElement | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [hasVideo, setHasVideo] = useState(false);
   const [hasAudio, setHasAudio] = useState(false);
@@ -125,9 +158,13 @@ export const AttemptTestPage = () => {
     timestamp: number;
   }
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [unreadChat, setUnreadChat] = useState(false);
   const [chatInput, setChatInput] = useState("");
+
+  // Toggle States for Header Popovers
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [showNavigatorPopover, setShowNavigatorPopover] = useState(false);
+  const [showProctorFeed, setShowProctorFeed] = useState(false);
+  const [unreadChat, setUnreadChat] = useState(false);
 
   // Internet connectivity monitoring
   useEffect(() => {
@@ -166,8 +203,13 @@ export const AttemptTestPage = () => {
         setHasAudio(stream.getAudioTracks().length > 0);
         setStreamError(false);
 
+        if (hiddenVideoRef.current) {
+          hiddenVideoRef.current.srcObject = stream;
+          hiddenVideoRef.current.play().catch((e) => console.error("Hidden video play error:", e));
+        }
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          videoRef.current.play().catch((e) => console.error("Video play error:", e));
         }
       } catch (err) {
         console.error("Proctoring connection error:", err);
@@ -185,10 +227,17 @@ export const AttemptTestPage = () => {
   }, [envChecked]);
 
   useEffect(() => {
-    if (cameraStream && videoRef.current) {
-      videoRef.current.srcObject = cameraStream;
+    if (cameraStream) {
+      if (hiddenVideoRef.current && hiddenVideoRef.current.srcObject !== cameraStream) {
+        hiddenVideoRef.current.srcObject = cameraStream;
+        hiddenVideoRef.current.play().catch((e) => console.error("Hidden video play error:", e));
+      }
+      if (videoRef.current && videoRef.current.srcObject !== cameraStream) {
+        videoRef.current.srcObject = cameraStream;
+        videoRef.current.play().catch((e) => console.error("Video play error:", e));
+      }
     }
-  }, [cameraStream]);
+  }, [cameraStream, showProctorFeed]);
 
   // Periodic stream frame upload with WebSockets and HTTP fallback
   useEffect(() => {
@@ -206,7 +255,7 @@ export const AttemptTestPage = () => {
     const ctx = canvas.getContext("2d");
 
     const captureFrame = () => {
-      const video = videoRef.current;
+      const video = hiddenVideoRef.current;
       if (video && video.readyState >= 2 && ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         return canvas.toDataURL("image/jpeg", 0.5);
@@ -428,7 +477,7 @@ export const AttemptTestPage = () => {
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [cameraStream]);
+  }, [cameraStream, showProctorFeed, envChecked]);
 
   // Send Chat Message Handler
   const handleSendChatMessage = () => {
@@ -619,6 +668,20 @@ export const AttemptTestPage = () => {
   const [marked, setMarked] = useState<Record<string, boolean>>({});
   const [visited, setVisited] = useState<Record<string, boolean>>({ "0": true });
 
+  useEffect(() => {
+    if (navigatorSidebarRef.current) {
+      const activeBtn = navigatorSidebarRef.current.querySelector(
+        `[data-index="${currentIdx}"]`
+      );
+      if (activeBtn) {
+        activeBtn.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }
+    }
+  }, [currentIdx]);
+
   const currentQuestion = questions[currentIdx];
 
   // Passage Caching State & Fetching Hook
@@ -717,10 +780,31 @@ export const AttemptTestPage = () => {
 
   // Handlers
   const handleSelectOption = (questionId: string, option: string) => {
+    const qObj = questions.find((q) => q.id === questionId);
+    const isMSQ = qObj?.correct_option?.includes(",") ?? false;
+
     setAnswers((prev) => {
-      const updated = { ...prev, [questionId]: option };
-      answersRef.current = updated;
-      return updated;
+      const copy = { ...prev };
+      let newVal = "";
+      if (isMSQ) {
+        const currentSelected = prev[questionId];
+        const parts = currentSelected ? currentSelected.split(",").map(o => o.trim()).filter(Boolean) : [];
+        if (parts.includes(option)) {
+          newVal = parts.filter(o => o !== option).sort().join(",");
+        } else {
+          newVal = [...parts, option].sort().join(",");
+        }
+      } else {
+        newVal = option;
+      }
+
+      if (newVal === "") {
+        delete copy[questionId];
+      } else {
+        copy[questionId] = newVal;
+      }
+      answersRef.current = copy;
+      return copy;
     });
   };
 
@@ -1171,7 +1255,7 @@ export const AttemptTestPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col select-none relative">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-955 flex flex-col select-none relative transition-colors duration-200">
       {!isOnline && (
         <div className="fixed top-0 inset-x-0 z-50 bg-rose-600 text-white px-4 py-2 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-md animate-pulse">
           <AlertTriangle className="h-4 w-4" />
@@ -1179,13 +1263,13 @@ export const AttemptTestPage = () => {
         </div>
       )}
       {/* Distraction-Free Header */}
-      <header className="h-[72px] bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+      <header className="h-[72px] bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm transition-colors duration-200">
         <div className="flex items-center gap-3">
           <Logo compact />
-          <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+          <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
           <div className="hidden sm:block">
-            <h1 className="text-sm font-bold text-slate-800 line-clamp-1">{test.name}</h1>
-            <p className="text-[10px] font-semibold text-indigo-500 tracking-wider uppercase mt-0.5">
+            <h1 className="text-sm font-bold text-slate-800 dark:text-slate-100 line-clamp-1">{test.name}</h1>
+            <p className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400 tracking-wider uppercase mt-0.5">
               {test.subject} • {test.type.replace("_", " ")}
             </p>
           </div>
@@ -1193,11 +1277,11 @@ export const AttemptTestPage = () => {
 
         {/* Progress bar */}
         <div className="hidden md:flex flex-col items-center flex-1 max-w-md px-10">
-          <div className="flex justify-between w-full text-[10px] font-bold text-slate-400 mb-1">
+          <div className="flex justify-between w-full text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1">
             <span>PROGRESS</span>
             <span>{Math.round((stats.answered / totalQuestions) * 100)}% ({stats.answered}/{totalQuestions})</span>
           </div>
-          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-indigo-500 transition-all duration-300 rounded-full"
               style={{ width: `${(stats.answered / totalQuestions) * 100}%` }}
@@ -1205,22 +1289,202 @@ export const AttemptTestPage = () => {
           </div>
         </div>
 
-        {/* Timer Component */}
-        <div className="flex items-center gap-4">
-          <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm font-bold transition duration-300 ${timeLeft !== null && timeLeft < 300
-              ? "bg-rose-50 border-rose-200 text-rose-600 animate-pulse"
-              : "bg-slate-50 border-slate-200 text-slate-700"
+        {/* Action Controls */}
+        <div className="flex items-center gap-3">
+          {/* Proctor Live Feed / Support Chat Popover */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowProctorFeed(!showProctorFeed);
+                setShowInstructions(false);
+                setShowNavigatorPopover(false);
+                setUnreadChat(false);
+              }}
+              className={`flex items-center justify-center h-10 w-10 rounded-xl border transition shrink-0 relative ${
+                showProctorFeed
+                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400"
+                  : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900"
               }`}
-          >
-            <Clock className={`h-4 w-4 ${timeLeft !== null && timeLeft < 300 ? "text-rose-500" : "text-slate-500"}`} />
-            <span>Time Remaining: {formattedTimeLeft}</span>
+              title="Live Proctor Support Feed"
+            >
+              <MessageSquare className="h-5 w-5" />
+              {unreadChat && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 bg-rose-500 rounded-full flex items-center justify-center text-[9px] font-black text-white animate-bounce">
+                  !
+                </span>
+              )}
+            </button>
+
+            {showProctorFeed && (
+              <div className="absolute right-0 mt-3 w-[560px] max-w-[90vw] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-2xl z-50 flex flex-col md:flex-row gap-5">
+                {/* Left: Video feed */}
+                <div className="w-full md:w-1/2 flex flex-col">
+                  <h5 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+                    Live Camera Monitor
+                  </h5>
+                  <div className="relative aspect-video w-full rounded-xl bg-slate-950 overflow-hidden shadow-inner border border-slate-200 dark:border-slate-800 flex items-center justify-center">
+                    {streamError ? (
+                      <div className="text-center p-3 text-rose-500">
+                        <AlertTriangle className="h-7 w-7 mx-auto mb-1 text-rose-500" />
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-rose-500">Device Blocked</p>
+                      </div>
+                    ) : !cameraStream ? (
+                      <div className="text-center text-slate-400">
+                        <Spinner />
+                        <p className="text-[9px] font-bold mt-1.5">Connecting Camera...</p>
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-full">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover scale-x-[-1]"
+                        />
+                        <canvas
+                          ref={proctorCanvasRef}
+                          className="absolute inset-0 w-full h-full pointer-events-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2 text-[9px] text-slate-500 dark:text-slate-450 leading-relaxed font-semibold">
+                    Live device monitoring is active. Do not block the camera lens or exit fullscreen view.
+                  </div>
+                </div>
+
+                {/* Right: Messages list */}
+                <div className="w-full md:w-1/2 flex flex-col border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800 pt-4 md:pt-0 md:pl-5">
+                  <h5 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+                    Proctor Support Chat
+                  </h5>
+                  <div className="flex-1 min-h-[140px] max-h-[180px] overflow-y-auto pr-1 space-y-2 mb-3">
+                    {chatMessages.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-center p-3 text-slate-400 dark:text-slate-500 text-[10px] font-semibold">
+                        No support messages yet. System warnings or messages from the proctor will appear here.
+                      </div>
+                    ) : (
+                      chatMessages.map((msg, mIdx) => {
+                        const isProctor = msg.sender === "Proctor";
+                        return (
+                          <div
+                            key={mIdx}
+                            className={`flex flex-col max-w-[85%] ${isProctor ? "mr-auto" : "ml-auto items-end"}`}
+                          >
+                            <span className="text-[9px] font-bold text-slate-400 mb-0.5">
+                              {msg.sender} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <div
+                              className={`p-2 rounded-xl text-[10px] font-semibold leading-relaxed ${
+                                isProctor
+                                  ? "bg-rose-50 border border-rose-100 text-rose-855 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-350"
+                                  : "bg-indigo-600 text-white"
+                              }`}
+                            >
+                              {msg.text}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                  {/* Chat input */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSendChatMessage()}
+                      placeholder="Type a message..."
+                      className="flex-1 text-[11px] px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-850 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                    />
+                    <Button
+                      variant="primary"
+                      onClick={handleSendChatMessage}
+                      className="h-7 text-[10px] px-2.5 bg-indigo-600 text-white"
+                    >
+                      Send
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
+          {/* Instructions popover */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowInstructions(!showInstructions);
+                setShowNavigatorPopover(false);
+                setShowProctorFeed(false);
+              }}
+              className={`flex items-center justify-center h-10 w-10 rounded-xl border transition shrink-0 ${
+                showInstructions
+                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400"
+                  : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900"
+              }`}
+              title="Show Instructions"
+            >
+              <Info className="h-5 w-5" />
+            </button>
+
+            {showInstructions && (
+              <div className="absolute right-0 mt-3 w-80 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 dark:from-slate-955 dark:to-slate-900 text-white p-5 shadow-2xl border border-slate-850 z-50">
+                <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-2.5">
+                  <h4 className="text-xs font-black tracking-wider text-slate-400 uppercase flex items-center gap-1.5">
+                    <Info className="h-4 w-4 text-indigo-400" />
+                    Instructions
+                  </h4>
+                  <button
+                    onClick={() => setShowInstructions(false)}
+                    className="text-slate-500 hover:text-white text-xs font-bold font-mono transition"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <ul className="text-xs text-slate-300 space-y-3 leading-relaxed list-disc list-inside font-semibold">
+                  <li>Marks Scheme: +{test.correct_marks} / {test.wrong_marks} marks.</li>
+                  <li>Leaving or refreshing the tab does <strong>NOT</strong> pause the timer.</li>
+                  <li>Auto-submit occurs when the timer ends.</li>
+                  <li>Review marked questions using the navigator palette.</li>
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Theme switcher */}
+          <button
+            onClick={toggleTheme}
+            className="flex items-center justify-center h-10 w-10 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 transition shrink-0"
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDark ? (
+              <Sun className="h-4 w-4 text-amber-500" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </button>
+
+          {/* Timer Display */}
+          <div
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg border font-mono text-sm font-bold transition duration-300 shrink-0 ${
+              timeLeft !== null && timeLeft < 300
+                ? "bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-455 animate-pulse"
+                : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200"
+            }`}
+          >
+            <Clock className={`h-4 w-4 ${timeLeft !== null && timeLeft < 300 ? "text-rose-550 animate-bounce" : "text-slate-500"}`} />
+            <span>{formattedTimeLeft}</span>
+          </div>
+
+          {/* Submit Button */}
           <Button
             variant="primary"
             onClick={handleManualSubmit}
-            className="h-10 bg-indigo-600 hover:bg-indigo-700 text-xs px-4"
+            className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4"
             icon={<Send className="h-3.5 w-3.5" />}
           >
             Submit
@@ -1229,415 +1493,260 @@ export const AttemptTestPage = () => {
       </header>
 
       {/* Main Attempt Area */}
-      <div className="flex-1 flex flex-col lg:flex-row max-w-[1440px] mx-auto w-full p-4 lg:p-6 gap-6">
+      <div className="flex-1 flex flex-col lg:flex-row w-full p-4 lg:py-0 lg:pl-0 lg:pr-16 gap-6 lg:gap-0">
 
         {/* Left Column: Question Card */}
         <main className="flex-1 flex flex-col min-w-0">
-          <article className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col flex-1 p-6 lg:p-8">
+          <article className="bg-white dark:bg-slate-900 rounded-xl lg:rounded-none border border-slate-200 dark:border-slate-800 lg:border-0 shadow-sm lg:shadow-none flex flex-col flex-1 p-6 lg:p-8 transition-colors duration-200">
             {/* Question Header Info */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-6">
               <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">
                 QUESTION {currentIdx + 1} OF {totalQuestions}
               </span>
+
+              {/* Status Squares */}
+              <div className="hidden md:flex items-center gap-3">
+                <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 shadow-sm">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span>Answered ({stats.answered})</span>
+                </div>
+                <div className="bg-rose-50 dark:bg-rose-955/20 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-350 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 shadow-sm">
+                  <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0 animate-pulse" />
+                  <span>Not Answered ({stats.notAnswered})</span>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-955/20 border border-purple-200 dark:border-purple-900/50 text-purple-700 dark:text-purple-300 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 shadow-sm">
+                  <span className="h-2 w-2 rounded-full bg-purple-500 shrink-0" />
+                  <span>Marked ({stats.marked})</span>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 shadow-sm">
+                  <span className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                  <span>Not Visited ({stats.notVisited})</span>
+                </div>
+              </div>
+
               <div className="flex items-center gap-2">
-                <Badge tone={
-                  (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" :
-                    (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" :
-                      (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
-                }>
-                  {test.difficulty}
-                </Badge>
                 <Badge tone="blue">+{test.correct_marks} / {test.wrong_marks} Marks</Badge>
               </div>
             </div>
 
-            {currentQuestion.passage_id ? (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 min-h-0">
-                {/* Left Column: Passage Content */}
-                <div className="lg:col-span-6 overflow-y-auto pr-4 border-r border-slate-100 flex flex-col max-h-[65vh]">
-                  {loadingPassage === currentQuestion.passage_id || !passageCache[currentQuestion.passage_id] ? (
-                    <div className="flex flex-col items-center justify-center flex-1 py-12">
-                      <Spinner />
-                      <p className="mt-2 text-xs font-semibold text-slate-400">Loading passage context...</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="bg-gradient-to-r from-indigo-50 to-blue-50/50 rounded-xl p-5 border border-indigo-100/50 shadow-sm mb-4">
-                        <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-indigo-500 shrink-0" />
-                          {passageCache[currentQuestion.passage_id].title}
-                        </h3>
+            {/* Split layout: Question details on the left, Option selector cards on the right */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+              {/* Left Column: Dedicated to the question context */}
+              <div className="flex flex-col min-w-0 lg:border-r lg:border-slate-100 lg:dark:border-slate-800/40 lg:pr-8">
+                {/* Conditionally Render Passage Box (Paragraph context) */}
+                {currentQuestion.passage_id && (
+                  <div className="bg-slate-50/50 dark:bg-slate-900/35 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm mb-6 transition-all duration-200">
+                    {loadingPassage === currentQuestion.passage_id || !passageCache[currentQuestion.passage_id] ? (
+                      <div className="flex flex-col items-center justify-center py-6">
+                        <Spinner />
+                        <p className="mt-2 text-xs font-semibold text-slate-400">Loading passage context...</p>
                       </div>
-                      <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap font-medium p-2 overflow-y-auto">
-                        {passageCache[currentQuestion.passage_id].content}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Right Column: Question Prompt & Options & Footer */}
-                <div className="lg:col-span-6 flex flex-col justify-between h-full min-h-0">
-                  <div className="flex-1 overflow-y-auto pr-2 max-h-[50vh]">
-                    {/* Question Prompt */}
-                    <div className="mb-6">
-                      <h2 className="text-base md:text-lg font-bold text-slate-800 leading-relaxed whitespace-pre-wrap mb-4">
-                        {currentQuestion.question}
-                      </h2>
-                      {(currentQuestion.image_url || currentQuestion.media_url) && (
-                        <div className="mt-4 mb-4 flex justify-start">
-                          <img
-                            src={currentQuestion.image_url || currentQuestion.media_url}
-                            alt="Question Graphic"
-                            loading="lazy"
-                            className="max-h-60 w-auto max-w-full rounded-lg border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
-                          />
+                    ) : (
+                      <>
+                        <div className="bg-gradient-to-r from-indigo-50/60 to-purple-50/40 dark:from-indigo-950/30 dark:to-purple-950/20 backdrop-blur-md rounded-xl px-4 py-3 border border-indigo-100/60 dark:border-indigo-900/40 shadow-sm mb-4">
+                          <h3 className="text-sm font-extrabold text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-indigo-500 shrink-0" />
+                            {passageCache[currentQuestion.passage_id].title}
+                          </h3>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Options */}
-                    <div className="grid gap-3 mb-6">
-                      {(["option1", "option2", "option3", "option4"] as const).map((optKey, oIdx) => {
-                        const optText = currentQuestion[optKey];
-                        const optionLetter = String.fromCharCode(65 + oIdx);
-                        const isSelected = answers[currentQuestion.id ?? ""] === optKey;
-
-                        return (
-                          <button
-                            key={optKey}
-                            onClick={() => handleSelectOption(currentQuestion.id ?? "", optKey)}
-                            className={`flex items-center gap-4 w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ${isSelected
-                              ? "border-indigo-500 bg-indigo-50/50 shadow-sm text-indigo-900"
-                              : "border-slate-100 hover:border-slate-300 hover:bg-slate-50/30 text-slate-700"
-                              }`}
-                          >
-                            <div
-                              className={`h-7 w-7 rounded-lg flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${isSelected
-                                ? "bg-indigo-600 border-indigo-600 text-white"
-                                : "border-slate-200 bg-white text-slate-400"
-                                }`}
-                            >
-                              {optionLetter}
-                            </div>
-                            <span className="text-sm font-semibold leading-relaxed">{optText}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                        <div className="text-sm text-slate-650 dark:text-slate-350 leading-relaxed whitespace-pre-wrap font-semibold max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar">
+                          {passageCache[currentQuestion.passage_id].content}
+                        </div>
+                      </>
+                    )}
                   </div>
+                )}
 
-                  {/* Actions Footer */}
-                  <div className="flex flex-wrap items-center justify-between border-t border-slate-100 pt-4 gap-4 mt-auto">
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleClearResponse(currentQuestion.id ?? "")}
-                        disabled={answers[currentQuestion.id ?? ""] === undefined}
-                        className="text-xs text-rose-600 hover:bg-rose-50 h-10 px-3.5"
-                      >
-                        Clear Response
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => handleMarkReview(currentQuestion.id ?? "")}
-                        className={`text-xs h-10 px-4 ${marked[currentQuestion.id ?? ""]
-                          ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
-                          : "text-purple-600 hover:bg-purple-50"
-                          }`}
-                        icon={<Bookmark className="h-3.5 w-3.5" />}
-                      >
-                        {marked[currentQuestion.id ?? ""] ? "Marked" : "Mark for Review"}
-                      </Button>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        variant="secondary"
-                        disabled={currentIdx === 0}
-                        onClick={handlePrev}
-                        className="h-10 text-xs px-3"
-                        icon={<ChevronLeft className="h-4 w-4" />}
-                      >
-                        Previous
-                      </Button>
-
-                      {currentIdx === totalQuestions - 1 ? (
-                        <Button
-                          onClick={handleManualSubmit}
-                          className="h-10 text-xs px-5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                          Finish Test
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={handleNext}
-                          className="h-10 text-xs px-5 bg-indigo-600 hover:bg-indigo-700 text-white"
-                          icon={<ChevronRight className="h-4 w-4" />}
-                        >
-                          Save & Next
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Question Prompt */}
-                <div className="flex-1 mb-8">
-                  <h2 className="text-base md:text-lg font-bold text-slate-800 leading-relaxed whitespace-pre-wrap mb-4">
+                <div className="flex-1 flex flex-col justify-start">
+                  <h2 className="text-base md:text-lg font-bold text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap mb-4">
                     {currentQuestion.question}
                   </h2>
+
+                  {currentQuestion.correct_option?.includes(",") && (
+                    <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-fuchsia-500/10 to-purple-500/10 text-fuchsia-700 dark:text-fuchsia-400 border border-fuchsia-200/50 dark:border-fuchsia-900/30 shadow-sm mb-5 inline-flex self-start">
+                      <Sparkles className="h-3.5 w-3.5 animate-pulse text-fuchsia-600 dark:text-fuchsia-400 shrink-0" />
+                      <span>Multiple Correct Options: Select all that apply</span>
+                    </div>
+                  )}
+
                   {(currentQuestion.image_url || currentQuestion.media_url) && (
                     <div className="mt-4 mb-4 flex justify-start">
-                      <img
-                        src={currentQuestion.image_url || currentQuestion.media_url}
-                        alt="Question Graphic"
-                        loading="lazy"
-                        className="max-h-96 w-auto max-w-full rounded-lg border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
-                      />
+                      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-2.5 shadow-sm">
+                        <img
+                          src={currentQuestion.image_url || currentQuestion.media_url}
+                          alt="Question Graphic"
+                          loading="lazy"
+                          className="max-h-80 w-auto max-w-full rounded-lg object-contain bg-white aspect-auto"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* Multiple Choice Options */}
-                <div className="grid gap-3 mb-8">
+              {/* Right Column: Dedicated to the option cards */}
+              <div className="flex flex-col justify-start">
+                <div className="grid gap-3.5">
                   {(["option1", "option2", "option3", "option4"] as const).map((optKey, oIdx) => {
                     const optText = currentQuestion[optKey];
-                    const optionLetter = String.fromCharCode(65 + oIdx); // A, B, C, D
-                    const isSelected = answers[currentQuestion.id ?? ""] === optKey;
+                    const optionLetter = String.fromCharCode(65 + oIdx);
+                    const isSelected = answers[currentQuestion.id ?? ""]
+                      ? answers[currentQuestion.id ?? ""].split(",").map(o => o.trim()).includes(optKey)
+                      : false;
+                    const isMSQ = currentQuestion.correct_option?.includes(",") ?? false;
 
                     return (
                       <button
                         key={optKey}
                         onClick={() => handleSelectOption(currentQuestion.id ?? "", optKey)}
-                        className={`flex items-center gap-4 w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ${isSelected
-                          ? "border-indigo-500 bg-indigo-50/50 shadow-sm text-indigo-900"
-                          : "border-slate-100 hover:border-slate-300 hover:bg-slate-50/30 text-slate-700"
-                          }`}
+                        className={`flex items-center justify-between gap-4 w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 relative overflow-hidden ${
+                          isSelected
+                            ? isMSQ
+                              ? "border-fuchsia-500 dark:border-fuchsia-400 bg-gradient-to-r from-fuchsia-500/10 via-purple-500/5 to-transparent dark:from-fuchsia-950/20 dark:via-purple-950/10 dark:to-transparent text-fuchsia-950 dark:text-fuchsia-100 shadow-[0_4px_20px_rgba(217,70,239,0.15)] scale-[1.01] ring-1 ring-fuchsia-500/30"
+                              : "border-indigo-500 dark:border-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20 text-indigo-950 dark:text-indigo-100 shadow-[0_4px_16px_rgba(99,102,241,0.12)] scale-[1.01] ring-1 ring-indigo-500/30"
+                            : isMSQ
+                              ? "border-slate-200 dark:border-slate-800/80 hover:border-fuchsia-300 dark:hover:border-fuchsia-700 bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:bg-fuchsia-50/10 dark:hover:bg-fuchsia-950/10 hover:-translate-y-0.5 hover:shadow-md"
+                              : "border-slate-200 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-700 bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:bg-indigo-50/10 dark:hover:bg-indigo-955/10 hover:-translate-y-0.5 hover:shadow-md"
+                        }`}
                       >
-                        <div
-                          className={`h-7 w-7 rounded-lg flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${isSelected
-                            ? "bg-indigo-600 border-indigo-600 text-white"
-                            : "border-slate-200 bg-white text-slate-400"
-                            }`}
-                        >
-                          {optionLetter}
+                        <div className="flex items-center gap-4">
+                          {isMSQ ? (
+                            <div
+                              className={`h-8 w-8 rounded-xl flex items-center justify-center font-extrabold text-xs border transition-all duration-300 shrink-0 ${
+                                isSelected
+                                  ? "bg-gradient-to-tr from-fuchsia-600 to-purple-500 border-none text-white shadow-md shadow-fuchsia-500/25 rotate-6 scale-105 animate-scale-in"
+                                  : "border-fuchsia-100 dark:border-purple-900/50 bg-fuchsia-50/40 dark:bg-purple-955/20 text-fuchsia-600 dark:text-purple-400"
+                              }`}
+                            >
+                              {optionLetter}
+                            </div>
+                          ) : (
+                            <div
+                              className={`h-8 w-8 rounded-full flex items-center justify-center font-extrabold text-xs border transition-all duration-300 shrink-0 ${
+                                isSelected
+                                  ? "bg-indigo-600 border-indigo-600 text-white scale-105 animate-scale-in"
+                                  : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400"
+                              }`}
+                            >
+                              {optionLetter}
+                            </div>
+                          )}
+                          <span className="text-sm font-bold leading-relaxed">{optText}</span>
                         </div>
-                        <span className="text-sm font-semibold leading-relaxed">{optText}</span>
+
+                        {isMSQ ? (
+                          <div className={`h-6 w-6 rounded-lg border flex items-center justify-center transition-all duration-200 ${
+                            isSelected 
+                              ? "bg-gradient-to-tr from-fuchsia-600 to-purple-500 border-none text-white scale-110 shadow-md shadow-fuchsia-500/20" 
+                              : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
+                          }`}>
+                            {isSelected && <Check className="h-4 w-4 stroke-[3.5]" />}
+                          </div>
+                        ) : (
+                          <div className={`h-6 w-6 rounded-full border flex items-center justify-center transition-all duration-200 ${
+                            isSelected 
+                              ? "bg-indigo-600 border-indigo-600 text-white scale-110 shadow-md shadow-indigo-500/20" 
+                              : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950"
+                          }`}>
+                            {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-white animate-scale-in" />}
+                          </div>
+                        )}
                       </button>
                     );
                   })}
                 </div>
+              </div>
+            </div>
 
-                {/* Actions Footer */}
-                <div className="flex flex-wrap items-center justify-between border-t border-slate-100 pt-6 gap-4">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleClearResponse(currentQuestion.id ?? "")}
-                      disabled={answers[currentQuestion.id ?? ""] === undefined}
-                      className="text-xs text-rose-600 hover:bg-rose-50 h-10 px-3.5"
-                    >
-                      Clear Response
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => handleMarkReview(currentQuestion.id ?? "")}
-                      className={`text-xs h-10 px-4 ${marked[currentQuestion.id ?? ""]
-                        ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
-                        : "text-purple-600 hover:bg-purple-50"
-                        }`}
-                      icon={<Bookmark className="h-3.5 w-3.5" />}
-                    >
-                      {marked[currentQuestion.id ?? ""] ? "Marked" : "Mark for Review"}
-                    </Button>
-                  </div>
+            {/* Actions Footer */}
+            <div className="flex flex-wrap items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-5 gap-4">
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => handleClearResponse(currentQuestion.id ?? "")}
+                  disabled={answers[currentQuestion.id ?? ""] === undefined}
+                  className="text-xs text-rose-600 hover:bg-rose-50 h-10 px-3.5"
+                >
+                  Clear Response
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => handleMarkReview(currentQuestion.id ?? "")}
+                  className={`text-xs h-10 px-4 ${marked[currentQuestion.id ?? ""]
+                    ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                    : "text-purple-600 hover:bg-purple-50"
+                    }`}
+                  icon={<Bookmark className="h-3.5 w-3.5" />}
+                >
+                  {marked[currentQuestion.id ?? ""] ? "Marked" : "Mark for Review"}
+                </Button>
+              </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      disabled={currentIdx === 0}
-                      onClick={handlePrev}
-                      className="h-10 text-xs px-3"
-                      icon={<ChevronLeft className="h-4 w-4" />}
-                    >
-                      Previous
-                    </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={currentIdx === 0}
+                  onClick={handlePrev}
+                  className="h-10 text-xs px-3"
+                  icon={<ChevronLeft className="h-4 w-4" />}
+                >
+                  Previous
+                </Button>
 
-                    {currentIdx === totalQuestions - 1 ? (
-                      <Button
-                        onClick={handleManualSubmit}
-                        className="h-10 text-xs px-5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      >
-                        Finish Test
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={handleNext}
-                        className="h-10 text-xs px-5 bg-indigo-600 hover:bg-indigo-700 text-white"
-                        icon={<ChevronRight className="h-4 w-4" />}
-                      >
-                        Save & Next
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+                {currentIdx === totalQuestions - 1 ? (
+                  <Button
+                    onClick={handleManualSubmit}
+                    className="h-10 text-xs px-5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    Finish Test
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleNext}
+                    className="h-10 text-xs px-5 bg-indigo-600 hover:bg-indigo-700 text-white"
+                    icon={<ChevronRight className="h-4 w-4" />}
+                  >
+                    Save & Next
+                  </Button>
+                )}
+              </div>
+            </div>
           </article>
         </main>
 
-        {/* Right Column: Question Navigator Sidebar */}
-        <aside className="w-full lg:w-[320px] flex flex-col gap-6 shrink-0">
+        {/* Question Navigator stick to right edge of screen */}
+        <aside ref={navigatorSidebarRef} className="hidden lg:flex fixed right-0 top-[72px] bottom-0 w-16 flex-col items-center bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 py-6 gap-3 z-20 overflow-y-auto custom-scrollbar shadow-sm transition-colors duration-200">
+          {questions.map((q, idx) => {
+            const qId = q.id ?? "";
+            const isAns = answers[qId] !== undefined;
+            const isMarked = marked[qId] === true;
+            const isVis = visited[idx] === true;
+            const isCurrent = currentIdx === idx;
 
-          {/* Proctoring Card */}
-          <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col">
-            <h3 className="text-sm font-bold text-slate-800 mb-3 pb-2 border-b border-slate-100 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
-              Live Proctoring Feed
-            </h3>
-            <div className="relative aspect-video rounded-lg bg-slate-950 overflow-hidden shadow-inner border border-slate-200 flex items-center justify-center">
-              {streamError ? (
-                <div className="text-center p-3 text-rose-500">
-                  <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-rose-500" />
-                  <p className="text-[10px] font-semibold uppercase tracking-wider">Permission Denied</p>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                    Camera & microphone access is required for proctoring.
-                  </p>
-                </div>
-              ) : !cameraStream ? (
-                <div className="text-center text-slate-400">
-                  <div className="h-6 w-6 mx-auto mb-2 text-indigo-500 flex items-center justify-center">
-                    <Spinner />
-                  </div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider">Connecting Devices...</p>
-                </div>
-              ) : (
-                <div className="relative w-full h-full">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover scale-x-[-1]"
-                  />
-                  <canvas
-                    ref={proctorCanvasRef}
-                    className="absolute inset-0 w-full h-full pointer-events-none"
-                  />
-                </div>
-              )}
-            </div>
-            <div className="mt-3 flex items-center justify-between text-[11px] font-semibold">
-              <div className="flex items-center gap-1.5 text-slate-600">
-                <span className={`h-2 w-2 rounded-full ${cameraStream && hasVideo ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                <span>Camera: {cameraStream && hasVideo ? 'Active' : 'Inactive'}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-slate-600">
-                <span className={`h-2 w-2 rounded-full ${cameraStream && hasAudio ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
-                <span>Microphone: {cameraStream && hasAudio ? 'Active' : 'Inactive'}</span>
-              </div>
-            </div>
+            let btnBg = "bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-955 dark:border-slate-800";
 
-            {/* Proctor Chat Button */}
-            <div className="mt-4 pt-3 border-t border-slate-100">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setChatOpen(true);
-                  setUnreadChat(false);
-                }}
-                className="w-full text-xs h-9 justify-center bg-indigo-50 border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 text-indigo-700 relative font-semibold"
+            if (isAns && isMarked) {
+              btnBg = "bg-purple-500 border-purple-500 text-white";
+            } else if (isMarked) {
+              btnBg = "bg-purple-100 border-purple-200 text-purple-700 dark:bg-purple-955/30 dark:border-purple-900/50 dark:text-purple-300";
+            } else if (isAns) {
+              btnBg = "bg-emerald-500 border-emerald-500 text-white";
+            } else if (isVis) {
+              btnBg = "bg-rose-100 border-rose-200 text-rose-700 dark:bg-rose-955/30 dark:border-rose-900/50 dark:text-rose-350";
+            }
+
+            return (
+              <button
+                key={qId}
+                data-index={idx}
+                onClick={() => handleSelectQuestion(idx)}
+                className={`h-10 w-10 rounded-xl font-bold text-xs border flex items-center justify-center transition-all shrink-0 ${btnBg} ${isCurrent ? "ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900 scale-105 shadow-sm" : ""}`}
+                title={`Question ${idx + 1}`}
               >
-                Message Proctor
-                {unreadChat && (
-                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 bg-rose-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white animate-bounce">
-                    !
-                  </span>
-                )}
-              </Button>
-            </div>
-          </section>
-
-          {/* Palette Card */}
-          <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col">
-            <h3 className="text-sm font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">
-              Question Navigator
-            </h3>
-
-            {/* Grid */}
-            <div className="grid grid-cols-5 gap-2.5 mb-6">
-              {questions.map((q, idx) => {
-                const qId = q.id ?? "";
-                const isAns = answers[qId] !== undefined;
-                const isMarked = marked[qId] === true;
-                const isVis = visited[idx] === true;
-                const isCurrent = currentIdx === idx;
-
-                let btnBg = "bg-slate-50 text-slate-400 border-slate-200";
-
-                if (isAns && isMarked) {
-                  // Answered and Marked for Review
-                  btnBg = "bg-purple-500 border-purple-500 text-white";
-                } else if (isMarked) {
-                  // Marked for Review (unanswered)
-                  btnBg = "bg-purple-100 border-purple-200 text-purple-700";
-                } else if (isAns) {
-                  // Answered / Saved
-                  btnBg = "bg-emerald-500 border-emerald-500 text-white";
-                } else if (isVis) {
-                  // Visited but unanswered
-                  btnBg = "bg-rose-100 border-rose-200 text-rose-700";
-                }
-
-                return (
-                  <button
-                    key={qId}
-                    onClick={() => handleSelectQuestion(idx)}
-                    className={`h-11 w-full rounded-lg font-bold text-sm border flex items-center justify-center transition-all ${btnBg} ${isCurrent ? "ring-2 ring-indigo-500 ring-offset-2 scale-105" : ""
-                      }`}
-                  >
-                    {idx + 1}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Legend / Status Block */}
-            <div className="grid grid-cols-2 gap-3 text-xs border-t border-slate-100 pt-4">
-              <div className="flex items-center gap-2 text-slate-600 font-medium">
-                <span className="h-3 w-3 rounded bg-emerald-500 shrink-0" />
-                <span>Answered ({stats.answered})</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-600 font-medium">
-                <span className="h-3 w-3 rounded bg-rose-100 border border-rose-200 shrink-0" />
-                <span>Not Answered ({stats.notAnswered})</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-600 font-medium">
-                <span className="h-3 w-3 rounded bg-purple-100 border border-purple-200 shrink-0" />
-                <span>Marked ({stats.marked})</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-600 font-medium">
-                <span className="h-3 w-3 rounded bg-slate-50 border border-slate-200 shrink-0" />
-                <span>Not Visited ({stats.notVisited})</span>
-              </div>
-            </div>
-          </section>
-
-          {/* Test Summary / Instructions Card */}
-          <section className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-5 text-white shadow-md">
-            <h4 className="text-xs font-semibold tracking-wider text-slate-400 uppercase mb-3 flex items-center gap-1.5">
-              <HelpCircle className="h-4 w-4 text-indigo-400" />
-              Exam Instructions
-            </h4>
-            <ul className="text-xs text-slate-300 space-y-2 leading-relaxed list-disc list-inside">
-              <li>Marks Scheme: +{test.correct_marks} / {test.wrong_marks} marks.</li>
-              <li>Leaving or refreshing the tab does NOT pause the timer.</li>
-              <li>Auto-submit occurs when the timer ends.</li>
-              <li>Review marked questions using the navigator palette.</li>
-            </ul>
-          </section>
+                {idx + 1}
+              </button>
+            );
+          })}
         </aside>
       </div>
 
@@ -1661,13 +1770,13 @@ export const AttemptTestPage = () => {
           </>
         }
       >
-        <div className="text-slate-600 text-sm">
-          <p className="font-bold text-slate-800 text-base mb-3">Are you sure you want to submit your test?</p>
+        <div className="text-slate-650 dark:text-slate-300 text-sm">
+          <p className="font-bold text-slate-800 dark:text-slate-100 text-base mb-3">Are you sure you want to submit your test?</p>
           <p className="mb-4">Once submitted, you will not be able to edit any answers.</p>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 grid grid-cols-2 gap-3 font-semibold mt-4">
+          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 grid grid-cols-2 gap-3 font-semibold mt-4">
             <span className="text-slate-500">Total Questions:</span>
-            <span className="text-slate-800 text-right">{totalQuestions}</span>
+            <span className="text-slate-800 dark:text-slate-100 text-right">{totalQuestions}</span>
             <span className="text-emerald-600">Answered:</span>
             <span className="text-emerald-600 text-right">{stats.answered}</span>
             <span className="text-purple-600">Marked for Review:</span>
@@ -1697,14 +1806,14 @@ export const AttemptTestPage = () => {
       >
         <div className="text-center p-4">
           <AlertTriangle className="h-16 w-16 text-rose-500 mx-auto mb-4 animate-bounce" />
-          <h3 className="text-lg font-bold text-slate-800 mb-2">Fullscreen Mode Exited!</h3>
-          <p className="text-sm text-slate-500 mb-4 leading-relaxed font-semibold">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Fullscreen Mode Exited!</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed font-semibold">
             Exiting fullscreen is a proctoring violation. This event has been recorded and reported to the system administrator.
           </p>
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 inline-block font-bold text-rose-600 mb-2">
+          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-3 inline-block font-bold text-rose-600 mb-2">
             Fullscreen Violations: {fullscreenViolations}
           </div>
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="text-xs text-slate-400 mt-2 font-semibold">
             Please click the button below to re-enter fullscreen mode and resume your exam.
           </p>
         </div>
@@ -1712,76 +1821,15 @@ export const AttemptTestPage = () => {
 
       {warningMessage && <Toast tone="error">{warningMessage}</Toast>}
 
-      {/* Proctor Chat Slide-out Drawer */}
-      {chatOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col animate-slide-in-right">
-            {/* Header */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-indigo-600 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <h3 className="font-bold text-sm">Proctor Live Support</h3>
-              </div>
-              <button
-                onClick={() => setChatOpen(false)}
-                className="text-white/80 hover:text-white font-bold text-sm px-2 py-1 hover:bg-white/10 rounded"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Message Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {chatMessages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-center p-6 text-slate-400 text-xs">
-                  <p>No messages yet. Any warnings or broadcasts from the proctor will appear here.</p>
-                </div>
-              ) : (
-                chatMessages.map((msg, mIdx) => {
-                  const isProctor = msg.sender === "Proctor";
-                  return (
-                    <div
-                      key={mIdx}
-                      className={`flex flex-col max-w-[85%] ${isProctor ? "mr-auto" : "ml-auto items-end"}`}
-                    >
-                      <span className="text-[10px] font-bold text-slate-400 mb-1">
-                        {msg.sender} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <div
-                        className={`p-3 rounded-2xl text-xs font-semibold leading-relaxed ${isProctor
-                          ? "bg-rose-50 border border-rose-100 text-rose-800 rounded-tl-none dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300"
-                          : "bg-indigo-600 text-white rounded-tr-none"
-                          }`}
-                      >
-                        {msg.text}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Input Footer */}
-            <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex gap-2">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendChatMessage()}
-                placeholder="Type a message to the proctor..."
-                className="flex-1 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 dark:border-slate-700 text-slate-800 dark:text-white"
-              />
-              <Button
-                variant="primary"
-                onClick={handleSendChatMessage}
-                className="h-8 text-[11px] px-3 bg-indigo-600 text-white hover:bg-indigo-700"
-              >
-                Send
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Hidden video element to keep the camera stream alive in the background */}
+      <video
+        ref={hiddenVideoRef}
+        autoPlay
+        playsInline
+        muted
+        className="hidden"
+        style={{ width: "1px", height: "1px", opacity: 0.001, pointerEvents: "none" }}
+      />
     </div>
   );
 };

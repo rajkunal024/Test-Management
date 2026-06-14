@@ -96,8 +96,9 @@ export const TeacherDashboard = () => {
     option3: string;
     option4: string;
     correct_option: CorrectOption;
+    is_msq?: boolean;
   }>>([
-    { question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1" }
+    { question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1", is_msq: false }
   ]);
   const [difficultyFilter, setDifficultyFilter] = useState("all");
   const [topicFilter, setTopicFilter] = useState("all");
@@ -109,6 +110,8 @@ export const TeacherDashboard = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
   const [passageCsvText, setPassageCsvText] = useState("");
+  const [isMsqSwitchOn, setIsMsqSwitchOn] = useState(false);
+  const [modalIsMsqSwitchOn, setModalIsMsqSwitchOn] = useState(false);
 
   // URL routing tab parameters and local view states
   const [searchParams, setSearchParams] = useSearchParams();
@@ -359,8 +362,10 @@ export const TeacherDashboard = () => {
     if (addSubTab === "manual" || addSubTab === null) {
       reset(emptyQuestion);
       setFormError("");
-      setSubQuestions([{ question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1" }]);
+      setSubQuestions([{ question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1", is_msq: false }]);
       setPassageCsvText("");
+      setIsMsqSwitchOn(false);
+      setModalIsMsqSwitchOn(false);
     }
   }, [addSubTab, reset]);
 
@@ -666,6 +671,7 @@ export const TeacherDashboard = () => {
         option3: string;
         option4: string;
         correct_option: CorrectOption;
+        is_msq?: boolean;
       }> = [];
 
       for (let i = 1; i < lines.length; i++) {
@@ -677,23 +683,34 @@ export const TeacherDashboard = () => {
 
         if (!rowObj.question || !rowObj.option1 || !rowObj.option2) continue;
 
-        let correct_option: CorrectOption = "option1";
-        const rawCorrect = (rowObj.correct_option || "").toUpperCase().trim();
-        const coLower = (rowObj.correct_option || "").toLowerCase().trim();
+        const correctParts = (rowObj.correct_option || "")
+          .split(/[,;]/)
+          .map((c: string) => c.trim().toUpperCase())
+          .filter(Boolean);
+
+        const mappedParts: string[] = [];
         const optVal1 = (rowObj.option1 || "").toLowerCase().trim();
         const optVal2 = (rowObj.option2 || "").toLowerCase().trim();
         const optVal3 = (rowObj.option3 || "").toLowerCase().trim();
         const optVal4 = (rowObj.option4 || "").toLowerCase().trim();
 
-        if (rawCorrect === "A" || rawCorrect === "OPTION1" || coLower === optVal1) {
-          correct_option = "option1";
-        } else if (rawCorrect === "B" || rawCorrect === "OPTION2" || coLower === optVal2) {
-          correct_option = "option2";
-        } else if (rawCorrect === "C" || rawCorrect === "OPTION3" || coLower === optVal3) {
-          correct_option = "option3";
-        } else if (rawCorrect === "D" || rawCorrect === "OPTION4" || coLower === optVal4) {
-          correct_option = "option4";
-        }
+        correctParts.forEach((part: string) => {
+          if (part === "A" || part === "OPTION1") mappedParts.push("option1");
+          else if (part === "B" || part === "OPTION2") mappedParts.push("option2");
+          else if (part === "C" || part === "OPTION3") mappedParts.push("option3");
+          else if (part === "D" || part === "OPTION4") mappedParts.push("option4");
+          else {
+            const partLower = part.toLowerCase();
+            if (partLower === optVal1) mappedParts.push("option1");
+            else if (partLower === optVal2) mappedParts.push("option2");
+            else if (partLower === optVal3 && optVal3) mappedParts.push("option3");
+            else if (partLower === optVal4 && optVal4) mappedParts.push("option4");
+          }
+        });
+
+        const finalCorrectParts = Array.from(new Set(mappedParts)).sort();
+        const correct_option = finalCorrectParts.length > 0 ? finalCorrectParts.join(",") : "option1";
+        const is_msq = finalCorrectParts.length > 1;
 
         parsedQuestions.push({
           question: rowObj.question,
@@ -701,7 +718,8 @@ export const TeacherDashboard = () => {
           option2: rowObj.option2,
           option3: rowObj.option3 || "",
           option4: rowObj.option4 || "",
-          correct_option
+          correct_option,
+          is_msq
         });
       }
 
@@ -719,12 +737,55 @@ export const TeacherDashboard = () => {
     }
   };
 
+  const toggleCorrectOption = (currentVal: string, opt: string): string => {
+    const parts = currentVal ? currentVal.split(",").map(o => o.trim()).filter(Boolean) : [];
+    if (parts.includes(opt)) {
+      const remaining = parts.filter(o => o !== opt);
+      return remaining.sort().join(",");
+    } else {
+      return [...parts, opt].sort().join(",");
+    }
+  };
+
+  const handleToggleMsqSwitch = (checked: boolean) => {
+    setIsMsqSwitchOn(checked);
+    if (!checked) {
+      const currentVal = correctOptionValue || "";
+      const parts = currentVal.split(",").map(o => o.trim()).filter(Boolean);
+      const newVal = parts.length > 0 ? parts[0] : "option1";
+      setValue("correct_option", newVal);
+    }
+  };
+
+  const handleToggleModalMsqSwitch = (checked: boolean) => {
+    setModalIsMsqSwitchOn(checked);
+    if (!checked) {
+      const currentVal = getValues("correct_option") || "";
+      const parts = currentVal.split(",").map((o: string) => o.trim()).filter(Boolean);
+      const newVal = parts.length > 0 ? parts[0] : "option1";
+      setValue("correct_option", newVal);
+    }
+  };
+
+  const handleToggleSubQMsqSwitch = (subIdx: number, checked: boolean) => {
+    const updated = [...subQuestions];
+    updated[subIdx].is_msq = checked;
+    if (!checked) {
+      const currentVal = updated[subIdx].correct_option || "";
+      const parts = currentVal.split(",").map(o => o.trim()).filter(Boolean);
+      updated[subIdx].correct_option = parts.length > 0 ? parts[0] : "option1";
+    }
+    setSubQuestions(updated);
+  };
+
   // Handlers
   const handleOpenAddModal = () => {
     setEditingIndex(null);
     setEditingQuestionId(null);
     setFormError("");
     reset(emptyQuestion);
+    setIsMsqSwitchOn(false);
+    setModalIsMsqSwitchOn(false);
     setModalOpen(true);
   };
 
@@ -875,7 +936,8 @@ export const TeacherDashboard = () => {
       image_url: question.image_url ?? "",
       class: question.class ?? "Class 10",
     });
-    setSubQuestions([{ question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1" }]);
+    setSubQuestions([{ question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1", is_msq: false }]);
+    setModalIsMsqSwitchOn(question.correct_option?.includes(",") ?? false);
     setModalOpen(true);
   };
 
@@ -1397,38 +1459,66 @@ export const TeacherDashboard = () => {
                             </div>
 
                             {/* Options List */}
-                            <div className="space-y-3">
-                              <span className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Options (Select Correct Indicator)</span>
-                              {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => {
-                                const letter = String.fromCharCode(65 + idx); // A, B, C, D
-                                const isCorrect = subQ.correct_option === opt;
-                                const colors = [
-                                  { text: "text-indigo-650 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
-                                  { text: "text-purple-650 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-100 dark:border-purple-900/40" },
-                                  { text: "text-amber-650 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-100 dark:border-amber-900/40" },
-                                  { text: "text-rose-650 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/40", border: "border-rose-100 dark:border-rose-900/40" },
-                                ][idx];
+                             <div className="space-y-3">
+                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 pb-2 border-b border-slate-100 dark:border-slate-805">
+                                 <span className="text-[10px] font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                                   Options (Select Correct Indicator)
+                                 </span>
+                                 <label className="relative inline-flex items-center cursor-pointer select-none">
+                                   <input
+                                     type="checkbox"
+                                     className="sr-only peer"
+                                     checked={!!subQ.is_msq}
+                                     onChange={(e) => handleToggleSubQMsqSwitch(subIdx, e.target.checked)}
+                                   />
+                                   <div className="w-8 h-4.5 bg-slate-205 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                   <span className="ml-2 text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                     Multiple Correct Options
+                                   </span>
+                                 </label>
+                               </div>
+                               {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => {
+                                 const letter = String.fromCharCode(65 + idx); // A, B, C, D
+                                 const isCorrect = subQ.correct_option?.split(",").map(o => o.trim()).includes(opt);
+                                 const colors = [
+                                   { text: "text-indigo-650 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
+                                   { text: "text-purple-650 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-100 dark:border-purple-900/40" },
+                                   { text: "text-amber-650 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-100 dark:border-amber-900/40" },
+                                   { text: "text-rose-650 dark:text-rose-450", bg: "bg-rose-50 dark:bg-rose-955/40", border: "border-rose-100 dark:border-rose-900/40" },
+                                 ][idx];
 
-                                return (
-                                  <div
-                                    key={opt}
-                                    className={`flex items-center gap-3.5 p-2 px-3 rounded-2xl border-2 transition-all duration-250 ${isCorrect
-                                      ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-950/10 shadow-sm"
-                                      : "border-slate-150 dark:border-slate-800/80 hover:border-slate-250 dark:hover:border-slate-700 bg-slate-50/20 dark:bg-slate-900/30"
-                                      }`}
-                                  >
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const updated = [...subQuestions];
-                                        updated[subIdx].correct_option = opt;
-                                        setSubQuestions(updated);
-                                      }}
+                                 return (
+                                   <div
+                                     key={opt}
+                                     className={`flex items-center gap-3.5 p-2 px-3 rounded-2xl border-2 transition-all duration-250 ${isCorrect
+                                       ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-955/10 shadow-sm"
+                                       : "border-slate-150 dark:border-slate-800/80 hover:border-slate-250 dark:hover:border-slate-700 bg-slate-50/20 dark:bg-slate-900/30"
+                                       }`}
+                                   >
+                                     <button
+                                       type="button"
+                                       onClick={() => {
+                                         const updated = [...subQuestions];
+                                         const currentVal = updated[subIdx].correct_option || "";
+                                         if (updated[subIdx].is_msq) {
+                                           const parts = currentVal.split(",").map(o => o.trim()).filter(Boolean);
+                                           let newVal = "";
+                                           if (parts.includes(opt)) {
+                                             newVal = parts.filter(o => o !== opt).sort().join(",");
+                                           } else {
+                                             newVal = [...parts, opt].sort().join(",");
+                                           }
+                                           updated[subIdx].correct_option = newVal;
+                                         } else {
+                                           updated[subIdx].correct_option = opt;
+                                         }
+                                         setSubQuestions(updated);
+                                       }}
                                       className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-xs border shrink-0 transition-all ${isCorrect
                                         ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20"
                                         : `${colors.bg} ${colors.border} ${colors.text} hover:scale-105`
                                         }`}
-                                      title={`Set Option ${letter} as correct`}
+                                      title={`Toggle Option ${letter} as correct`}
                                     >
                                       {isCorrect ? "✓" : letter}
                                     </button>
@@ -1489,34 +1579,57 @@ export const TeacherDashboard = () => {
 
                         {/* Options List */}
                         <div className="space-y-3">
-                          <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Options (Select Correct Indicator)</span>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                              Options (Select Correct Indicator)
+                            </span>
+                            <label className="relative inline-flex items-center cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={isMsqSwitchOn}
+                                onChange={(e) => handleToggleMsqSwitch(e.target.checked)}
+                              />
+                              <div className="w-9 h-5 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                              <span className="ml-2 text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                Multiple Correct Options
+                              </span>
+                            </label>
+                          </div>
 
                           {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => {
                             const letter = String.fromCharCode(65 + idx); // A, B, C, D
-                            const isCorrect = correctOptionValue === opt;
+                            const isCorrect = correctOptionValue?.split(",").map(o => o.trim()).includes(opt);
                             const colors = [
                               { text: "text-indigo-650 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
                               { text: "text-purple-650 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-100 dark:border-purple-900/40" },
                               { text: "text-amber-650 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-100 dark:border-amber-900/40" },
-                              { text: "text-rose-650 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/40", border: "border-rose-100 dark:border-rose-900/40" },
+                              { text: "text-rose-650 dark:text-rose-450", bg: "bg-rose-50 dark:bg-rose-955/40", border: "border-rose-100 dark:border-rose-900/40" },
                             ][idx];
 
                             return (
                               <div
                                 key={opt}
                                 className={`flex items-center gap-3.5 p-3.5 rounded-2xl border-2 transition-all duration-250 ${isCorrect
-                                  ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-950/10 shadow-sm"
-                                  : "border-slate-150 dark:border-slate-800/80 hover:border-slate-250 dark:hover:border-slate-700 bg-slate-50/20 dark:bg-slate-900/30"
+                                  ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-955/10 shadow-sm"
+                                  : "border-slate-150 dark:border-slate-800/80 hover:border-slate-250 dark:hover:border-slate-700 bg-slate-55/20 dark:bg-slate-900/30"
                                   }`}
                               >
                                 <button
                                   type="button"
-                                  onClick={() => setValue("correct_option", opt)}
+                                  onClick={() => {
+                                    if (isMsqSwitchOn) {
+                                      const newVal = toggleCorrectOption(correctOptionValue || "", opt);
+                                      setValue("correct_option", newVal);
+                                    } else {
+                                      setValue("correct_option", opt);
+                                    }
+                                  }}
                                   className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-xs border shrink-0 transition-all ${isCorrect
                                     ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20"
                                     : `${colors.bg} ${colors.border} ${colors.text} hover:scale-105`
                                     }`}
-                                  title={`Set Option ${letter} as correct`}
+                                  title={`Toggle Option ${letter} as correct`}
                                 >
                                   {isCorrect ? "✓" : letter}
                                 </button>
@@ -2085,7 +2198,7 @@ export const TeacherDashboard = () => {
                                   </span>
                                   <span className="text-[10px] text-emerald-655 dark:text-emerald-400 font-extrabold flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md shadow-sm">
                                     <Check className="h-3 w-3 stroke-[3]" />
-                                    Correct Option: <span className="font-black uppercase">{q.correct_option?.replace("option", "Option ")}</span>
+                                    Correct Option: <span className="font-black uppercase">{q.correct_option?.split(",").map(o => o.trim().replace("option", "Option ")).join(", ")}</span>
                                   </span>
                                   {q.sub_topic_name && (
                                     <span className="text-[10px] text-slate-455 dark:text-slate-500 font-bold">
@@ -2513,16 +2626,42 @@ export const TeacherDashboard = () => {
 
                     {/* Options */}
                     <div>
-                      <span className="mb-2 block text-xs font-semibold text-slate-750 dark:text-slate-300">Options</span>
+                      <div className="flex items-center justify-between mb-2 border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                        <span className="text-xs font-semibold text-slate-750 dark:text-slate-300">Options</span>
+                        <label className="relative inline-flex items-center cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={!!subQ.is_msq}
+                            onChange={(e) => handleToggleSubQMsqSwitch(subIdx, e.target.checked)}
+                          />
+                          <div className="w-8 h-4.5 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-emerald-500"></div>
+                          <span className="ml-2 text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            Multiple Correct Options
+                          </span>
+                        </label>
+                      </div>
                       {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => (
                         <div key={opt} className="mb-2.5 flex items-center gap-3">
                           <input
-                            type="radio"
+                            type="checkbox"
                             className="h-5 w-5 accent-emerald-500 shrink-0 cursor-pointer"
-                            checked={subQ.correct_option === opt}
+                            checked={subQ.correct_option?.split(",").map(o => o.trim()).includes(opt)}
                             onChange={() => {
                               const updated = [...subQuestions];
-                              updated[subIdx].correct_option = opt;
+                              const currentVal = updated[subIdx].correct_option || "";
+                              if (updated[subIdx].is_msq) {
+                                const parts = currentVal.split(",").map(o => o.trim()).filter(Boolean);
+                                let newVal = "";
+                                if (parts.includes(opt)) {
+                                  newVal = parts.filter(o => o !== opt).sort().join(",");
+                                } else {
+                                  newVal = [...parts, opt].sort().join(",");
+                                }
+                                updated[subIdx].correct_option = newVal;
+                              } else {
+                                updated[subIdx].correct_option = opt;
+                              }
                               setSubQuestions(updated);
                             }}
                           />
@@ -2551,7 +2690,7 @@ export const TeacherDashboard = () => {
                     type="button"
                     variant="secondary"
                     onClick={() => {
-                      setSubQuestions([...subQuestions, { question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1" }]);
+                      setSubQuestions([...subQuestions, { question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1", is_msq: false }]);
                     }}
                     className="w-full h-10 text-xs font-bold border border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex items-center justify-center gap-1.5 hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
@@ -2577,7 +2716,21 @@ export const TeacherDashboard = () => {
 
                 {/* Options */}
                 <div>
-                  <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-355">Options (Select the correct one)</span>
+                  <div className="flex items-center justify-between mb-2 border-b border-slate-105 dark:border-slate-800 pb-2">
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-355">Options (Select the correct one)</span>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={modalIsMsqSwitchOn}
+                        onChange={(e) => handleToggleModalMsqSwitch(e.target.checked)}
+                      />
+                      <div className="w-9 h-5 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                      <span className="ml-2 text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Multiple Correct Options
+                      </span>
+                    </label>
+                  </div>
                   {(["option1", "option2", "option3", "option4"] as const).map((opt, idx) => (
                     <div key={opt} className="mb-2.5 flex items-center gap-3">
                       <Controller
@@ -2585,10 +2738,24 @@ export const TeacherDashboard = () => {
                         control={control}
                         render={({ field }) => (
                           <input
-                            type="radio"
+                            type="checkbox"
                             className="h-5 w-5 accent-emerald-500 shrink-0 cursor-pointer"
-                            checked={field.value === opt}
-                            onChange={() => field.onChange(opt)}
+                            checked={field.value?.split(",").map((o: string) => o.trim()).includes(opt)}
+                            onChange={() => {
+                              const currentVal = field.value || "";
+                              if (modalIsMsqSwitchOn) {
+                                const parts = currentVal.split(",").map((o: string) => o.trim()).filter(Boolean);
+                                let newVal = "";
+                                if (parts.includes(opt)) {
+                                  newVal = parts.filter((o: string) => o !== opt).sort().join(",");
+                                } else {
+                                  newVal = [...parts, opt].sort().join(",");
+                                }
+                                field.onChange(newVal);
+                              } else {
+                                field.onChange(opt);
+                              }
+                            }}
                           />
                         )}
                       />
@@ -2796,7 +2963,7 @@ export const TeacherDashboard = () => {
                 {(["option1", "option2", "option3", "option4"] as const).map((optKey, oIdx) => {
                   const optText = previewQuestion[optKey];
                   const optLetter = String.fromCharCode(65 + oIdx);
-                  const isCorrect = previewQuestion.correct_option === optKey;
+                  const isCorrect = previewQuestion.correct_option?.split(",").map(o => o.trim()).includes(optKey);
 
                   return (
                     <div

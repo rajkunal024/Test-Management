@@ -45,7 +45,7 @@ export interface SubTopic {
 export type TestStatus = "draft" | "live" | "scheduled" | null;
 export type TestDifficulty = "easy" | "medium" | "hard";
 export type TestType = "practice" | "mock" | "previous_year";
-export type CorrectOption = "option1" | "option2" | "option3" | "option4";
+export type CorrectOption = string;
 
 export interface Test {
   id: string;
