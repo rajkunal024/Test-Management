@@ -85,6 +85,7 @@ export const TeacherDashboard = () => {
   const [csvText, setCsvText] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
 
   // URL routing tab parameters and local view states
   const [searchParams, setSearchParams] = useSearchParams();
@@ -472,6 +473,27 @@ export const TeacherDashboard = () => {
     return { total, easy, medium, hard };
   }, [questionsFilteredExceptDifficulty]);
 
+  const handleToggleSelect = (questionId: string) => {
+    setSelectedQuestionIds((prev) =>
+      prev.includes(questionId)
+        ? prev.filter((id) => id !== questionId)
+        : [...prev, questionId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    const allIds = filteredQuestions.map((q) => q.id || q.question).filter(Boolean) as string[];
+    setSelectedQuestionIds(allIds);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedQuestionIds([]);
+  };
+
+  useEffect(() => {
+    setSelectedQuestionIds([]);
+  }, [activeTab, search, difficultyFilter, topicFilter, effectiveClassFilter]);
+
   // Mutations
   const createMutation = useMutation({
     mutationFn: createQuestion,
@@ -510,7 +532,88 @@ export const TeacherDashboard = () => {
     onError: (err) => alert(getErrorMessage(err)),
   });
 
+  const deleteBulkMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => deleteQuestion(id)));
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["questions"] });
+      setSelectedQuestionIds([]);
+      setToast("Selected questions deleted successfully");
+      window.setTimeout(() => setToast(""), 1800);
+    },
+    onError: (err) => alert(getErrorMessage(err)),
+  });
+
   // Handlers
+  const handleBulkDelete = () => {
+    if (selectedQuestionIds.length === 0) return;
+    if (
+      confirm(
+        `Are you sure you want to delete the ${selectedQuestionIds.length} selected question(s) from database and dashboard?`
+      )
+    ) {
+      deleteBulkMutation.mutate(selectedQuestionIds);
+    }
+  };
+
+  const handleDownloadCsv = () => {
+    if (selectedQuestionIds.length === 0) return;
+
+    const selectedQuestions = subjectQuestions.filter((q) =>
+      selectedQuestionIds.includes(q.id || q.question)
+    );
+
+    const headers = [
+      "question",
+      "option1",
+      "option2",
+      "option3",
+      "option4",
+      "correct_option",
+      "difficulty",
+      "class",
+      "topic",
+      "sub_topic",
+    ];
+
+    const escapeCsvValue = (val: string) => {
+      if (!val) return '""';
+      const cleanVal = val.replace(/"/g, '""');
+      return `"${cleanVal}"`;
+    };
+
+    const csvRows = [
+      headers.join(","),
+      ...selectedQuestions.map((q) => {
+        const topicName = topics.find((t) => t.id === q.topic_id)?.name ?? "";
+        const row = [
+          q.question,
+          q.option1,
+          q.option2,
+          q.option3,
+          q.option4,
+          q.correct_option,
+          q.difficulty || "easy",
+          q.class || "Class 10",
+          topicName,
+          q.sub_topic_name || "",
+        ];
+        return row.map(escapeCsvValue).join(",");
+      }),
+    ];
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `selected_questions_${Date.now()}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   const handleOpenAddModal = () => {
     setEditingIndex(null);
     setEditingQuestionId(null);
@@ -1422,31 +1525,114 @@ export const TeacherDashboard = () => {
                   </div>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md shadow-md mb-10 transition-all hover:shadow-lg">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm relative">
-                      <thead className="bg-slate-50/80 dark:bg-slate-950/60 text-xs font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-850 sticky top-0 backdrop-blur-md z-10">
-                        <tr>
-                          <th className="px-6 py-4.5 w-14 text-center">#</th>
-                          <th className="px-6 py-4.5">Question Prompt</th>
-                          <th className="px-6 py-4.5 w-24">Image</th>
-                          <th className="px-6 py-4.5 w-44">Topic</th>
-                          <th className="px-6 py-4.5 w-32">Difficulty</th>
-                          <th className="px-6 py-4.5 w-40 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                        {filteredQuestions.map((q, index) => {
-                          const topicName = topics.find(t => t.id === q.topic_id)?.name ?? "General";
-                          const diffLower = (q.difficulty || "").toLowerCase().trim();
-                          const difficultyColor =
-                            diffLower === "easy" ? "green" :
-                              diffLower === "medium" ? "yellow" :
-                                (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
+                <>
+                  {selectedQuestionIds.length > 0 && (
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100/60 dark:border-indigo-900/40 rounded-xl p-3.5 mb-4 animate-fade-in shadow-sm gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          {selectedQuestionIds.length} question{selectedQuestionIds.length > 1 ? "s" : ""} selected
+                        </span>
+                        {selectedQuestionIds.length < filteredQuestions.length && (
+                          <>
+                            <span className="text-slate-300 dark:text-slate-750">|</span>
+                            <button
+                              type="button"
+                              onClick={handleSelectAll}
+                              className="text-xs font-extrabold text-indigo-650 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-305 underline cursor-pointer font-sans"
+                            >
+                              Select All {filteredQuestions.length} Questions
+                            </button>
+                          </>
+                        )}
+                        <span className="text-slate-300 dark:text-slate-750">|</span>
+                        <button
+                          type="button"
+                          onClick={handleClearSelection}
+                          className="text-xs font-extrabold text-rose-650 hover:text-rose-705 dark:text-rose-455 dark:hover:text-rose-350 underline cursor-pointer font-sans"
+                        >
+                          Clear Selection
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 sm:ml-auto">
+                        <button
+                          type="button"
+                          onClick={handleDownloadCsv}
+                          className="h-8.5 rounded-lg px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-sm hover:shadow flex items-center gap-1.5 active:scale-95 cursor-pointer font-sans"
+                        >
+                          <FileSpreadsheet className="h-3.5 w-3.5 text-white" />
+                          Download CSV
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deleteBulkMutation.isPending}
+                          onClick={handleBulkDelete}
+                          className="h-8.5 rounded-lg px-3 text-xs bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 text-white font-bold transition-all shadow-sm hover:shadow flex items-center gap-1.5 active:scale-95 cursor-pointer font-sans"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {deleteBulkMutation.isPending ? "Deleting..." : "Delete Selected"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md shadow-md mb-10 transition-all hover:shadow-lg">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm relative">
+                        <thead className="bg-slate-50/80 dark:bg-slate-950/60 text-xs font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-850 sticky top-0 backdrop-blur-md z-10">
+                          <tr>
+                            <th className="px-6 py-4.5 w-12 text-center">
+                              {selectedQuestionIds.length > 0 && (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedQuestionIds.length === filteredQuestions.filter(q => q.id || q.question).length}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      handleSelectAll();
+                                    } else {
+                                      handleClearSelection();
+                                    }
+                                  }}
+                                  className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
+                                  title="Select All"
+                                />
+                              )}
+                            </th>
+                            <th className="px-6 py-4.5 w-14 text-center">#</th>
+                            <th className="px-6 py-4.5">Question Prompt</th>
+                            <th className="px-6 py-4.5 w-24">Image</th>
+                            <th className="px-6 py-4.5 w-44">Topic</th>
+                            <th className="px-6 py-4.5 w-32">Difficulty</th>
+                            <th className="px-6 py-4.5 w-40 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                          {filteredQuestions.map((q, index) => {
+                            const qKey = q.id || q.question;
+                            const isSelected = selectedQuestionIds.includes(qKey);
+                            const topicName = topics.find(t => t.id === q.topic_id)?.name ?? "General";
+                            const diffLower = (q.difficulty || "").toLowerCase().trim();
+                            const difficultyColor =
+                              diffLower === "easy" ? "green" :
+                                diffLower === "medium" ? "yellow" :
+                                  (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
 
-                          return (
-                            <tr key={q.id ?? index} className="group odd:bg-white/40 even:bg-slate-55/10 dark:odd:bg-slate-900/20 dark:even:bg-slate-900/5 hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10 transition-all duration-200">
-                              <td className="px-6 py-4.5 text-center font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">{index + 1}</td>
+                            return (
+                              <tr
+                                key={q.id ?? index}
+                                className={`group transition-all duration-200 ${
+                                  isSelected
+                                    ? "bg-indigo-50/30 dark:bg-indigo-950/20 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30"
+                                    : "odd:bg-white/40 even:bg-slate-55/10 dark:odd:bg-slate-900/20 dark:even:bg-slate-900/5 hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10"
+                                }`}
+                              >
+                                <td className="px-6 py-4.5 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => handleToggleSelect(qKey)}
+                                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
+                                  />
+                                </td>
+                                <td className="px-6 py-4.5 text-center font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">{index + 1}</td>
                               <td className="px-6 py-4.5">
                                 <div
                                   className="font-bold text-slate-800 dark:text-slate-200 leading-relaxed max-w-xl group-hover:text-indigo-650 dark:group-hover:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline cursor-pointer transition-all"
@@ -1526,6 +1712,7 @@ export const TeacherDashboard = () => {
                     </table>
                   </div>
                 </div>
+                </>
               )}
             </div>
           </div>
