@@ -108,6 +108,7 @@ export const TeacherDashboard = () => {
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
+  const [passageCsvText, setPassageCsvText] = useState("");
 
   // URL routing tab parameters and local view states
   const [searchParams, setSearchParams] = useSearchParams();
@@ -359,6 +360,7 @@ export const TeacherDashboard = () => {
       reset(emptyQuestion);
       setFormError("");
       setSubQuestions([{ question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1" }]);
+      setPassageCsvText("");
     }
   }, [addSubTab, reset]);
 
@@ -637,6 +639,83 @@ export const TeacherDashboard = () => {
       } finally {
         setIsDeletingSelected(false);
       }
+    }
+  };
+
+  const handleParsePassageCsv = (text: string) => {
+    try {
+      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+      if (lines.length <= 1) {
+        alert("CSV must contain a header row and at least one question row.");
+        return;
+      }
+
+      const headers = lines[0].split(",").map(h => h.trim().replace(/^["']|["']$/g, "").toLowerCase());
+      
+      const requiredHeaders = ["question", "option1", "option2"];
+      const missing = requiredHeaders.filter(h => !headers.includes(h));
+      if (missing.length > 0) {
+        alert(`Missing required CSV columns: ${missing.join(", ")}`);
+        return;
+      }
+
+      const parsedQuestions: Array<{
+        question: string;
+        option1: string;
+        option2: string;
+        option3: string;
+        option4: string;
+        correct_option: CorrectOption;
+      }> = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",").map(v => v.trim().replace(/^["']|["']$/g, ""));
+        const rowObj: any = {};
+        headers.forEach((header, index) => {
+          rowObj[header] = values[index] || "";
+        });
+
+        if (!rowObj.question || !rowObj.option1 || !rowObj.option2) continue;
+
+        let correct_option: CorrectOption = "option1";
+        const rawCorrect = (rowObj.correct_option || "").toUpperCase().trim();
+        const coLower = (rowObj.correct_option || "").toLowerCase().trim();
+        const optVal1 = (rowObj.option1 || "").toLowerCase().trim();
+        const optVal2 = (rowObj.option2 || "").toLowerCase().trim();
+        const optVal3 = (rowObj.option3 || "").toLowerCase().trim();
+        const optVal4 = (rowObj.option4 || "").toLowerCase().trim();
+
+        if (rawCorrect === "A" || rawCorrect === "OPTION1" || coLower === optVal1) {
+          correct_option = "option1";
+        } else if (rawCorrect === "B" || rawCorrect === "OPTION2" || coLower === optVal2) {
+          correct_option = "option2";
+        } else if (rawCorrect === "C" || rawCorrect === "OPTION3" || coLower === optVal3) {
+          correct_option = "option3";
+        } else if (rawCorrect === "D" || rawCorrect === "OPTION4" || coLower === optVal4) {
+          correct_option = "option4";
+        }
+
+        parsedQuestions.push({
+          question: rowObj.question,
+          option1: rowObj.option1,
+          option2: rowObj.option2,
+          option3: rowObj.option3 || "",
+          option4: rowObj.option4 || "",
+          correct_option
+        });
+      }
+
+      if (parsedQuestions.length === 0) {
+        alert("No valid questions found in CSV.");
+        return;
+      }
+
+      setSubQuestions(parsedQuestions);
+      setPassageCsvText("");
+      setToast(`Loaded ${parsedQuestions.length} sub-question(s) from CSV`);
+      window.setTimeout(() => setToast(""), 1800);
+    } catch (err) {
+      alert("Error parsing CSV: " + (err as Error).message);
     }
   };
 
@@ -1215,6 +1294,73 @@ export const TeacherDashboard = () => {
 
                     {selectedType === "passage_sub_question" ? (
                       <div className="space-y-6">
+                        {/* CSV Import Section for Passage Sub-Questions */}
+                        <div className="border border-dashed border-slate-250 dark:border-slate-800 rounded-2xl p-5 bg-white/70 dark:bg-slate-900/40 shadow-sm space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-extrabold text-slate-755 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                              <FileSpreadsheet className="h-4 w-4 text-emerald-600 animate-bounce" />
+                              Quick Import Sub-Questions via CSV
+                            </h3>
+                          </div>
+                          <p className="text-[11px] text-slate-455 dark:text-slate-500 font-semibold leading-relaxed">
+                            Instead of adding questions one by one manually, you can paste CSV text or select a CSV file containing your questions.
+                          </p>
+
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                              <label className="block">
+                                <span className="mb-2 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Paste CSV Data</span>
+                                <textarea
+                                  value={passageCsvText}
+                                  onChange={(e) => setPassageCsvText(e.target.value)}
+                                  placeholder="question,option1,option2,option3,option4,correct_option&#10;What is 1+1?,2,3,4,5,option1&#10;What is 2+2?,3,4,5,6,option2"
+                                  className="h-24 w-full resize-none rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-55/20 dark:bg-slate-955 p-3 text-xs font-mono outline-none focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all leading-normal"
+                                />
+                              </label>
+                            </div>
+                            
+                            <div className="flex flex-col justify-between">
+                              <div>
+                                <span className="mb-2 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Upload CSV File</span>
+                                <label className="flex flex-col items-center justify-center border border-dashed border-slate-250 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-700/60 rounded-xl p-5 bg-slate-50/20 dark:bg-slate-900/35 cursor-pointer group transition-all h-24">
+                                  <Upload className="h-5 w-5 text-slate-400 group-hover:text-emerald-500 transition-colors mb-1.5" />
+                                  <span className="text-[10px] font-bold text-slate-500 group-hover:text-emerald-600 transition-colors">Select CSV file</span>
+                                  <input
+                                    type="file"
+                                    accept=".csv"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const reader = new FileReader();
+                                      reader.onload = (event) => {
+                                        const text = event.target?.result as string;
+                                        handleParsePassageCsv(text);
+                                      };
+                                      reader.readAsText(file);
+                                      e.target.value = "";
+                                    }}
+                                    className="hidden"
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2">
+                            <div className="rounded bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 p-2.5 text-[9px] text-amber-800 dark:text-amber-300 leading-normal flex-1">
+                              Expected Format: <code className="font-mono font-bold bg-white/70 dark:bg-slate-950/50 px-1 py-0.5 rounded">question,option1,option2,option3,option4,correct_option</code>
+                            </div>
+                            <Button
+                              type="button"
+                              disabled={!passageCsvText.trim()}
+                              onClick={() => handleParsePassageCsv(passageCsvText)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-9 px-4 shrink-0 rounded-xl"
+                            >
+                              Parse & Populate
+                            </Button>
+                          </div>
+                        </div>
+
                         {subQuestions.map((subQ, subIdx) => (
                           <div key={subIdx} className="space-y-4 p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/10 dark:bg-slate-900/10 relative">
                             {subQuestions.length > 1 && (
@@ -2266,6 +2412,70 @@ export const TeacherDashboard = () => {
 
             {selectedType === "passage_sub_question" && editingQuestionId === null ? (
               <div className="space-y-4">
+                {/* CSV Import Section for Passage Sub-Questions in Modal */}
+                <div className="border border-dashed border-slate-250 dark:border-slate-800 rounded-xl p-4 bg-white/70 dark:bg-slate-900/40 shadow-sm space-y-3 mb-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-350 uppercase tracking-wider flex items-center gap-1.5">
+                      <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                      Quick Import Sub-Questions via CSV
+                    </h3>
+                  </div>
+                  
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Paste CSV Data</span>
+                        <textarea
+                          value={passageCsvText}
+                          onChange={(e) => setPassageCsvText(e.target.value)}
+                          placeholder="question,option1,option2,option3,option4,correct_option&#10;What is 1+1?,2,3,4,5,option1"
+                          className="h-20 w-full resize-none rounded-lg border border-slate-205 dark:border-slate-800 dark:bg-slate-955 p-2 text-xs font-mono outline-none focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all leading-normal text-slate-800 dark:text-slate-200"
+                        />
+                      </label>
+                    </div>
+                    
+                    <div className="flex flex-col justify-between">
+                      <div>
+                        <span className="mb-1.5 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Upload CSV File</span>
+                        <label className="flex flex-col items-center justify-center border border-dashed border-slate-250 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-700/60 rounded-lg p-4 bg-slate-50/20 dark:bg-slate-900/35 cursor-pointer group transition-all h-20">
+                          <Upload className="h-4 w-4 text-slate-400 group-hover:text-emerald-500 transition-colors mb-1" />
+                          <span className="text-[10px] font-bold text-slate-500 group-hover:text-emerald-600 transition-colors">Select CSV file</span>
+                          <input
+                            type="file"
+                            accept=".csv"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                const text = event.target?.result as string;
+                                handleParsePassageCsv(text);
+                              };
+                              reader.readAsText(file);
+                              e.target.value = "";
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-1.5">
+                    <div className="rounded bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 p-2 text-[9px] text-amber-800 dark:text-amber-300 leading-normal flex-1">
+                      Headers: <code className="font-mono font-bold bg-white/70 dark:bg-slate-950/50 px-1 py-0.5 rounded">question,option1,option2,option3,option4,correct_option</code>
+                    </div>
+                    <Button
+                      type="button"
+                      disabled={!passageCsvText.trim()}
+                      onClick={() => handleParsePassageCsv(passageCsvText)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 px-3 shrink-0 rounded-lg"
+                    >
+                      Parse & Populate
+                    </Button>
+                  </div>
+                </div>
+
                 {subQuestions.map((subQ, subIdx) => (
                   <div key={subIdx} className="space-y-4 p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/10 dark:bg-slate-900/10 relative animate-fade-in">
                     {subQuestions.length > 1 && (
