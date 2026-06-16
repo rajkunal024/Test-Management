@@ -1,40 +1,90 @@
 import { FormEvent, useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { getErrorMessage, signupAdmin } from "../services/api";
 import { useLogin } from "../hooks/useAuth";
 import { Logo } from "../components/layout/Logo";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { PasswordInput } from "../components/ui/PasswordInput";
+import { 
+  GraduationCap, 
+  BookOpen, 
+  ShieldCheck, 
+  ArrowLeft,
+  FileText,
+  PieChart,
+  Terminal,
+  Activity,
+  CheckCircle,
+  Cpu
+} from "lucide-react";
 
-const LoginIllustration = () => (
-  <div className="relative h-[460px] w-[520px] max-w-full">
-    <div className="absolute left-[120px] top-[210px] h-4 w-[470px] rounded-full bg-slate-500 dark:bg-slate-700" />
-    <div className="absolute left-[150px] top-[224px] h-[150px] w-px bg-slate-500 dark:bg-slate-700" />
-    <div className="absolute left-[396px] top-[224px] h-[150px] w-px bg-slate-500 dark:bg-slate-700" />
-    <div className="absolute left-[84px] top-[224px] h-[150px] w-px bg-slate-500 dark:bg-slate-700" />
-    <div className="absolute left-[512px] top-[224px] h-[150px] w-px bg-slate-500 dark:bg-slate-700" />
-    <div className="absolute left-[212px] top-[58px] h-[284px] w-[64px] border-x border-slate-950 dark:border-slate-700" />
-    <div className="absolute left-[194px] top-[38px] h-9 w-[100px] rounded-sm bg-blue-200 dark:bg-blue-950/40" />
-    <div className="absolute left-[166px] top-[38px] h-1.5 w-[158px] rounded-full bg-blue-200 dark:bg-blue-950/40" />
-    <div className="absolute left-[196px] top-[342px] h-24 w-[96px] border-x border-slate-950 dark:border-slate-700" />
-    <div className="absolute left-[195px] top-[424px] h-6 w-[74px] rounded-sm bg-blue-200 dark:bg-blue-950/40" />
-    <div className="absolute left-[167px] top-[450px] h-1.5 w-[104px] rounded-full bg-blue-200 dark:bg-blue-950/40" />
-    <div className="absolute left-[115px] top-[155px] h-32 w-40 -skew-x-12 rounded bg-slate-200 dark:bg-slate-800" />
-    <div className="absolute left-[222px] top-[112px] h-2.5 w-2.5 rounded-full bg-black dark:bg-white" />
-    <div className="absolute left-[260px] top-[112px] h-2.5 w-2.5 rounded-full bg-black dark:bg-white" />
-    <div className="absolute left-[240px] top-[150px] h-1.5 w-1.5 rounded-full bg-black dark:bg-white" />
-    <div className="absolute left-[220px] top-[170px] h-8 w-28 rounded-b-full border-b border-slate-950 dark:border-slate-700" />
-    <div className="absolute left-[282px] top-[185px] h-20 w-[92px] rounded-r-full border border-l-0 border-slate-950 dark:border-slate-700" />
-    <div className="absolute left-[302px] top-[188px] h-6 w-14 rounded-full border border-slate-950 dark:border-slate-700 bg-[#f7faff] dark:bg-slate-900" />
-    <div className="absolute left-[198px] top-[206px] h-16 w-16 rounded-l-full border border-r-0 border-slate-950 dark:border-slate-700" />
-    <div className="absolute left-[210px] top-[252px] h-56 w-72 rounded-t-full border-t border-slate-950 dark:border-slate-700" />
-    <div className="absolute left-[198px] top-[465px] h-4 w-72 border-t border-slate-950 dark:border-slate-700" />
-    <div className="absolute left-[54px] top-[75px] h-5 w-5 before:absolute before:left-2 before:top-0 before:h-5 before:w-px before:bg-slate-600 dark:before:bg-slate-400 after:absolute after:left-0 after:top-2 after:h-px after:w-5 after:bg-slate-600 dark:after:bg-slate-400" />
-    <div className="absolute right-[70px] top-[188px] h-4 w-4 rounded-full border border-slate-950 dark:border-slate-700" />
-    <div className="absolute right-[8px] top-[260px] h-4 w-4 before:absolute before:left-2 before:top-0 before:h-4 before:w-px before:bg-slate-600 dark:before:bg-slate-400 after:absolute after:left-0 after:top-2 after:h-px after:w-4 after:bg-slate-600 dark:after:bg-slate-400" />
-  </div>
-);
+import studentBg from "../assets/student_login_bg.png";
+import teacherBg from "../assets/teacher_login_bg.png";
+import adminBg from "../assets/admin_login_bg.png";
+
+import studentIllus from "../assets/student_illus.png";
+import teacherIllus from "../assets/teacher_illus.png";
+import adminIllus from "../assets/admin_illus.png";
+
+
+
+const roleConfig = {
+  Student: {
+    badgeText: "STUDENT PORTAL",
+    badgeIcon: <GraduationCap className="h-3.5 w-3.5" />,
+    headline: "SECURE TESTING NODE",
+    description: "Enter your secure credentials to verify browser constraints, visibility hooks, and access your proctored assessment environment.",
+    leftPanelBg: "bg-gradient-to-br from-[#090e1a] via-[#060a12] to-[#03060d]",
+    borderLeftClass: "border-l-4 border-indigo-500 dark:border-indigo-650",
+    rightPanelBg: "bg-[#fafbfc] dark:bg-[#07090f]",
+    cardGlow: "hover:shadow-[0_0_35px_rgba(99,102,241,0.12)] dark:hover:shadow-[0_0_40px_rgba(99,102,241,0.08)]",
+    cardBorder: "border-indigo-100/60 dark:border-indigo-950/40",
+    buttonClass: "bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 focus:border-indigo-500 focus:ring-indigo-100/50 shadow-md shadow-indigo-500/10",
+    inputClass: "focus:border-indigo-500 focus:ring-indigo-100/50 focus:ring-3",
+    badgeColor: "text-indigo-600 bg-indigo-550/10 border-indigo-550/20 dark:text-indigo-400 dark:bg-indigo-500/10 dark:border-indigo-500/20",
+    accentText: "text-indigo-600 dark:text-indigo-400",
+    illustration: studentIllus,
+    bgImage: studentBg,
+    leftDescription: "Telemetry stream verified. Local webcams, visibility focus events, and clipboard hooks are routed to the target evaluation ledger."
+  },
+  Teacher: {
+    badgeText: "TEACHER NODE",
+    badgeIcon: <BookOpen className="h-3.5 w-3.5" />,
+    headline: "AUTHORING CENTRE",
+    description: "Enter credentials to access assessment design tables, register class profiles, parse CSV question sheets, and analyze performance reports.",
+    leftPanelBg: "bg-gradient-to-br from-[#10091d] via-[#090612] to-[#04020a]",
+    borderLeftClass: "border-l-4 border-purple-500 dark:border-purple-650",
+    rightPanelBg: "bg-[#fdfaff] dark:bg-[#08070d]",
+    cardGlow: "hover:shadow-[0_0_35px_rgba(168,85,247,0.12)] dark:hover:shadow-[0_0_40px_rgba(168,85,247,0.08)]",
+    cardBorder: "border-purple-100/60 dark:border-purple-950/40",
+    buttonClass: "bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 focus:border-purple-500 focus:ring-purple-100/50 shadow-md shadow-purple-500/10",
+    inputClass: "focus:border-purple-500 focus:ring-purple-100/50 focus:ring-3",
+    badgeColor: "text-purple-600 bg-purple-550/10 border-purple-550/20 dark:text-purple-400 dark:bg-purple-500/10 dark:border-purple-500/20",
+    accentText: "text-purple-600 dark:text-purple-400",
+    illustration: teacherIllus,
+    bgImage: teacherBg,
+    leftDescription: "Authoring platform loaded. Compile MCQs, configure passage modules, register rosters, and analyze performance distributions."
+  },
+  Admin: {
+    badgeText: "ADMIN CONSOLE",
+    badgeIcon: <ShieldCheck className="h-3.5 w-3.5" />,
+    headline: "MAINFRAME TERMINAL",
+    description: "Secure system administration terminal. Register portal users, check server activity socket metrics, and configure proctoring limits.",
+    leftPanelBg: "bg-gradient-to-br from-[#0c121e] via-[#03060a] to-[#05080f]",
+    borderLeftClass: "border-l-4 border-slate-700 dark:border-slate-800",
+    rightPanelBg: "bg-[#f8fafc] dark:bg-[#06080d]",
+    cardGlow: "hover:shadow-[0_0_35px_rgba(148,163,184,0.12)] dark:hover:shadow-[0_0_40px_rgba(148,163,184,0.08)]",
+    cardBorder: "border-slate-250/60 dark:border-slate-850",
+    buttonClass: "bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 focus:ring-slate-500 focus:border-slate-500 focus:ring-slate-100/50 shadow-md shadow-slate-500/10",
+    inputClass: "focus:border-slate-550 focus:ring-slate-100/50 focus:ring-3",
+    badgeColor: "text-slate-600 bg-slate-550/10 border-slate-550/20 dark:text-slate-350 dark:bg-slate-800/80 dark:border-slate-700",
+    accentText: "text-slate-705 dark:text-slate-300",
+    illustration: adminIllus,
+    bgImage: adminBg,
+    leftDescription: "System mainframe console active. Monitor live websockets, review security metrics, schedule assessment windows, and manage node configurations."
+  }
+};
 
 export const LoginPage = () => {
   const { role: urlRole } = useParams<{ role?: string }>();
@@ -109,55 +159,135 @@ export const LoginPage = () => {
     }
   };
 
+  const config = roleConfig[role];
+
   return (
-    <main className="grid min-h-screen grid-cols-1 bg-[#f7faff] dark:bg-slate-950 lg:grid-cols-[48%_52%] transition-colors duration-200">
-      <section className="hidden items-center justify-center lg:flex bg-slate-50/50 dark:bg-slate-950/20">
-        <LoginIllustration />
-      </section>
-      <section className="flex items-center justify-center border-l-4 border-slate-500 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 transition-colors duration-200">
-        <form onSubmit={submit} className="flex min-h-[calc(100vh-48px)] w-full max-w-[720px] flex-col justify-center rounded-md border border-primary-300 dark:border-slate-800 px-6 py-10 md:px-[14%] bg-white dark:bg-slate-900 transition-colors duration-200">
-          <div className="mb-12">
-            <Logo />
-          </div>
-          <h1 className="mb-7 text-xl font-bold text-slate-700 dark:text-slate-200">
-            {isSignUp ? "Admin Sign Up" : `Sign In as ${role}`}
-          </h1>
-          <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
-            {isSignUp
-              ? "Fill in your details and enter the registration key to register a new admin account"
-              : `Use your ${role.toLowerCase()} credentials to login`}
+    <main className={`grid min-h-screen grid-cols-1 ${config.rightPanelBg} lg:grid-cols-[46%_54%] transition-colors duration-300 relative overflow-hidden font-outfit`}>
+      
+      {/* Decorative Grid overlays */}
+      <div className="absolute inset-0 grid-cyber opacity-40 pointer-events-none z-0" />
+
+      {/* Left Column: Premium Illustrations with Dynamic Theme */}
+      <section className={`hidden lg:flex flex-col items-center justify-center p-8 ${config.leftPanelBg} border-r border-slate-200/10 relative transition-colors duration-300`}>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/20 via-transparent to-transparent pointer-events-none" />
+        
+        {/* Soft background glow circles */}
+        <div className="absolute top-[10%] left-[10%] w-[320px] h-[320px] bg-indigo-500/[0.03] rounded-full blur-[80px] pointer-events-none" />
+        
+        {/* Dynamic Graphic */}
+        <div className="relative z-10 select-none hover:scale-105 transition-transform duration-500 max-w-[340px] aspect-square rounded-3xl border border-white/10 p-2 bg-white/5 shadow-2xl backdrop-blur-sm overflow-hidden flex items-center justify-center">
+          <img 
+            src={config.illustration} 
+            alt={config.badgeText}
+            className="w-full h-full object-cover rounded-2xl animate-[float_8s_ease-in-out_infinite]"
+          />
+        </div>
+
+        {/* Text Details below the Graphic */}
+        <div className="mt-12 text-center max-w-sm relative z-10 space-y-3">
+          <h2 className="text-lg font-black tracking-tight text-white uppercase font-outfit">
+            {config.headline}
+          </h2>
+          <p className="text-xs text-slate-400 font-jakarta leading-relaxed font-medium">
+            {config.leftDescription}
           </p>
+        </div>
+      </section>
+
+      {/* Right Column: Dynamic Form Wrapper */}
+      <section className={`flex items-center justify-center p-6 ${config.borderLeftClass} transition-colors duration-300 relative z-10 min-h-screen overflow-hidden`}>
+        
+        {/* Dynamic background picture specific for every user */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-30 dark:opacity-20 pointer-events-none transition-all duration-700 mix-blend-luminosity dark:mix-blend-normal animate-pulse"
+          style={{ backgroundImage: `url(${config.bgImage})` }}
+        />
+        
+        {/* Sleek overlay gradient blending picture to theme */}
+        <div className="absolute inset-0 bg-[#fafbfc]/85 dark:bg-[#07090f]/90 pointer-events-none backdrop-blur-[1.5px]" />
+
+        <form 
+          onSubmit={submit} 
+          className={`relative w-full max-w-[500px] flex flex-col justify-center bg-white/90 dark:bg-[#0c1322]/80 border ${config.cardBorder} rounded-3xl p-8 md:p-12 shadow-xl ${config.cardGlow} transition-all duration-500 overflow-hidden backdrop-blur-md z-10`}
+        >
+          {/* Subtle inside card glow */}
+          <div className="absolute top-[-25%] right-[-15%] w-44 h-44 bg-indigo-500/[0.02] rounded-full blur-3xl pointer-events-none" />
+
+          {/* Go Back to Home Link */}
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold mb-8 group self-start transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
+            Back to Home
+          </Link>
+
+          {/* Header section */}
+          <div className="mb-6 flex items-center justify-between">
+            <Logo />
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black tracking-wider uppercase ${config.badgeColor} transition-colors`}>
+              {config.badgeIcon}
+              {config.badgeText}
+            </span>
+          </div>
+
+          <h1 className="mb-8 text-2xl font-black text-slate-900 dark:text-white leading-tight font-outfit">
+            {isSignUp ? "Admin Registration" : "Portal Entrance"}
+          </h1>
           
+          {/* Inputs Section */}
           {isSignUp ? (
-            <div className="space-y-6">
-              <Input label="Full Name" placeholder="Enter Full Name" value={adminName} onChange={(event) => setAdminName(event.target.value)} />
-              <Input label="User ID (Username)" placeholder="Enter User ID" value={userId} onChange={(event) => setUserId(event.target.value)} />
+            <div className="space-y-4">
+              <Input 
+                label="Full Name" 
+                placeholder="Enter Full Name" 
+                className={config.inputClass} 
+                value={adminName} 
+                onChange={(event) => setAdminName(event.target.value)} 
+              />
+              <Input 
+                label="User ID (Username)" 
+                placeholder="Enter User ID" 
+                className={config.inputClass} 
+                value={userId} 
+                onChange={(event) => setUserId(event.target.value)} 
+              />
               <PasswordInput
                 label="Password"
                 placeholder="Enter Password"
+                className={config.inputClass}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
               <PasswordInput
                 label="Admin Registration Key"
                 placeholder="Enter registration key"
+                className={config.inputClass}
                 value={adminKey}
                 onChange={(event) => setAdminKey(event.target.value)}
               />
             </div>
           ) : (
-            <div className="space-y-6">
-              <Input label="User ID" placeholder="Enter User ID" value={userId} onChange={(event) => setUserId(event.target.value)} />
+            <div className="space-y-4">
+              <Input 
+                label="User ID" 
+                placeholder="Enter User ID" 
+                className={config.inputClass} 
+                value={userId} 
+                onChange={(event) => setUserId(event.target.value)} 
+              />
               <PasswordInput
                 label="Password"
                 placeholder="Enter Password"
+                className={config.inputClass}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
             </div>
           )}
 
-          <div className="mt-6 flex flex-col gap-2">
+          {/* Links Section */}
+          <div className="mt-5 flex flex-col gap-2">
             {role === "Admin" && (
               <button
                 type="button"
@@ -166,27 +296,43 @@ export const LoginPage = () => {
                   setError("");
                   setSuccessMessage("");
                 }}
-                className="self-start text-sm font-medium text-[#6c7df7] dark:text-indigo-400 hover:underline"
+                className={`self-start text-xs font-bold ${config.accentText} hover:underline transition-colors cursor-pointer`}
               >
-                {isSignUp ? "Already have an admin account? Login" : "Don't have an admin account? Sign Up"}
+                {isSignUp ? "Already registered? Login" : "Initialize new admin account"}
               </button>
             )}
             {!isSignUp && (
-              <button type="button" className="self-start text-sm font-medium text-[#6c7df7] dark:text-indigo-400 hover:underline">
+              <button 
+                type="button" 
+                className={`self-start text-xs font-bold ${config.accentText} hover:underline transition-colors cursor-pointer`}
+              >
                 Forgot password?
               </button>
             )}
           </div>
 
-          {successMessage && <p className="mt-4 rounded-md bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-450">{successMessage}</p>}
-          {error && <p className="mt-4 rounded-md bg-rose-50 dark:bg-rose-950/20 px-3 py-2 text-sm font-medium text-rose-600 dark:text-rose-450">{error}</p>}
+          {/* Alert logs */}
+          {successMessage && (
+            <p className="mt-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-4 py-2.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+              {successMessage}
+            </p>
+          )}
+          {error && (
+            <p className="mt-4 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 px-4 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 font-mono">
+              {error}
+            </p>
+          )}
           
-          <Button className="mt-8 w-full" disabled={loginMutation.isPending || isSignUp && !adminName}>
-            {isSignUp ? "Sign Up" : (loginMutation.isPending ? "Logging in..." : "Login")}
+          {/* Submit button */}
+          <Button 
+            className={`mt-8 w-full py-6 rounded-xl font-bold text-xs uppercase tracking-wider ${config.buttonClass} transition-all duration-300 transform active:scale-98`} 
+            disabled={loginMutation.isPending || (isSignUp && !adminName)}
+          >
+            {isSignUp ? "Register Admin" : (loginMutation.isPending ? "Connecting..." : "Verify & Authenticate")}
           </Button>
+
         </form>
       </section>
     </main>
   );
 };
-
