@@ -13,6 +13,8 @@ import {
   BookOpenCheck,
   Calendar,
   TrendingUp,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -23,6 +25,59 @@ import { Spinner } from "../components/ui/Spinner";
 import { getAllAttempts } from "../services/api";
 import { useTests } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
+
+const getSubjectTheme = (subjectStr: string) => {
+  const sub = (subjectStr || "").toLowerCase();
+  if (sub.includes("math")) {
+    return {
+      gradient: "from-indigo-500/5 to-purple-500/5 dark:from-indigo-950/20 dark:to-purple-950/10",
+      borderHover: "hover:border-indigo-500/40",
+      glow: "bg-indigo-500/5 group-hover:bg-indigo-500/10",
+      textAccent: "text-indigo-650 dark:text-indigo-400",
+      badgeTone: "blue" as const,
+      borderLine: "border-indigo-100/30 dark:border-indigo-900/30"
+    };
+  }
+  if (sub.includes("phys") || sub.includes("blue")) {
+    return {
+      gradient: "from-blue-500/5 to-cyan-500/5 dark:from-blue-950/20 dark:to-cyan-950/10",
+      borderHover: "hover:border-blue-500/40",
+      glow: "bg-blue-500/5 group-hover:bg-blue-500/10",
+      textAccent: "text-blue-650 dark:text-blue-400",
+      badgeTone: "blue" as const,
+      borderLine: "border-blue-100/30 dark:border-blue-900/30"
+    };
+  }
+  if (sub.includes("chem") || sub.includes("bio") || sub.includes("science") || sub.includes("green")) {
+    return {
+      gradient: "from-emerald-500/5 to-teal-500/5 dark:from-emerald-950/20 dark:to-teal-950/10",
+      borderHover: "hover:border-emerald-500/40",
+      glow: "bg-emerald-500/5 group-hover:bg-emerald-500/10",
+      textAccent: "text-emerald-650 dark:text-emerald-400",
+      badgeTone: "green" as const,
+      borderLine: "border-emerald-100/30 dark:border-emerald-900/30"
+    };
+  }
+  if (sub.includes("eng") || sub.includes("yellow") || sub.includes("orange")) {
+    return {
+      gradient: "from-amber-500/5 to-orange-500/5 dark:from-amber-950/20 dark:to-orange-950/10",
+      borderHover: "hover:border-amber-500/40",
+      glow: "bg-amber-500/5 group-hover:bg-amber-500/10",
+      textAccent: "text-amber-650 dark:text-amber-450",
+      badgeTone: "yellow" as const,
+      borderLine: "border-amber-100/30 dark:border-amber-900/30"
+    };
+  }
+  // Default slate/violet theme
+  return {
+    gradient: "from-slate-500/5 to-violet-500/5 dark:from-slate-900/20 dark:to-violet-950/10",
+    borderHover: "hover:border-violet-500/40",
+    glow: "bg-violet-500/5 group-hover:bg-violet-500/10",
+    textAccent: "text-violet-650 dark:text-violet-400",
+    badgeTone: "slate" as const,
+    borderLine: "border-slate-100/30 dark:border-slate-800/30"
+  };
+};
 
 export const StudentDashboard = () => {
   const user = useAuthStore((state) => state.user);
@@ -36,6 +91,75 @@ export const StudentDashboard = () => {
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [currentTime, setCurrentTime] = useState(new Date().getTime());
   const [activeTab, setActiveTab] = useState<"exams" | "results">("exams");
+
+  // Calendar state management
+  const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
+  const [hoveredExams, setHoveredExams] = useState<any[]>([]);
+  const [hoveredDateText, setHoveredDateText] = useState<string | null>(null);
+  const [hoveredDatePosition, setHoveredDatePosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Generate days in the calendar grid (42 days for prev, current and next padding)
+  const calendarData = useMemo(() => {
+    const year = currentCalendarDate.getFullYear();
+    const month = currentCalendarDate.getMonth();
+    
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const totalDaysPrev = new Date(year, month, 0).getDate();
+
+    const cells: { day: number; date: Date; isCurrentMonth: boolean }[] = [];
+
+    // Prev month padding
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const dayNum = totalDaysPrev - i;
+      cells.push({
+        day: dayNum,
+        date: new Date(year, month - 1, dayNum),
+        isCurrentMonth: false
+      });
+    }
+
+    // Current month days
+    for (let i = 1; i <= totalDays; i++) {
+      cells.push({
+        day: i,
+        date: new Date(year, month, i),
+        isCurrentMonth: true
+      });
+    }
+
+    // Next month padding (to make exactly 6 rows of 7 days = 42 cells)
+    const remainingCells = 42 - cells.length;
+    for (let i = 1; i <= remainingCells; i++) {
+      cells.push({
+        day: i,
+        date: new Date(year, month + 1, i),
+        isCurrentMonth: false
+      });
+    }
+
+    return cells;
+  }, [currentCalendarDate]);
+
+  const handlePrevMonth = () => {
+    setCurrentCalendarDate(new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentCalendarDate(new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 1));
+  };
+
+  const getExamsForDate = (cellDate: Date) => {
+    return liveTests.filter((test) => {
+      if (!test.start_time) return false;
+      const testDate = new Date(test.start_time);
+      return (
+        testDate.getDate() === cellDate.getDate() &&
+        testDate.getMonth() === cellDate.getMonth() &&
+        testDate.getFullYear() === cellDate.getFullYear()
+      );
+    });
+  };
 
   // Keep time ticking to auto-lock/unlock slot buttons (every 1 second for precision)
   useEffect(() => {
@@ -136,7 +260,7 @@ export const StudentDashboard = () => {
 
   // Calculate student statistics
   const stats = useMemo(() => {
-    const studentAttempts = attempts.filter(a => a.user_id === user?.userId);
+    const studentAttempts = attempts.filter(a => a.user_id === user?.userId && tests.some((t) => t.id === a.test_id));
     const testAttempts = new Set(studentAttempts.map(a => a.test_id));
     const uniqueAttemptedCount = testAttempts.size;
 
@@ -161,7 +285,7 @@ export const StudentDashboard = () => {
       accuracy: averageAccuracy,
       available: liveTests.length,
     };
-  }, [attempts, liveTests, user]);
+  }, [attempts, liveTests, tests, user]);
 
   const isLoading = isLoadingTests || isLoadingAttempts;
 
@@ -227,9 +351,9 @@ export const StudentDashboard = () => {
 
         {/* Stats Grid */}
         <section className="mb-8 grid gap-5 sm:grid-cols-3">
-          <article className="relative flex items-center gap-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-5 shadow-md transition-all duration-300 hover:shadow-indigo-500/10 dark:hover:shadow-indigo-500/5 hover:-translate-y-1 hover:border-indigo-500/35 group overflow-hidden">
+          <article className="relative flex items-center gap-4 rounded-2xl border border-indigo-100/60 dark:border-indigo-900/40 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 dark:from-indigo-950/20 dark:to-purple-950/10 backdrop-blur-md p-5 shadow-md transition-all duration-300 hover:shadow-indigo-500/15 hover:-translate-y-1 hover:border-indigo-500/50 group overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-5 -mt-5 transition-all group-hover:bg-indigo-500/10" />
-            <div className="flex h-13 w-13 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-650 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30 group-hover:scale-110 group-hover:rotate-3 transition duration-300">
+            <div className="flex h-13 w-13 items-center justify-center rounded-xl bg-indigo-500/10 dark:bg-indigo-950/70 text-indigo-650 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/40 group-hover:scale-110 group-hover:rotate-3 transition duration-300 shadow-sm">
               <BookOpen className="h-6.5 w-6.5" />
             </div>
             <div>
@@ -238,9 +362,9 @@ export const StudentDashboard = () => {
             </div>
           </article>
 
-          <article className="relative flex items-center gap-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-5 shadow-md transition-all duration-300 hover:shadow-emerald-500/10 dark:hover:shadow-emerald-500/5 hover:-translate-y-1 hover:border-emerald-500/35 group overflow-hidden">
+          <article className="relative flex items-center gap-4 rounded-2xl border border-emerald-100/60 dark:border-emerald-900/40 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-950/20 dark:to-teal-950/10 backdrop-blur-md p-5 shadow-md transition-all duration-300 hover:shadow-emerald-500/15 hover:-translate-y-1 hover:border-emerald-500/50 group overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-5 -mt-5 transition-all group-hover:bg-emerald-500/10" />
-            <div className="flex h-13 w-13 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-650 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-900/30 group-hover:scale-110 group-hover:rotate-3 transition duration-300">
+            <div className="flex h-13 w-13 items-center justify-center rounded-xl bg-emerald-500/10 dark:bg-emerald-950/70 text-emerald-650 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40 group-hover:scale-110 group-hover:rotate-3 transition duration-300 shadow-sm">
               <CheckCircle2 className="h-6.5 w-6.5" />
             </div>
             <div>
@@ -249,9 +373,9 @@ export const StudentDashboard = () => {
             </div>
           </article>
 
-          <article className="relative flex items-center gap-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-5 shadow-md transition-all duration-300 hover:shadow-amber-500/10 dark:hover:shadow-amber-500/5 hover:-translate-y-1 hover:border-amber-500/35 group overflow-hidden">
+          <article className="relative flex items-center gap-4 rounded-2xl border border-amber-100/60 dark:border-amber-900/40 bg-gradient-to-br from-amber-500/5 to-orange-500/5 dark:from-amber-950/20 dark:to-orange-950/10 backdrop-blur-md p-5 shadow-md transition-all duration-300 hover:shadow-amber-500/15 hover:-translate-y-1 hover:border-amber-500/50 group overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -mr-5 -mt-5 transition-all group-hover:bg-amber-500/10" />
-            <div className="flex h-13 w-13 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-955/40 text-amber-650 dark:text-amber-450 border border-amber-100/50 dark:border-amber-900/30 group-hover:scale-110 group-hover:rotate-3 transition duration-300">
+            <div className="flex h-13 w-13 items-center justify-center rounded-xl bg-amber-500/10 dark:bg-amber-955/50 text-amber-650 dark:text-amber-450 border border-amber-200/50 dark:border-amber-800/40 group-hover:scale-110 group-hover:rotate-3 transition duration-300 shadow-sm">
               <Award className="h-6.5 w-6.5" />
             </div>
             <div>
@@ -266,7 +390,7 @@ export const StudentDashboard = () => {
           <button
             onClick={() => setActiveTab("exams")}
             className={`flex-1 py-3 px-5 text-xs font-bold rounded-xl transition-all duration-300 ${activeTab === "exams"
-                ? "bg-white dark:bg-slate-800 text-indigo-650 dark:text-indigo-400 shadow-md font-extrabold scale-[1.02]"
+                ? "bg-gradient-to-r from-indigo-600 to-[#6c7df7] text-white shadow-lg font-black scale-[1.02]"
                 : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:scale-[0.98]"
               }`}
           >
@@ -275,7 +399,7 @@ export const StudentDashboard = () => {
           <button
             onClick={() => setActiveTab("results")}
             className={`flex-1 py-3 px-5 text-xs font-bold rounded-xl transition-all duration-300 ${activeTab === "results"
-                ? "bg-white dark:bg-slate-800 text-indigo-650 dark:text-indigo-400 shadow-md font-extrabold scale-[1.02]"
+                ? "bg-gradient-to-r from-indigo-600 to-[#6c7df7] text-white shadow-lg font-black scale-[1.02]"
                 : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:scale-[0.98]"
               }`}
           >
@@ -283,7 +407,10 @@ export const StudentDashboard = () => {
           </button>
         </div>
 
-        {activeTab === "exams" && (
+        <div className="grid gap-8 lg:grid-cols-[1fr_360px] items-start dashboard-grid-layout">
+          {/* Left panel: Catalog/Results tabs */}
+          <div className="space-y-6 dashboard-main-content">
+            {activeTab === "exams" && (
           <>
             {/* Filter Controls */}
             <div className="mb-6 grid gap-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-4 shadow-sm md:grid-cols-[1fr_240px]">
@@ -326,7 +453,7 @@ export const StudentDashboard = () => {
                 <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">Try adjusting your filters or search term.</p>
               </div>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid gap-6 md:grid-cols-2 dashboard-cards-grid">
                 {filteredTests.map((test) => {
                   const attempt = testAttemptsMap[test.id];
                   const diffLower = (test.difficulty || "").toLowerCase().trim();
@@ -343,18 +470,19 @@ export const StudentDashboard = () => {
                   const canEnterPrep = test.questions && test.questions.length > 0 && currentTime >= (startTime - 60000) && !isEnded;
 
                   const subjectsName = Array.isArray(test.subject) ? test.subject.join(", ") : test.subject;
+                  const theme = getSubjectTheme(subjectsName);
 
                   return (
                     <article
                       key={test.id}
-                      className="relative flex flex-col justify-between rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/30 backdrop-blur-md p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-indigo-500/30 dark:hover:shadow-slate-950/80 transition-all duration-300 group overflow-hidden"
+                      className={`relative flex flex-col justify-between rounded-2xl border border-slate-200/80 dark:border-slate-805 bg-gradient-to-br ${theme.gradient} bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 ${theme.borderHover} dark:hover:shadow-slate-950/80 transition-all duration-300 group overflow-hidden`}
                     >
                       {/* Gradient glow behind the card */}
-                      <div className="absolute top-0 left-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl -ml-10 -mt-10 group-hover:bg-indigo-500/10 transition-colors pointer-events-none" />
+                      <div className={`absolute top-0 left-0 w-32 h-32 ${theme.glow} rounded-full blur-3xl -ml-10 -mt-10 transition-colors pointer-events-none`} />
                       
                       <div>
                         <div className="mb-4.5 flex flex-wrap items-center gap-2 relative z-10">
-                          <Badge tone="blue" className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{subjectsName}</Badge>
+                          <Badge tone={theme.badgeTone} className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{subjectsName}</Badge>
                           <Badge tone={difficultyColor} className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{test.difficulty}</Badge>
                           <Badge tone="slate" className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{test.type.replace("_", " ")}</Badge>
 
@@ -378,7 +506,7 @@ export const StudentDashboard = () => {
                           <span>Slot: {formatDateTime(test.start_time)} - {formatDateTime(test.end_time)}</span>
                         </div>
 
-                        <div className="mb-5 grid grid-cols-3 gap-2 text-xs text-slate-500 dark:text-slate-400 border-y border-slate-100 dark:border-slate-800/50 py-3.5 mt-4 bg-slate-50/50 dark:bg-slate-950/20 rounded-xl px-2.5">
+                        <div className={`mb-5 grid grid-cols-3 gap-2 text-xs text-slate-500 dark:text-slate-400 border-y ${theme.borderLine} py-3.5 mt-4 bg-slate-50/50 dark:bg-slate-950/20 rounded-xl px-2.5`}>
                           <div className="flex flex-col items-center">
                             <span className="font-black text-slate-800 dark:text-slate-200 text-sm">{test.total_questions}</span>
                             <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">Questions</span>
@@ -456,41 +584,46 @@ export const StudentDashboard = () => {
               <Award className="h-5 w-5 text-indigo-500" />
               Completed Test Performance
             </h2>
-            {attempts.filter(a => a.user_id === user?.userId).length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-350 dark:border-slate-850 bg-white/50 dark:bg-slate-900/20 py-16 text-center text-slate-500 dark:text-slate-400 backdrop-blur-sm">
-                <p className="text-lg font-bold dark:text-slate-350">No results found</p>
-                <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">You haven't completed any exams yet. Go attempt active tests!</p>
-              </div>
-            ) : (
-              <div className="grid gap-6 md:grid-cols-2">
-                {(() => {
-                  const studentAttempts = attempts.filter((a) => {
-                    if (a.user_id !== user?.userId) return false;
-                    const test = tests.find((t) => t.id === a.test_id);
-                    if (test && test.start_time) {
-                      const testStart = new Date(test.start_time).getTime();
-                      const parsedIdTime = (() => {
-                        const id = user?.id || "";
-                        if (id.length === 24) {
-                          const timestampHex = id.substring(0, 8);
-                          const timestampSec = parseInt(timestampHex, 16);
-                          if (!isNaN(timestampSec)) return timestampSec * 1000;
-                        }
-                        return 0;
-                      })();
-                      const studentJoined = user?.joined_at
-                        ? (parsedIdTime ? Math.min(new Date(user.joined_at).getTime(), parsedIdTime) : new Date(user.joined_at).getTime())
-                        : parsedIdTime;
-                      return testStart >= studentJoined;
+            {(() => {
+              const studentAttempts = attempts.filter((a) => {
+                if (a.user_id !== user?.userId) return false;
+                const test = tests.find((t) => t.id === a.test_id);
+                if (!test) return false;
+                if (test.start_time) {
+                  const testStart = new Date(test.start_time).getTime();
+                  const parsedIdTime = (() => {
+                    const id = user?.id || "";
+                    if (id.length === 24) {
+                      const timestampHex = id.substring(0, 8);
+                      const timestampSec = parseInt(timestampHex, 16);
+                      if (!isNaN(timestampSec)) return timestampSec * 1000;
                     }
-                    return true;
-                  });
+                    return 0;
+                  })();
+                  const studentJoined = user?.joined_at
+                    ? (parsedIdTime ? Math.min(new Date(user.joined_at).getTime(), parsedIdTime) : new Date(user.joined_at).getTime())
+                    : parsedIdTime;
+                  return testStart >= studentJoined;
+                }
+                return true;
+              });
 
-                  const sortedAttempts = [...studentAttempts].sort((a, b) => {
-                    return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime();
-                  });
+              if (studentAttempts.length === 0) {
+                return (
+                  <div className="rounded-2xl border border-dashed border-slate-350 dark:border-slate-850 bg-white/50 dark:bg-slate-900/20 py-16 text-center text-slate-500 dark:text-slate-400 backdrop-blur-sm">
+                    <p className="text-lg font-bold dark:text-slate-350">No results found</p>
+                    <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">You haven't completed any exams yet. Go attempt active tests!</p>
+                  </div>
+                );
+              }
 
-                  return sortedAttempts.map((attempt) => {
+              const sortedAttempts = [...studentAttempts].sort((a, b) => {
+                return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime();
+              });
+
+              return (
+                <div className="grid gap-6 md:grid-cols-2 dashboard-cards-grid">
+                  {sortedAttempts.map((attempt) => {
                     const test = tests.find((t) => t.id === attempt.test_id);
                     const totalMarks = test?.total_marks ?? attempt.total_marks ?? attempt.score;
                     const subjectsName = test ? (Array.isArray(test.subject) ? test.subject.join(", ") : test.subject) : "General";
@@ -498,20 +631,22 @@ export const StudentDashboard = () => {
                       dateStyle: "medium",
                     });
 
+                    const theme = getSubjectTheme(subjectsName);
+
                     return (
                       <article
                         key={attempt.id}
-                        className="relative flex flex-col justify-between rounded-2xl border border-slate-200/80 dark:border-slate-800/85 bg-white/80 dark:bg-slate-900/30 backdrop-blur-md p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-indigo-500/30 dark:hover:shadow-slate-950/80 transition-all duration-300 group overflow-hidden"
+                        className={`relative flex flex-col justify-between rounded-2xl border border-slate-200/80 dark:border-slate-800/85 bg-gradient-to-br ${theme.gradient} bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 ${theme.borderHover} dark:hover:shadow-slate-950/80 transition-all duration-300 group overflow-hidden`}
                       >
                         {/* Gradient glow behind the card */}
-                        <div className="absolute top-0 left-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -ml-10 -mt-10 group-hover:bg-emerald-500/10 transition-colors pointer-events-none" />
+                        <div className={`absolute top-0 left-0 w-32 h-32 ${theme.glow} rounded-full blur-3xl -ml-10 -mt-10 transition-colors pointer-events-none`} />
 
                         <div>
                           <div className="mb-4 flex flex-wrap items-center gap-2 relative z-10">
-                            <Badge tone="blue" className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{subjectsName}</Badge>
+                            <Badge tone={theme.badgeTone} className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{subjectsName}</Badge>
                             <Badge tone="green" className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">Attempt Completed</Badge>
                           </div>
-                          <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-2 tracking-tight line-clamp-1 group-hover:text-[#6c7df7] transition-colors" title={attempt.test_name || test?.name}>
+                          <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-2 tracking-tight line-clamp-1 group-hover:text-indigo-650 dark:group-hover:text-indigo-400 transition-colors" title={attempt.test_name || test?.name}>
                             {attempt.test_name || test?.name || "Exam Attempt"}
                           </h3>
                           <div className="text-xs text-slate-400 dark:text-slate-500 space-y-1.5 mb-5 font-bold">
@@ -524,7 +659,7 @@ export const StudentDashboard = () => {
                               <span>Duration: <span className="font-extrabold text-slate-700 dark:text-slate-350">{Math.floor(attempt.time_spent / 60)}m {attempt.time_spent % 60}s</span></span>
                             </div>
                           </div>
-                          <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-850 pt-4 mt-2 relative z-10">
+                          <div className={`flex items-center justify-between border-t ${theme.borderLine} pt-4 mt-2 relative z-10`}>
                             <div>
                               <span className="text-[10px] text-slate-400 dark:text-slate-500 block uppercase font-black tracking-wider">Marks Scored</span>
                               <span className="text-lg font-black text-indigo-650 dark:text-indigo-400">
@@ -546,13 +681,156 @@ export const StudentDashboard = () => {
                         </div>
                       </article>
                     );
-                  });
-                })()}
-              </div>
-            )}
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
+          </div>
+
+          {/* Right panel: custom calendar */}
+          <aside className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-5 shadow-sm sticky top-[88px] relative z-10 dashboard-calendar-sidebar">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-indigo-500" />
+                Exam Calendar
+              </h3>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handlePrevMonth}
+                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                  title="Previous Month"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 min-w-[70px] text-center tracking-wider">
+                  {currentCalendarDate.toLocaleString([], { month: "short", year: "numeric" })}
+                </span>
+                <button
+                  onClick={handleNextMonth}
+                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                  title="Next Month"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Weekdays */}
+            <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+              {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                <div key={day} className="py-1">{day}</div>
+              ))}
+            </div>
+
+            {/* Days Grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {calendarData.map((cell, idx) => {
+                const dayExams = getExamsForDate(cell.date);
+                const hasExams = dayExams.length > 0;
+                const isTodayStr = new Date().toDateString() === cell.date.toDateString();
+
+                let cellClass = "aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-bold transition-all relative cursor-default";
+                
+                if (cell.isCurrentMonth) {
+                  cellClass += " text-slate-700 dark:text-slate-350";
+                } else {
+                  cellClass += " text-slate-300 dark:text-slate-600";
+                }
+
+                if (isTodayStr) {
+                  cellClass += " border border-indigo-500 bg-indigo-500/5 dark:bg-indigo-500/10 font-black";
+                } else if (hasExams) {
+                  cellClass += " hover:bg-indigo-500/10 dark:hover:bg-indigo-500/20";
+                } else {
+                  cellClass += " hover:bg-slate-50 dark:hover:bg-slate-850/50";
+                }
+
+                return (
+                  <div
+                    key={idx}
+                    className={cellClass}
+                    onMouseEnter={(e) => {
+                      if (hasExams) {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setHoveredExams(dayExams);
+                        setHoveredDateText(cell.date.toLocaleDateString([], { dateStyle: "medium" }));
+                        setHoveredDatePosition({
+                          x: rect.left + window.scrollX + rect.width / 2,
+                          y: rect.top + window.scrollY - 8
+                        });
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredExams([]);
+                      setHoveredDateText(null);
+                      setHoveredDatePosition(null);
+                    }}
+                  >
+                    <span>{cell.day}</span>
+                    {hasExams && (
+                      <span className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-[#6c7df7] animate-pulse" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+        </div>
       </PageWrapper>
+      {/* Floating Hover Details Popover */}
+      {hoveredExams.length > 0 && hoveredDatePosition && (
+        <div
+          className="absolute z-50 w-72 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md p-4 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full transition-all duration-200 animate-fade-in"
+          style={{
+            left: `${hoveredDatePosition.x}px`,
+            top: `${hoveredDatePosition.y}px`
+          }}
+        >
+          <div className="mb-2.5 pb-1.5 border-b border-slate-100 dark:border-slate-900 flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
+            <span>Scheduled Exam Details</span>
+            <span className="text-indigo-500 dark:text-indigo-400">{hoveredDateText}</span>
+          </div>
+          <div className="space-y-3 max-h-60 overflow-y-auto">
+            {hoveredExams.map((exam, index) => {
+              const theme = getSubjectTheme(Array.isArray(exam.subject) ? exam.subject.join(", ") : exam.subject);
+              const startTime = exam.start_time ? new Date(exam.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+              const endTime = exam.end_time ? new Date(exam.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+              const subjectName = Array.isArray(exam.subject) ? exam.subject.join(", ") : exam.subject;
+              return (
+                <div key={exam.id || index} className="space-y-1">
+                  <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 line-clamp-1">
+                    {exam.name}
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge tone={theme.badgeTone} className="font-extrabold text-[9px] px-1.5 py-0.5 rounded-md">
+                      {subjectName}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-bold pt-1.5">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-slate-400" />
+                      <span>{exam.total_time} mins</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Award className="h-3 w-3 text-slate-400" />
+                      <span>{exam.total_marks} Marks</span>
+                    </div>
+                    {startTime && (
+                      <div className="flex items-center gap-1 col-span-2">
+                        <Calendar className="h-3 w-3 text-slate-400" />
+                        <span>Time: {startTime} - {endTime}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-slate-950 border-r border-b border-slate-200/80 dark:border-slate-800 rotate-45 pointer-events-none" />
+        </div>
+      )}
     </AppShell>
   );
 };

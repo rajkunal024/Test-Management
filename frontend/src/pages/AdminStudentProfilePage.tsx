@@ -46,7 +46,7 @@ export const AdminStudentProfilePage = () => {
   const stats = useMemo(() => {
     if (!student) return null;
 
-    const studentAttempts = attempts.filter((a) => a.user_id === student.userId);
+    const studentAttempts = attempts.filter((a) => a.user_id === student.userId && tests.some((t) => t.id === a.test_id));
 
     let totalScore = 0;
     let totalMaxMarks = 0;

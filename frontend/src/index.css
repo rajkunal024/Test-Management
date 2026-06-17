@@ -101,3 +101,24 @@ textarea {
   background: #cbd5e1;
   border-radius: 999px;
 }
+
+/* Full screen override when navigation is hidden */
+main.nav-hidden .max-w-\[1280px\] {
+  max-w: none !important;
+  padding-left: 2rem !important;
+  padding-right: 2rem !important;
+}
+
+@media (min-width: 1024px) {
+  main.nav-hidden .dashboard-cards-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+
+@media (max-width: 768px) {
+  main.nav-hidden .max-w-\[1280px\] {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}

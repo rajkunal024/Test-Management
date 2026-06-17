@@ -48,10 +48,10 @@ export const AdminStudentPerformancePage = () => {
   // Find all attempts of the student
   const studentAttempts = useMemo(() => {
     if (!student) return [];
-    const filtered = attempts.filter((a) => a.user_id === student.userId);
+    const filtered = attempts.filter((a) => a.user_id === student.userId && tests.some((t) => t.id === a.test_id));
     // Sort attempts by submission date descending (LIFO)
     return [...filtered].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
-  }, [student, attempts]);
+  }, [student, attempts, tests]);
 
   // Compute rank in a test
   const getStudentRankInTest = (testId: string, studentUserId: string) => {

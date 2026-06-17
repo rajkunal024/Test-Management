@@ -46,7 +46,7 @@ export const AdminStudentsPage = () => {
   // Aggregate stats per student
   const studentsWithStats = useMemo(() => {
     return students.map((student) => {
-      const studentAttempts = attempts.filter((a) => a.user_id === student.userId);
+      const studentAttempts = attempts.filter((a) => a.user_id === student.userId && tests.some((t) => t.id === a.test_id));
       
       let totalScore = 0;
       let totalMaxMarks = 0;
@@ -86,7 +86,8 @@ export const AdminStudentsPage = () => {
     let grandMaxMarks = 0;
     attempts.forEach((attempt) => {
       const test = tests.find((t) => t.id === attempt.test_id);
-      const max = test?.total_marks || attempt.total_marks || 100;
+      if (!test) return; // Ignore attempts of deleted tests!
+      const max = test.total_marks || attempt.total_marks || 100;
       grandScore += attempt.score;
       grandMaxMarks += max;
     });

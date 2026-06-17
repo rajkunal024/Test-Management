@@ -314,6 +314,31 @@ export const TeacherDashboard = () => {
     }));
   };
 
+  const handleSendQuickWarning = (studentId: string, text: string) => {
+    if (!teacherSocketRef.current || teacherSocketRef.current.readyState !== WebSocket.OPEN) return;
+
+    teacherSocketRef.current.send(JSON.stringify({
+      type: "chat_message",
+      target_user_id: studentId,
+      text
+    }));
+
+    setChatHistory((prev) => {
+      const current = prev[studentId] || [];
+      return {
+        ...prev,
+        [studentId]: [...current, {
+          sender: "You (Proctor)",
+          text,
+          timestamp: Date.now()
+        }]
+      };
+    });
+
+    setToast("Warning sent successfully");
+    window.setTimeout(() => setToast(""), 1200);
+  };
+
 
   const { data: httpStreamsList = [] } = useQuery({
     queryKey: ["activeStreams", selectedTestIdForMonitoring],
@@ -1138,18 +1163,34 @@ export const TeacherDashboard = () => {
               <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 {["Class 9", "Class 10", "Class 11", "Class 12"].map((cls) => {
                   const count = subjectQuestions.filter((q) => q.class === cls).length;
+                  const totalCount = subjectQuestions.length;
+                  const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
                   return (
                     <div
                       key={cls}
-                      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm flex flex-col justify-between"
+                      className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-5 shadow-sm hover:shadow-md hover:border-emerald-500/30 transition-all duration-300 dark:hover:border-emerald-500/20 flex flex-col justify-between"
                     >
                       <div>
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wide">Class Level</span>
+                        <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wide">Class Level</span>
                         <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{cls}</h4>
                       </div>
-                      <div className="mt-4 flex items-baseline gap-1">
-                        <span className="text-2xl font-black text-emerald-600 dark:text-emerald-450">{count}</span>
-                        <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Questions</span>
+                      <div className="mt-4">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-450">{count}</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Questions</span>
+                        </div>
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between text-[9px] text-slate-400 dark:text-slate-500 font-bold mb-1">
+                            <span>Pool Ratio</span>
+                            <span>{pct}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div 
+                              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500" 
+                              style={{ width: `${pct}%` }} 
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -2378,6 +2419,26 @@ export const TeacherDashboard = () => {
                         ? "Real-time WebSocket feed active"
                         : "Real-time polling active (every 3s)"}
                     </span>
+                  </div>
+                </div>
+
+                {/* Proctor Console metrics bar */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-xl p-4.5 flex flex-col shadow-sm">
+                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">Monitored Session</span>
+                    <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200 mt-1">Active Sockets</span>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-xl p-4.5 flex flex-col shadow-sm">
+                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">Proctored Streams</span>
+                    <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-450 mt-1">{activeStreamsList.length} Students Live</span>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-xl p-4.5 flex flex-col shadow-sm">
+                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">Stream Quality</span>
+                    <span className="text-sm font-extrabold text-indigo-500 dark:text-indigo-400 mt-1">HD WebRTC</span>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-xl p-4.5 flex flex-col shadow-sm">
+                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">System Integrity</span>
+                    <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-455 mt-1">99.98% Shield</span>
                   </div>
                 </div>
 

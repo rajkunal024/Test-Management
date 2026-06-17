@@ -535,7 +535,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
         </div>
       </Modal>
 
-      <main className={`min-h-screen pt-[100px] transition-all duration-300 ${navHidden ? "pl-0" : compactRail ? "lg:pl-[64px]" : "lg:pl-[252px]"}`}>{children}</main>
+      <main className={`min-h-screen pt-[100px] transition-all duration-300 ${navHidden ? "pl-0 nav-hidden" : compactRail ? "lg:pl-[64px]" : "lg:pl-[252px]"}`}>{children}</main>
     </div>
   );
 };
