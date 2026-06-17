@@ -242,7 +242,14 @@ If you prefer running or debugging them in separate terminal tabs, you can targe
 
 ### 🔑 1. Landing Page & Role-Specific Authentication
 * **Unified Portal Selector:** The root route `/` features a modern glassmorphic Landing Page with three interactive selection cards tailored to User Roles (**Admin**, **Teacher**, and **Student**).
-* **Role-Based Logins:** Selecting a role routes users to `/login/:role` (e.g., `/login/student`). The login page dynamically customizes its text and visual theme depending on the role.
+* **Role-Specific Login Architectures:** Rather than relying on simple color changes, each portal features a structurally distinct layout to eliminate user confusion:
+  * **Student Portal:** Centered glassmorphic card layout floating over cyan/indigo background glows and animated cyber grid overlays.
+  * **Teacher Portal:** Split two-column layout on desktop viewports, with the descriptive dashboard info/illustration panel on the Left and the active Login Form card on the Right.
+  * **Admin Portal:** Split two-column layout on desktop viewports, with the Amber mainframe info/illustration panel on the Left and the active Login Form card on the Right.
+* **In-Memory Forgot Password OTP Flow:** Features a secure password recovery protocol that does not modify the database schemas:
+  * Generates secure 6-digit verification OTP codes stored temporarily in-memory with a 10-minute expiration.
+  * Enforces a 60-second request rate-limiting cooldown per email to prevent spam.
+  * Validates OTP codes and enforces interactive password strength checklists before hashing the updated credentials via bcrypt.
 * **Token Cookie Security:** Utilizes Secure `HttpOnly; SameSite=Lax` cookies with signature encryption (`JWT_SECRET`) to maintain sessions safely without risking client-side exposure.
 * **Startup Legacy Migration:** Upon database boot-up, the system automatically checks for legacy plain-text user passwords and hashes them transparently using the **PBKDF2-HMAC** algorithm with unique salt keys.
 
