@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import bcrypt from "bcryptjs";
 
 export const hashPassword = (password: string): string => {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -8,6 +9,12 @@ export const hashPassword = (password: string): string => {
 
 export const verifyPassword = (password: string, storedHash: string): boolean => {
   if (!storedHash) return false;
+
+  // Check if it is a bcrypt hash (starts with $2a$, $2b$, or $2y$)
+  if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$") || storedHash.startsWith("$2y$")) {
+    return bcrypt.compareSync(password, storedHash);
+  }
+
   // If storedHash is not in "salt:hash" format, fall back to plain-text check for legacy seeded accounts
   if (!storedHash.includes(":")) {
     return password === storedHash;

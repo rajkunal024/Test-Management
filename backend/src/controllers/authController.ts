@@ -3,6 +3,8 @@ import { json, readBody } from "../middlewares/utils.js";
 import { AdminModel, TeacherModel, StudentModel } from "../models/index.js";
 import { hashPassword, verifyPassword, signToken } from "../utils/crypto.js";
 import { getUserFromRequest } from "../middlewares/auth.js";
+import bcrypt from "bcryptjs";
+import { requestOtp, verifyOtp as checkOtp, deleteOtp } from "../utils/otpStore.js";
 
 export const signupAdmin = async (request: IncomingMessage, response: ServerResponse) => {
   try {
@@ -185,5 +187,170 @@ export const changePassword = async (request: IncomingMessage, response: ServerR
     json(response, 200, { success: true, message: "Password updated successfully" });
   } catch (e) {
     json(response, 500, { success: false, message: "Server error during password update" });
+  }
+};
+
+export const forgotPassword = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const body = JSON.parse(await readBody(request));
+    const { email } = body;
+
+    if (!email) {
+      json(response, 400, { success: false, message: "Email is required" });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      json(response, 400, { success: false, message: "Invalid email format" });
+      return;
+    }
+
+    // Verify email exists in our models
+    let userDoc = await StudentModel.findOne({ email });
+    if (!userDoc) {
+      userDoc = await TeacherModel.findOne({ email });
+    }
+    if (!userDoc) {
+      // Check if admin has userId matching the email format
+      userDoc = await AdminModel.findOne({ userId: email });
+    }
+
+    if (!userDoc) {
+      json(response, 404, { success: false, message: "User not found" });
+      return;
+    }
+
+    // Attempt to generate/store OTP (managing rate limit map internally)
+    const otpResult = requestOtp(email);
+    if (!otpResult.success) {
+      json(response, 429, { 
+        success: false, 
+        message: `Too many OTP requests. Please wait ${otpResult.cooldownLeft} seconds before trying again.` 
+      });
+      return;
+    }
+
+    // Print OTP in backend terminal
+    console.log(`
+================================================
+FORGOT PASSWORD REQUEST
+Email: ${email}
+OTP: ${otpResult.otp}
+Expires In: 10 Minutes
+================================================
+`);
+
+    json(response, 200, {
+      success: true,
+      message: "OTP generated successfully"
+    });
+  } catch (e) {
+    json(response, 500, { success: false, message: "Server error during OTP generation" });
+  }
+};
+
+export const verifyOtpController = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const body = JSON.parse(await readBody(request));
+    const { email, otp } = body;
+
+    if (!email || !otp) {
+      json(response, 400, { success: false, message: "Email and OTP are required" });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      json(response, 400, { success: false, message: "Invalid email format" });
+      return;
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      json(response, 400, { success: false, message: "OTP must be exactly 6 digits" });
+      return;
+    }
+
+    const verification = checkOtp(email, otp);
+    if (!verification.success) {
+      json(response, 400, { success: false, message: verification.message });
+      return;
+    }
+
+    json(response, 200, {
+      success: true,
+      message: "OTP verified"
+    });
+  } catch (e) {
+    json(response, 500, { success: false, message: "Server error during OTP verification" });
+  }
+};
+
+export const resetPassword = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const body = JSON.parse(await readBody(request));
+    const { email, otp, newPassword } = body;
+
+    if (!email || !otp || !newPassword) {
+      json(response, 400, { success: false, message: "Email, OTP, and new password are required" });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      json(response, 400, { success: false, message: "Invalid email format" });
+      return;
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      json(response, 400, { success: false, message: "OTP must be exactly 6 digits" });
+      return;
+    }
+
+    // Password validation: minimum 8 characters, one uppercase letter, one lowercase letter, one number
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      json(response, 400, { 
+        success: false, 
+        message: "Password must be at least 8 characters long, containing at least one uppercase letter, one lowercase letter, and one number" 
+      });
+      return;
+    }
+
+    // Verify OTP first
+    const verification = checkOtp(email, otp);
+    if (!verification.success) {
+      json(response, 400, { success: false, message: verification.message });
+      return;
+    }
+
+    // Search user to update password
+    let userDoc = await StudentModel.findOne({ email });
+    if (!userDoc) {
+      userDoc = await TeacherModel.findOne({ email });
+    }
+    if (!userDoc) {
+      userDoc = await AdminModel.findOne({ userId: email });
+    }
+
+    if (!userDoc) {
+      json(response, 404, { success: false, message: "User not found" });
+      return;
+    }
+
+    // Hash using bcrypt and update
+    userDoc.password = bcrypt.hashSync(newPassword, 10);
+    userDoc.requiresPasswordChange = false;
+    await userDoc.save();
+
+    // Delete OTP from Map immediately
+    deleteOtp(email);
+
+    json(response, 200, {
+      success: true,
+      message: "Password reset successful"
+    });
+  } catch (e) {
+    json(response, 500, { success: false, message: "Server error during password reset" });
   }
 };

@@ -9,12 +9,14 @@
     "start": "node dist/server.js"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^25.9.1",
     "@types/ws": "^8.18.1",
     "typescript": "^5.7.2"
   },
   "dependencies": {
     "@imagekit/nodejs": "^7.7.0",
+    "bcryptjs": "^3.0.3",
     "imagekit": "^6.0.0",
     "mongoose": "^8.24.0",
     "ws": "^8.21.0"

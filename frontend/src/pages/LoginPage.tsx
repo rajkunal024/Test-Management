@@ -407,13 +407,12 @@ export const LoginPage = () => {
               </button>
             )}
             {!isSignUp && (
-              <button 
-                type="button" 
-                onClick={() => setError(`Password recovery is managed by school administrators. Please contact your coordinator to reset your credentials.`)}
+              <Link 
+                to="/forgot-password"
                 className={`self-start text-xs font-bold ${config.accentText} hover:underline transition-colors cursor-pointer`}
               >
                 Forgot password?
-              </button>
+              </Link>
             )}
           </div>
 

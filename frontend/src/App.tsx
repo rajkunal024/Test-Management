@@ -13,11 +13,17 @@ import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { AdminStudentsPage } from "./pages/AdminStudentsPage";
 import { AdminStudentProfilePage } from "./pages/AdminStudentProfilePage";
 import { AdminStudentPerformancePage } from "./pages/AdminStudentPerformancePage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { VerifyOtpPage } from "./pages/VerifyOtpPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
 export const App = () => (
   <Routes>
     <Route path="/" element={<LandingPage />} />
     <Route path="/login/:role" element={<LoginPage />} />
+    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+    <Route path="/verify-otp" element={<VerifyOtpPage />} />
+    <Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route element={<ProtectedRoute />}>
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/analytics" element={<AnalyticsPage />} />

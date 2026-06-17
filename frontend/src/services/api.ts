@@ -315,3 +315,18 @@ export const uploadQuestionImage = async (formData: FormData): Promise<{ success
   return data;
 };
 
+export const forgotPassword = async (email: string): Promise<{ success: boolean; message: string }> => {
+  const { data } = await api.post("/auth/forgot-password", { email });
+  return data;
+};
+
+export const verifyOtp = async (email: string, otp: string): Promise<{ success: boolean; message: string }> => {
+  const { data } = await api.post("/auth/verify-otp", { email, otp });
+  return data;
+};
+
+export const resetPassword = async (payload: { email: string; otp: string; newPassword: string }): Promise<{ success: boolean; message: string }> => {
+  const { data } = await api.post("/auth/reset-password", payload);
+  return data;
+};
+
