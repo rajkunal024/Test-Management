@@ -153,7 +153,7 @@ export const LoginPage = () => {
             {/* Links */}
             <div className="mt-4 flex justify-between items-center text-xs">
               <Link 
-                to="/forgot-password"
+                to="/forgot-password?role=student"
                 className="text-cyan-400 hover:underline font-bold transition-colors cursor-pointer"
               >
                 Forgot password?
@@ -264,7 +264,7 @@ export const LoginPage = () => {
             {/* Links */}
             <div className="mt-4 flex justify-between items-center text-xs">
               <Link 
-                to="/forgot-password"
+                to="/forgot-password?role=teacher"
                 className="text-purple-600 dark:text-purple-400 hover:underline font-bold transition-colors cursor-pointer"
               >
                 Forgot password?
@@ -421,7 +421,7 @@ export const LoginPage = () => {
               
               {!isSignUp && (
                 <Link 
-                  to="/forgot-password"
+                  to="/forgot-password?role=admin"
                   className="self-start text-xs font-bold text-amber-500 hover:underline transition-colors cursor-pointer text-left"
                 >
                   Forgot password?

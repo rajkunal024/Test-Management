@@ -121,6 +121,7 @@ export const TeacherDashboard = () => {
 
   // Live Test Monitoring States
   const [selectedTestIdForMonitoring, setSelectedTestIdForMonitoring] = useState<string | null>(null);
+  const [selectedMonitorStudent, setSelectedMonitorStudent] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -177,8 +178,21 @@ export const TeacherDashboard = () => {
       isConnecting = true;
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      // Connect to backend port 4000
-      const wsUrl = `${protocol}//127.0.0.1:4000/api/proctor/stream?role=teacher&test_id=${selectedTestIdForMonitoring}`;
+      
+      let host = "127.0.0.1:4000";
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+      if (apiBaseUrl) {
+        try {
+          const parsed = new URL(apiBaseUrl);
+          host = parsed.host;
+        } catch (e) {
+          host = `${window.location.hostname}:4000`;
+        }
+      } else {
+        host = `${window.location.hostname}:4000`;
+      }
+      
+      const wsUrl = `${protocol}//${host}/api/proctor/stream?role=teacher&test_id=${selectedTestIdForMonitoring}`;
 
       console.log("Teacher connecting to proctor WS:", wsUrl);
       const socket = new WebSocket(wsUrl);
@@ -211,6 +225,7 @@ export const TeacherDashboard = () => {
                 user_id: message.user_id,
                 username: message.username,
                 frame: message.frame,
+                screenFrame: message.screenFrame,
                 hasVideo: message.hasVideo,
                 hasAudio: message.hasAudio,
                 lastSeen: message.lastSeen
@@ -356,6 +371,11 @@ export const TeacherDashboard = () => {
     }
     return httpStreamsList;
   }, [isWsConnected, wsStreams, httpStreamsList]);
+
+  const selectedStudentStream = useMemo(() => {
+    if (!selectedMonitorStudent) return null;
+    return activeStreamsList.find(s => s.user_id === selectedMonitorStudent) || wsStreams[selectedMonitorStudent] || null;
+  }, [selectedMonitorStudent, activeStreamsList, wsStreams]);
 
   // Determine current teacher subject details
   const teacherSubject = useMemo(() => {
@@ -1567,7 +1587,7 @@ export const TeacherDashboard = () => {
                                       <input
                                         type="text"
                                         placeholder={`Option ${idx + 1}`}
-                                        className={`h-9 w-full rounded-md px-3 text-sm font-semibold border transition-all focus:outline-none focus:ring-4 focus:ring-indigo-550/10 dark:bg-slate-905 dark:text-slate-205 ${isCorrect
+                                        className={`h-9 w-full rounded-md px-3 text-sm font-semibold border transition-all focus:outline-none focus:ring-4 focus:ring-indigo-550/10 dark:bg-slate-900 dark:text-slate-205 ${isCorrect
                                           ? "border-emerald-250 dark:border-emerald-900 focus:border-emerald-500"
                                           : "border-slate-200 dark:border-slate-850 focus:border-indigo-505"
                                           }`}
@@ -2451,8 +2471,12 @@ export const TeacherDashboard = () => {
                 ) : (
                   <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                     {activeStreamsList.map((stream) => (
-                      <div key={stream.user_id} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900 shadow-sm relative aspect-video flex flex-col justify-end text-white">
-                        {/* Stream Image / Fallback */}
+                      <div
+                        key={stream.user_id}
+                        onClick={() => setSelectedMonitorStudent(stream.user_id)}
+                        className="cursor-pointer overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900 shadow-sm relative aspect-video flex flex-col justify-end text-white hover:ring-2 hover:ring-indigo-500 hover:scale-[1.02] transition duration-200"
+                      >
+                        {/* Stream Image / Fallback (WEBCAM ONLY) */}
                         {stream.frame ? (
                           <img
                             src={stream.frame}
@@ -2486,8 +2510,11 @@ export const TeacherDashboard = () => {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <button
-                              onClick={() => setActiveChatStudentId(stream.user_id)}
-                              className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-[9px] font-bold text-white uppercase tracking-wider relative flex items-center gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveChatStudentId(stream.user_id);
+                              }}
+                              className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-[9px] font-bold text-white uppercase tracking-wider relative flex items-center gap-1 cursor-pointer"
                             >
                               Chat
                               {unreadCounts[stream.user_id] > 0 && (
@@ -2507,6 +2534,102 @@ export const TeacherDashboard = () => {
             )}
           </div>
         )}
+
+        {/* Student Monitoring Detail Modal */}
+        <Modal
+          open={Boolean(selectedMonitorStudent)}
+          title={`Live Proctor Monitor: ${selectedStudentStream?.username || ""}`}
+          onClose={() => setSelectedMonitorStudent(null)}
+        >
+          <div className="space-y-6">
+            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4 rounded-xl flex items-center justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-bold text-indigo-500 tracking-wider uppercase">Student Identity</span>
+                <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{selectedStudentStream?.username || selectedMonitorStudent}</h3>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">{selectedMonitorStudent}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold uppercase ${selectedStudentStream?.hasVideo ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-450" : "bg-red-100 text-red-750 dark:bg-red-955/20 dark:text-red-400"}`}>
+                  Webcam: {selectedStudentStream?.hasVideo ? "Active" : "Off"}
+                </span>
+                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold uppercase ${selectedStudentStream?.hasAudio ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-955/20 dark:text-emerald-400" : "bg-red-100 text-red-755 dark:bg-red-955/20 dark:text-red-400"}`}>
+                  Mic: {selectedStudentStream?.hasAudio ? "Active" : "Off"}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Live Camera Card */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm flex flex-col">
+                <div className="bg-slate-50 dark:bg-slate-955 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Live Camera Feed</h4>
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+                <div className="aspect-video w-full bg-slate-950 relative flex items-center justify-center">
+                  {selectedStudentStream?.frame ? (
+                    <img
+                      src={selectedStudentStream.frame}
+                      alt={`${selectedStudentStream.username}'s webcam`}
+                      className="w-full h-full object-cover scale-x-[-1]"
+                    />
+                  ) : (
+                    <div className="text-center text-slate-500 flex flex-col items-center justify-center p-6">
+                      <span className="text-3xl mb-1">👤</span>
+                      <p className="text-xs font-bold uppercase tracking-wider">Camera Off / Inactive</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Live Screen Feed Card */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm flex flex-col">
+                <div className="bg-slate-50 dark:bg-slate-955 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Live Screen Feed</h4>
+                  {selectedStudentStream?.screenFrame ? (
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  )}
+                </div>
+                <div className="aspect-video w-full bg-slate-950 relative flex items-center justify-center">
+                  {selectedStudentStream?.screenFrame ? (
+                    <img
+                      src={selectedStudentStream.screenFrame}
+                      alt={`${selectedStudentStream.username}'s screen`}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <div className="text-center text-slate-500 flex flex-col items-center justify-center p-6">
+                      <span className="text-3xl mb-1">🖥️</span>
+                      <p className="text-xs font-bold uppercase tracking-wider">Screen Sharing Inactive</p>
+                      <p className="text-[10px] text-slate-600 mt-1">Student has not authorized screen share or it stopped</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+              <Button
+                onClick={() => {
+                  if (selectedStudentStream) {
+                    setActiveChatStudentId(selectedStudentStream.user_id);
+                    setSelectedMonitorStudent(null);
+                  }
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+              >
+                Open Direct Chat
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setSelectedMonitorStudent(null)}
+              >
+                Close Monitor
+              </Button>
+            </div>
+          </div>
+        </Modal>
 
         {/* Add/Edit Modal (for editing from the list view) */}
         <Modal
@@ -2730,7 +2853,7 @@ export const TeacherDashboard = () => {
                             <input
                               type="text"
                               placeholder={`Option ${idx + 1}`}
-                              className="h-10 w-full rounded-md px-3 text-sm font-semibold border border-slate-300 dark:border-slate-800 dark:bg-slate-905 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-550/10 focus:border-indigo-500"
+                              className="h-10 w-full rounded-md px-3 text-sm font-semibold border border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-550/10 focus:border-indigo-500"
                               value={subQ[opt]}
                               onChange={(e) => {
                                 const updated = [...subQuestions];

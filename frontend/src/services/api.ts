@@ -250,6 +250,7 @@ export const uploadStreamFrame = async (payload: {
   user_id: string;
   username: string;
   frame: string;
+  screenFrame?: string;
   hasVideo: boolean;
   hasAudio: boolean;
 }): Promise<void> => {

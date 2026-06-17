@@ -47,6 +47,14 @@ export type TestDifficulty = "easy" | "medium" | "hard";
 export type TestType = "practice" | "mock" | "previous_year";
 export type CorrectOption = string;
 
+export interface TestSection {
+  name: string;
+  subject: string;
+  duration: number;
+  questions_count: number;
+  questions?: string[];
+}
+
 export interface Test {
   id: string;
   name: string;
@@ -70,6 +78,7 @@ export interface Test {
   end_time?: string;
   results_shared?: boolean;
   class?: string;
+  sections?: TestSection[];
 }
 
 export interface Passage {
@@ -128,6 +137,7 @@ export interface TestPayload {
   end_time?: string;
   results_shared?: boolean;
   class?: string;
+  sections?: TestSection[];
 }
 
 export interface ApiEnvelope<T> {

@@ -33,6 +33,35 @@ const getDeterministicSubset = <T,>(array: T[], count: number, seed: string): T[
   return result;
 };
 
+const getSectionalQuestions = <T extends { id?: string }>(
+  test: any,
+  sortedQuestions: T[],
+  seed: string
+): T[] => {
+  if (test.sections && test.sections.length > 0) {
+    const selected: T[] = [];
+    const usedIds = new Set<string>();
+
+    test.sections.forEach((sec: any) => {
+      const secQuestionIds = new Set(sec.questions || []);
+      const secAllQuestions = sortedQuestions.filter(q => q.id && secQuestionIds.has(q.id) && !usedIds.has(q.id));
+      const secCount = Number(sec.questions_count ?? secAllQuestions.length);
+      const secSelected = getDeterministicSubset(secAllQuestions, secCount, seed + "-" + sec.name);
+      
+      secSelected.forEach((q) => {
+        if (q.id && !usedIds.has(q.id)) {
+          selected.push(q);
+          usedIds.add(q.id);
+        }
+      });
+    });
+
+    return selected;
+  }
+
+  return getDeterministicSubset(sortedQuestions, test.total_questions, seed);
+};
+
 export const getAttempts = async (request: IncomingMessage, response: ServerResponse) => {
   try {
     const user = getUserFromRequest(request);
@@ -125,7 +154,7 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
     const rawQuestions = await QuestionModel.find({ id: { $in: test.questions || [] } });
     const sortedQuestions = [...rawQuestions].sort((a: any, b: any) => (a.id || "").localeCompare(b.id || ""));
     const seed = `${userIdStr}-${test.id}`;
-    const questions = getDeterministicSubset(sortedQuestions, test.total_questions, seed);
+    const questions = getSectionalQuestions(test, sortedQuestions, seed);
 
     let correct_answers = 0;
     let wrong_answers = 0;
@@ -209,6 +238,7 @@ export interface ActiveStreamState {
   user_id: string;
   username: string;
   frame: string;
+  screenFrame?: string;
   hasVideo: boolean;
   hasAudio: boolean;
   lastSeen: number;
@@ -219,7 +249,7 @@ export const activeStreams = new Map<string, ActiveStreamState>();
 export const saveStreamFrame = async (request: IncomingMessage, response: ServerResponse) => {
   try {
     const payload = JSON.parse(await readBody(request));
-    const { test_id, user_id, username, frame, hasVideo, hasAudio } = payload;
+    const { test_id, user_id, username, frame, screenFrame, hasVideo, hasAudio } = payload;
     if (!test_id || !user_id) {
       json(response, 400, { success: false, message: "test_id and user_id are required" });
       return;
@@ -232,6 +262,7 @@ export const saveStreamFrame = async (request: IncomingMessage, response: Server
       user_id,
       username: username || user_id,
       frame: frame || "",
+      screenFrame: screenFrame || "",
       hasVideo: !!hasVideo,
       hasAudio: !!hasAudio,
       lastSeen: Date.now()
@@ -301,6 +332,7 @@ export const getActiveStreams = async (request: IncomingMessage, response: Serve
           user_id: val.user_id,
           username: val.username,
           frame: val.frame,
+          screenFrame: val.screenFrame,
           hasVideo: val.hasVideo,
           hasAudio: val.hasAudio,
           lastSeen: val.lastSeen

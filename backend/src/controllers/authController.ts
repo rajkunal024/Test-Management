@@ -9,7 +9,7 @@ import { requestOtp, verifyOtp as checkOtp, deleteOtp } from "../utils/otpStore.
 export const signupAdmin = async (request: IncomingMessage, response: ServerResponse) => {
   try {
     const body = JSON.parse(await readBody(request));
-    const { userId, password, name, signupKey } = body;
+    const { userId, password, name, signupKey, email } = body;
 
     if (!userId || !password || !name || !signupKey) {
       json(response, 400, { success: false, message: "All fields are required" });
@@ -22,9 +22,13 @@ export const signupAdmin = async (request: IncomingMessage, response: ServerResp
       return;
     }
 
-    const existingAdmin = await AdminModel.findOne({ userId });
+    const namePrefix = name.toLowerCase().replace(/\s+/g, "");
+    const normalizedEmail = (email || (namePrefix.includes("@") ? namePrefix : `${namePrefix}@parikshya.admin.com`)).toLowerCase();
+    const existingAdmin = await AdminModel.findOne({
+      $or: [{ userId }, { email: normalizedEmail }]
+    });
     if (existingAdmin) {
-      json(response, 400, { success: false, message: "Admin with this User ID already exists" });
+      json(response, 400, { success: false, message: "Admin with this User ID or Email already exists" });
       return;
     }
 
@@ -32,6 +36,7 @@ export const signupAdmin = async (request: IncomingMessage, response: ServerResp
       userId,
       password: hashPassword(password),
       name,
+      email: normalizedEmail,
       role: "Admin"
     });
     await newAdmin.save();
@@ -42,6 +47,7 @@ export const signupAdmin = async (request: IncomingMessage, response: ServerResp
         id: newAdmin.id,
         userId: newAdmin.userId,
         name: newAdmin.name,
+        email: (newAdmin as any).email,
         role: "Admin"
       }
     });
@@ -57,7 +63,9 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
     const secret = process.env.JWT_SECRET ?? "dev_jwt_secret_key_change_me";
 
     if (role === "Admin") {
-      const admin = await AdminModel.findOne({ userId });
+      const admin = await AdminModel.findOne({
+        $or: [{ userId }, { email: userId }]
+      });
       if (admin && verifyPassword(password, admin.password)) {
         const token = signToken({ id: admin.id, userId: admin.userId, role: "Admin" }, secret);
         json(
@@ -212,8 +220,7 @@ export const forgotPassword = async (request: IncomingMessage, response: ServerR
       userDoc = await TeacherModel.findOne({ email });
     }
     if (!userDoc) {
-      // Check if admin has userId matching the email format
-      userDoc = await AdminModel.findOne({ userId: email });
+      userDoc = await AdminModel.findOne({ email });
     }
 
     if (!userDoc) {
@@ -330,7 +337,7 @@ export const resetPassword = async (request: IncomingMessage, response: ServerRe
       userDoc = await TeacherModel.findOne({ email });
     }
     if (!userDoc) {
-      userDoc = await AdminModel.findOne({ userId: email });
+      userDoc = await AdminModel.findOne({ email });
     }
 
     if (!userDoc) {
@@ -338,8 +345,8 @@ export const resetPassword = async (request: IncomingMessage, response: ServerRe
       return;
     }
 
-    // Hash using bcrypt and update
-    userDoc.password = bcrypt.hashSync(newPassword, 10);
+    // Hash using standard hashPassword helper and update
+    userDoc.password = hashPassword(newPassword);
     userDoc.requiresPasswordChange = false;
     await userDoc.save();
 

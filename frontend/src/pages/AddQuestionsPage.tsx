@@ -29,7 +29,7 @@ import {
   getAllQuestions,
   updateTest,
 } from "../services/api";
-import { useTest, useSubTopics, useTopics } from "../hooks/useTests";
+import { useTest, useSubTopics, useTopics, useSubjects } from "../hooks/useTests";
 import { Question } from "../types";
 import { useAuthStore } from "../store/authStore";
 
@@ -48,9 +48,11 @@ export const AddQuestionsPage = () => {
   // States
   const [toast, setToast] = useState("");
   const [selectedPoolIds, setSelectedPoolIds] = useState<string[]>([]);
+  const [selectedSubjectTab, setSelectedSubjectTab] = useState<string>("");
 
   // Queries
   const { data: test, isLoading: isLoadingTest } = useTest(id);
+  const { data: subjects = [] } = useSubjects();
 
   useEffect(() => {
     if (test) {
@@ -105,6 +107,42 @@ export const AddQuestionsPage = () => {
     enabled: Boolean(test?.questions?.length),
   });
 
+  // Calculate dynamic test difficulty in real time based on selected questions
+  const computedDifficulty = useMemo(() => {
+    if (!testQuestions || testQuestions.length === 0) {
+      return test?.difficulty || "medium";
+    }
+    const total = testQuestions.length;
+    let easyCount = 0;
+    let mediumCount = 0;
+    let hardCount = 0;
+
+    for (const q of testQuestions) {
+      const diff = (q.difficulty || "").toLowerCase().trim();
+      if (diff === "easy") {
+        easyCount++;
+      } else if (diff === "medium") {
+        mediumCount++;
+      } else if (diff === "hard" || diff === "difficult") {
+        hardCount++;
+      }
+    }
+
+    if (hardCount > 0.5 * total) {
+      return "hard";
+    }
+    if (hardCount > 0) {
+      return "medium";
+    }
+    if (mediumCount > 0.5 * total) {
+      return "medium";
+    }
+    if (easyCount > 0.5 * total) {
+      return "easy";
+    }
+    return "medium";
+  }, [testQuestions, test?.difficulty]);
+
   // Fetch all questions in the global pool
   const { data: globalPool = [], isLoading: isLoadingPool } = useQuery({
     queryKey: ["questions"],
@@ -122,6 +160,35 @@ export const AddQuestionsPage = () => {
       return belongsToSelectedTopics && matchesClass && notLinked;
     });
   }, [globalPool, test?.questions, test?.topics, test?.class]);
+
+  const testSubjects = useMemo(() => {
+    if (!test) return [];
+    if (Array.isArray(test.subject)) return test.subject;
+    if (typeof test.subject === "string") return [test.subject];
+    return [];
+  }, [test]);
+
+  useEffect(() => {
+    if (testSubjects.length > 0 && !selectedSubjectTab) {
+      setSelectedSubjectTab(testSubjects[0]);
+    }
+  }, [testSubjects, selectedSubjectTab]);
+
+  const getQuestionSubjectName = (q: Question) => {
+    const topic = topics.find((t) => t.id === q.topic_id);
+    if (!topic) return "General";
+    const subId = topic.subject_id;
+    const sub = subjects.find((s) => s.id === subId);
+    return sub ? sub.name : "General";
+  };
+
+  const filteredPoolQuestions = useMemo(() => {
+    if (!selectedSubjectTab) return availablePoolQuestions;
+    return availablePoolQuestions.filter((q) => {
+      const qSubName = getQuestionSubjectName(q);
+      return qSubName.toLowerCase().trim() === selectedSubjectTab.toLowerCase().trim();
+    });
+  }, [availablePoolQuestions, selectedSubjectTab, topics, subjects]);
 
   // Mutations
   const updateTestMutation = useMutation({
@@ -200,10 +267,12 @@ export const AddQuestionsPage = () => {
                 <Badge tone="blue" className="bg-blue-500/15 border-blue-450/20 text-blue-300 font-bold">{subjectsName}</Badge>
                 <Badge tone="slate" className="bg-slate-500/15 border-slate-450/20 text-slate-300 font-bold uppercase tracking-wider text-[10px]">{test.type.replace("_", " ")}</Badge>
                 <Badge tone={
-                  (test.difficulty || "").toLowerCase().trim() === "easy" ? "green" :
-                    (test.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" :
-                      (((test.difficulty || "").toLowerCase().trim() === "hard" || (test.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
-                } className="font-bold">{test.difficulty}</Badge>
+                  computedDifficulty === "easy" ? "green" :
+                    computedDifficulty === "medium" ? "yellow" :
+                      (computedDifficulty === "hard" || computedDifficulty === "difficult") ? "red" : "slate"
+                } className="font-bold uppercase tracking-wider text-[10px] px-2.5 py-0.5">
+                  {computedDifficulty}
+                </Badge>
               </div>
               <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-200 bg-clip-text text-transparent flex items-center gap-2.5">
                 <GraduationCap className="h-6 w-6 text-indigo-400" />
@@ -307,8 +376,28 @@ export const AddQuestionsPage = () => {
                   Available Pool Questions ({availablePoolQuestions.length})
                 </h3>
 
+                {/* Subject Filter Tabs */}
+                {testSubjects.length > 1 && (
+                  <div className="flex flex-wrap gap-1 mb-4 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-150/80 dark:border-slate-800/60 shrink-0">
+                    {testSubjects.map((subName) => (
+                      <button
+                        key={subName}
+                        type="button"
+                        onClick={() => setSelectedSubjectTab(subName)}
+                        className={`flex-1 min-w-[70px] py-1.5 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
+                          selectedSubjectTab === subName
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        {subName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {availablePoolQuestions.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/30 border border-slate-150 dark:border-slate-800 rounded-xl space-y-2">
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/30 border border-slate-155 dark:border-slate-800 rounded-xl space-y-2">
                     <FileQuestion className="h-6 w-6 text-slate-350" />
                     <p className="text-xs text-slate-455 dark:text-slate-500 font-semibold max-w-[200px]">
                       No pool questions available for subjects: {subjectsName}. Let teachers create them.
@@ -320,17 +409,17 @@ export const AddQuestionsPage = () => {
                       <label className="flex items-center gap-2.5 cursor-pointer font-bold text-xs text-slate-650 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200 transition-colors">
                         <input
                           type="checkbox"
-                          checked={selectedPoolIds.length === availablePoolQuestions.length && availablePoolQuestions.length > 0}
+                          checked={selectedPoolIds.length === filteredPoolQuestions.length && filteredPoolQuestions.length > 0}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedPoolIds(availablePoolQuestions.map((q) => q.id ?? "").filter(Boolean));
+                              setSelectedPoolIds(filteredPoolQuestions.map((q) => q.id ?? "").filter(Boolean));
                             } else {
                               setSelectedPoolIds([]);
                             }
                           }}
                           className="h-4 w-4 rounded text-indigo-650 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer border-slate-300 dark:border-slate-700"
                         />
-                        <span>Select All ({availablePoolQuestions.length})</span>
+                        <span>Select All ({filteredPoolQuestions.length})</span>
                       </label>
                       {selectedPoolIds.length > 0 && (
                         <button
@@ -342,52 +431,61 @@ export const AddQuestionsPage = () => {
                         </button>
                       )}
                     </div>
-                    <div className="space-y-3.5 max-h-[46vh] overflow-y-auto pr-1.5 scrollbar-thin">
-                      {availablePoolQuestions.map((q) => {
-                        const isSelected = selectedPoolIds.includes(q.id ?? "");
-                        return (
-                          <label
-                            key={q.id}
-                            className={`flex items-start gap-3 p-3.5 rounded-xl border text-xs cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-955/30 transition-all ${isSelected
-                                ? "border-indigo-400 dark:border-indigo-850 bg-indigo-50/30 dark:bg-indigo-950/10 ring-2 ring-indigo-500/10"
-                                : "border-slate-155 dark:border-slate-800/60 bg-white/50 dark:bg-slate-955/20"
-                              }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              className="h-4.5 w-4.5 rounded text-indigo-650 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer mt-0.5 border-slate-300 dark:border-slate-700"
-                              onChange={() => handleToggleSelectPool(q.id ?? "")}
-                            />
-                            <div className="min-w-0 space-y-1.5 flex-1">
-                              <p className="font-bold text-slate-755 dark:text-slate-200 leading-snug line-clamp-3">{q.question}</p>
-                              {(q.image_url || q.media_url) && (
-                                <div className="mt-1.5 mb-1 flex justify-start">
-                                  <img
-                                    src={q.image_url || q.media_url}
-                                    alt="Question Graphic"
-                                    loading="lazy"
-                                    className="max-h-20 w-auto max-w-full rounded-md border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
-                                  />
+                    {filteredPoolQuestions.length === 0 ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/30 border border-slate-155 dark:border-slate-800 rounded-xl space-y-2 my-4">
+                        <FileQuestion className="h-6 w-6 text-slate-350" />
+                        <p className="text-xs text-slate-455 dark:text-slate-500 font-semibold max-w-[200px]">
+                          No available questions in pool for subject: {selectedSubjectTab}.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3.5 max-h-[46vh] overflow-y-auto pr-1.5 scrollbar-thin">
+                        {filteredPoolQuestions.map((q) => {
+                          const isSelected = selectedPoolIds.includes(q.id ?? "");
+                          return (
+                            <label
+                              key={q.id}
+                              className={`flex items-start gap-3 p-3.5 rounded-xl border text-xs cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-955/30 transition-all ${isSelected
+                                  ? "border-indigo-400 dark:border-indigo-850 bg-indigo-50/30 dark:bg-indigo-950/10 ring-2 ring-indigo-500/10"
+                                  : "border-slate-155 dark:border-slate-800/60 bg-white/50 dark:bg-slate-955/20"
+                                }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                className="h-4.5 w-4.5 rounded text-indigo-650 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer mt-0.5 border-slate-300 dark:border-slate-700"
+                                onChange={() => handleToggleSelectPool(q.id ?? "")}
+                              />
+                              <div className="min-w-0 space-y-1.5 flex-1">
+                                <p className="font-bold text-slate-755 dark:text-slate-200 leading-snug line-clamp-3">{q.question}</p>
+                                {(q.image_url || q.media_url) && (
+                                  <div className="mt-1.5 mb-1 flex justify-start">
+                                    <img
+                                      src={q.image_url || q.media_url}
+                                      alt="Question Graphic"
+                                      loading="lazy"
+                                      className="max-h-20 w-auto max-w-full rounded-md border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
+                                    />
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between">
+                                  <Badge tone={
+                                    (q.difficulty || "").toLowerCase().trim() === "easy" ? "green" :
+                                      (q.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" :
+                                        (((q.difficulty || "").toLowerCase().trim() === "hard" || (q.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
+                                  } className="px-2 py-0.5 font-bold uppercase tracking-wide text-[9px]">
+                                    {q.difficulty}
+                                  </Badge>
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold truncate max-w-[120px]">
+                                    {q.topic_name || "General"}
+                                  </span>
                                 </div>
-                              )}
-                              <div className="flex items-center justify-between">
-                                <Badge tone={
-                                  (q.difficulty || "").toLowerCase().trim() === "easy" ? "green" :
-                                    (q.difficulty || "").toLowerCase().trim() === "medium" ? "yellow" :
-                                      (((q.difficulty || "").toLowerCase().trim() === "hard" || (q.difficulty || "").toLowerCase().trim() === "difficult") ? "red" : "slate")
-                                } className="px-2 py-0.5 font-bold uppercase tracking-wide text-[9px]">
-                                  {q.difficulty}
-                                </Badge>
-                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold truncate max-w-[120px]">
-                                  {q.topic_name || "General"}
-                                </span>
                               </div>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     <Button
                       disabled={selectedPoolIds.length === 0 || updateTestMutation.isPending}

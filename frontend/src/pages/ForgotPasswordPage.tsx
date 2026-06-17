@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { forgotPassword, getErrorMessage } from "../services/api";
 import { Logo } from "../components/layout/Logo";
 import { Button } from "../components/ui/Button";
@@ -8,6 +8,8 @@ import { ArrowLeft, Sparkles, Mail } from "lucide-react";
 
 export const ForgotPasswordPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const role = searchParams.get("role") || "student";
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -34,7 +36,7 @@ export const ForgotPasswordPage = () => {
       const response = await forgotPassword(email.trim());
       setSuccess(response.message || "OTP generated successfully! Redirecting...");
       setTimeout(() => {
-        navigate(`/verify-otp?email=${encodeURIComponent(email.trim())}`);
+        navigate(`/verify-otp?email=${encodeURIComponent(email.trim())}&role=${role}`);
       }, 1500);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -115,7 +117,7 @@ export const ForgotPasswordPage = () => {
 
           {/* Go Back to Login Link */}
           <Link 
-            to="/login/student" 
+            to={`/login/${role}`} 
             className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold mb-8 group self-start transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />

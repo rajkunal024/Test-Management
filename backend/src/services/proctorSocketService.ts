@@ -48,7 +48,7 @@ export const setupProctorWebSocketServer = (wss: WebSocketServer) => {
           try {
             const message = JSON.parse(data.toString());
             if (message.type === "frame") {
-              const { frame, hasVideo, hasAudio } = message;
+              const { frame, screenFrame, hasVideo, hasAudio } = message;
 
               // 1. Update the shared activeStreams map (used as fallback for HTTP polling)
               const key = `${test_id}-${user_id}`;
@@ -59,6 +59,7 @@ export const setupProctorWebSocketServer = (wss: WebSocketServer) => {
                 user_id,
                 username,
                 frame: frame || "",
+                screenFrame: screenFrame || "",
                 hasVideo: !!hasVideo,
                 hasAudio: !!hasAudio,
                 lastSeen: Date.now()
@@ -106,6 +107,7 @@ export const setupProctorWebSocketServer = (wss: WebSocketServer) => {
                 user_id,
                 username,
                 frame,
+                screenFrame,
                 hasVideo: !!hasVideo,
                 hasAudio: !!hasAudio,
                 lastSeen: Date.now()
@@ -172,6 +174,7 @@ export const setupProctorWebSocketServer = (wss: WebSocketServer) => {
             user_id: val.user_id,
             username: val.username,
             frame: val.frame,
+            screenFrame: val.screenFrame,
             hasVideo: val.hasVideo,
             hasAudio: val.hasAudio,
             lastSeen: val.lastSeen

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Controller, SubmitHandler, useForm } from "react-hook-form";
+import { Controller, SubmitHandler, useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -51,6 +51,7 @@ export const CreateEditTestPage = () => {
   }, [user, navigate]);
   const [formError, setFormError] = useState("");
   const [schedulingType, setSchedulingType] = useState<"live_now" | "live_until">("live_now");
+  const [enableSections, setEnableSections] = useState(false);
 
   // CSV Import Wizard State Variables
   const [mode, setMode] = useState<"manual" | "csv">("manual");
@@ -128,7 +129,13 @@ export const CreateEditTestPage = () => {
       total_questions: "" as unknown as number,
       start_time: "",
       end_time: "",
+      sections: [],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "sections",
   });
 
   const subjectIds = watch("subject") || [];
@@ -298,7 +305,10 @@ export const CreateEditTestPage = () => {
         total_questions: existingTest.total_questions,
         start_time: existingTest.start_time ?? "",
         end_time: existingTest.end_time ?? "",
+        sections: existingTest.sections ?? [],
       });
+
+      setEnableSections(Boolean(existingTest.sections && existingTest.sections.length > 0));
 
       // Default schedulingType based on whether start_time is set
       if (existingTest.start_time && existingTest.end_time) {
@@ -328,12 +338,43 @@ export const CreateEditTestPage = () => {
     subject_id: values.subject[0] || undefined,
     subject_ids: values.subject,
     status: existingTest?.status ?? "draft",
+    sections: enableSections ? values.sections : undefined,
   });
 
   const submit =
     (goNext: boolean): SubmitHandler<TestFormValues> =>
       async (values) => {
         setFormError("");
+        if (enableSections) {
+          if (!values.sections || values.sections.length === 0) {
+            setFormError("Please add at least one section when sectional timers are enabled.");
+            return;
+          }
+          const sumDurations = values.sections.reduce((acc, sec) => acc + Number(sec.duration || 0), 0);
+          if (sumDurations !== Number(values.total_time)) {
+            setFormError(`The sum of section durations (${sumDurations} mins) must equal the total test time (${values.total_time} mins).`);
+            return;
+          }
+          if (values.start_time && values.end_time) {
+            const start = new Date(values.start_time).getTime();
+            const end = new Date(values.end_time).getTime();
+            const slotMins = Math.floor((end - start) / (60 * 1000));
+            if (sumDurations > slotMins) {
+              setFormError(`The sum of section durations (${sumDurations} mins) cannot be greater than the schedule time slot (${slotMins} mins).`);
+              return;
+            }
+          }
+        } else {
+          if (values.start_time && values.end_time) {
+            const start = new Date(values.start_time).getTime();
+            const end = new Date(values.end_time).getTime();
+            const slotMins = Math.floor((end - start) / (60 * 1000));
+            if (Number(values.total_time) > slotMins) {
+              setFormError(`Test duration (${values.total_time} mins) cannot be greater than the schedule time slot (${slotMins} mins).`);
+              return;
+            }
+          }
+        }
         try {
           const result = await saveMutation.mutateAsync(buildPayload(values));
           navigate(goNext ? `/tests/${result.id}/questions` : "/dashboard");
@@ -506,6 +547,11 @@ export const CreateEditTestPage = () => {
       const end = new Date(csvForm.end_time).getTime();
       if (end < start) {
         errs.end_time = "End time slot cannot be earlier than start time slot";
+      } else {
+        const slotMins = Math.floor((end - start) / (60 * 1000));
+        if (Number(csvForm.total_time) > slotMins) {
+          errs.total_time = `Test duration (${csvForm.total_time} mins) cannot be greater than the schedule time slot (${slotMins} mins)`;
+        }
       }
     }
     if (csvForm.total_questions === undefined || isNaN(Number(csvForm.total_questions)) || Number(csvForm.total_questions) <= 0) {
@@ -1514,6 +1560,130 @@ export const CreateEditTestPage = () => {
                 </div>
               </div>
 
+              {/* Card 3: Sectional Timers Setup */}
+              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-6 shadow-sm space-y-6">
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-indigo-500 animate-spin-slow" />
+                    <h3 className="text-base font-extrabold text-slate-850 dark:text-slate-100 tracking-tight">Sectional Timers</h3>
+                  </div>
+                  
+                  {/* Stylish Switch */}
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={enableSections}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setEnableSections(checked);
+                        if (!checked) {
+                          setValue("sections", []);
+                        }
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-850 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-650 peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+
+                {enableSections ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Defined Subject Sections</span>
+                      <Button
+                        type="button"
+                        onClick={() => append({ name: "", subject: subjectNames[0] || "", duration: 0, questions_count: 0 })}
+                        className="h-8 rounded-lg px-3 text-xs bg-indigo-50 dark:bg-indigo-955/40 border border-indigo-200/30 text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1.5 hover:bg-indigo-100/50"
+                      >
+                        Add Section
+                      </Button>
+                    </div>
+
+                    {fields.length === 0 ? (
+                      <div className="text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-400 dark:text-slate-500 font-medium">
+                        No sections added yet. Click "Add Section" to get started.
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin">
+                        {fields.map((fieldItem, idx) => (
+                          <div key={fieldItem.id} className="p-4 rounded-xl border border-slate-150 dark:border-slate-800 bg-white/50 dark:bg-slate-950/40 space-y-3 relative group">
+                            <button
+                              type="button"
+                              onClick={() => remove(idx)}
+                              className="absolute top-3.5 right-3.5 text-slate-400 hover:text-rose-500 transition-colors p-1"
+                              title="Remove section"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+
+                            <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                              <div>
+                                <span className="mb-1 block text-xs font-bold text-slate-655 dark:text-slate-400">Section Name</span>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Section A: Physics"
+                                  {...register(`sections.${idx}.name` as const)}
+                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-550"
+                                />
+                                {errors.sections?.[idx]?.name && (
+                                  <span className="mt-1 block text-[10px] font-semibold text-rose-500">{errors.sections[idx]?.name?.message}</span>
+                                )}
+                              </div>
+
+                              <div>
+                                <span className="mb-1 block text-xs font-bold text-slate-655 dark:text-slate-400">Subject Category</span>
+                                <select
+                                  {...register(`sections.${idx}.subject` as const)}
+                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-550 cursor-pointer"
+                                >
+                                  {subjectNames.map((name) => (
+                                    <option key={name} value={name}>{name}</option>
+                                  ))}
+                                </select>
+                                {errors.sections?.[idx]?.subject && (
+                                  <span className="mt-1 block text-[10px] font-semibold text-rose-500">{errors.sections[idx]?.subject?.message}</span>
+                                )}
+                              </div>
+
+                              <div>
+                                <span className="mb-1 block text-xs font-bold text-slate-655 dark:text-slate-400">Duration (Minutes)</span>
+                                <input
+                                  type="number"
+                                  placeholder="Minutes"
+                                  {...register(`sections.${idx}.duration` as const)}
+                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-550"
+                                />
+                                {errors.sections?.[idx]?.duration && (
+                                  <span className="mt-1 block text-[10px] font-semibold text-rose-500">{errors.sections[idx]?.duration?.message}</span>
+                                )}
+                              </div>
+
+                              <div>
+                                <span className="mb-1 block text-xs font-bold text-slate-655 dark:text-slate-400">Question Count</span>
+                                <input
+                                  type="number"
+                                  placeholder="Questions"
+                                  {...register(`sections.${idx}.questions_count` as const)}
+                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-550"
+                                />
+                                {errors.sections?.[idx]?.questions_count && (
+                                  <span className="mt-1 block text-[10px] font-semibold text-rose-500">{errors.sections[idx]?.questions_count?.message}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 dark:text-slate-450">
+                    Enable sectional timers to segment the exam into discrete subjects, each containing its own countdown timer and lock progression.
+                  </p>
+                )}
+              </div>
 
             </div>
 

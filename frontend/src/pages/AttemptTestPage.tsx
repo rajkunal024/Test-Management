@@ -59,6 +59,35 @@ const getDeterministicSubset = <T,>(array: T[], count: number, seed: string): T[
   return result;
 };
 
+const getSectionalQuestions = <T extends { id?: string }>(
+  test: any,
+  sortedQuestions: T[],
+  seed: string
+): T[] => {
+  if (test.sections && test.sections.length > 0) {
+    const selected: T[] = [];
+    const usedIds = new Set<string>();
+
+    test.sections.forEach((sec: any) => {
+      const secQuestionIds = new Set(sec.questions || []);
+      const secAllQuestions = sortedQuestions.filter(q => q.id && secQuestionIds.has(q.id) && !usedIds.has(q.id));
+      const secCount = Number(sec.questions_count ?? secAllQuestions.length);
+      const secSelected = getDeterministicSubset(secAllQuestions, secCount, seed + "-" + sec.name);
+      
+      secSelected.forEach((q) => {
+        if (q.id && !usedIds.has(q.id)) {
+          selected.push(q);
+          usedIds.add(q.id);
+        }
+      });
+    });
+
+    return selected;
+  }
+
+  return getDeterministicSubset(sortedQuestions, test.total_questions, seed);
+};
+
 export const AttemptTestPage = () => {
   const user = useAuthStore((state) => state.user);
   const { id = "" } = useParams();
@@ -143,13 +172,55 @@ export const AttemptTestPage = () => {
   // Proctoring States and Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hiddenVideoRef = useRef<HTMLVideoElement | null>(null);
+  const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const proctorCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const navigatorSidebarRef = useRef<HTMLElement | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [isScreenStoppedMidTest, setIsScreenStoppedMidTest] = useState(false);
   const [hasVideo, setHasVideo] = useState(false);
   const [hasAudio, setHasAudio] = useState(false);
   const [streamError, setStreamError] = useState(false);
+
+  // Sectional timers states
+  const [activeSectionIdx, setActiveSectionIdx] = useState(0);
+  const [sectionTimeoutAlertOpen, setSectionTimeoutAlertOpen] = useState(false);
+  const [timeoutInfo, setTimeoutInfo] = useState<{ prevName: string; nextName: string } | null>(null);
+
+  const handleAuthorizeScreenSharing = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { max: 640 },
+          height: { max: 480 },
+          frameRate: { max: 10 }
+        },
+        audio: false
+      });
+      setScreenStream(stream);
+      setIsScreenStoppedMidTest(false);
+
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.onended = () => {
+          setScreenStream(null);
+          setIsScreenStoppedMidTest(true);
+        };
+      }
+    } catch (err) {
+      console.error("Screen share authorization error:", err);
+      alert("Screen sharing is required. Please authorize screen sharing to proceed.");
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (screenStream) {
+        screenStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [screenStream]);
 
   // Proctor Chat States
   interface ChatMessage {
@@ -239,6 +310,13 @@ export const AttemptTestPage = () => {
     }
   }, [cameraStream, showProctorFeed]);
 
+  useEffect(() => {
+    if (screenStream && screenVideoRef.current && screenVideoRef.current.srcObject !== screenStream) {
+      screenVideoRef.current.srcObject = screenStream;
+      screenVideoRef.current.play().catch((e) => console.error("Screen video play error:", e));
+    }
+  }, [screenStream, envChecked]);
+
   // Periodic stream frame upload with WebSockets and HTTP fallback
   useEffect(() => {
     if (!envChecked || !cameraStream || !user) return;
@@ -254,11 +332,25 @@ export const AttemptTestPage = () => {
     canvas.height = 120;
     const ctx = canvas.getContext("2d");
 
+    const sCanvas = document.createElement("canvas");
+    sCanvas.width = 160;
+    sCanvas.height = 120;
+    const sCtx = sCanvas.getContext("2d");
+
     const captureFrame = () => {
       const video = hiddenVideoRef.current;
       if (video && video.readyState >= 2 && ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         return canvas.toDataURL("image/jpeg", 0.5);
+      }
+      return null;
+    };
+
+    const captureScreenFrame = () => {
+      const sVideo = screenVideoRef.current;
+      if (screenStream && sVideo && sVideo.readyState >= 2 && sCtx) {
+        sCtx.drawImage(sVideo, 0, 0, sCanvas.width, sCanvas.height);
+        return sCanvas.toDataURL("image/jpeg", 0.4);
       }
       return null;
     };
@@ -269,12 +361,14 @@ export const AttemptTestPage = () => {
       fallbackInterval = setInterval(async () => {
         try {
           const frame = captureFrame();
-          if (frame) {
+          const screenFrame = captureScreenFrame();
+          if (frame || screenFrame) {
             await uploadStreamFrame({
               test_id: id || "",
               user_id: user.userId || "",
               username: user.name || user.userId || "",
-              frame: frame,
+              frame: frame || "",
+              screenFrame: screenFrame || "",
               hasVideo: hasVideo,
               hasAudio: hasAudio
             });
@@ -290,8 +384,21 @@ export const AttemptTestPage = () => {
       isWsConnecting = true;
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      // Connect to port 4000 (backend)
-      const wsUrl = `${protocol}//127.0.0.1:4000/api/proctor/stream?role=student&test_id=${id}&user_id=${user.userId}&username=${encodeURIComponent(user.name || user.userId || "")}`;
+      
+      let host = "127.0.0.1:4000";
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+      if (apiBaseUrl) {
+        try {
+          const parsed = new URL(apiBaseUrl);
+          host = parsed.host;
+        } catch (e) {
+          host = `${window.location.hostname}:4000`;
+        }
+      } else {
+        host = `${window.location.hostname}:4000`;
+      }
+      
+      const wsUrl = `${protocol}//${host}/api/proctor/stream?role=student&test_id=${id}&user_id=${user.userId}&username=${encodeURIComponent(user.name || user.userId || "")}`;
 
       console.log("Connecting to proctor WS:", wsUrl);
       const socket = new WebSocket(wsUrl);
@@ -315,10 +422,12 @@ export const AttemptTestPage = () => {
         wsInterval = setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) {
             const frame = captureFrame();
-            if (frame) {
+            const screenFrame = captureScreenFrame();
+            if (frame || screenFrame) {
               socket.send(JSON.stringify({
                 type: "frame",
-                frame,
+                frame: frame || "",
+                screenFrame: screenFrame || "",
                 hasVideo,
                 hasAudio
               }));
@@ -377,7 +486,7 @@ export const AttemptTestPage = () => {
         clearInterval(fallbackInterval);
       }
     };
-  }, [cameraStream, id, user, hasVideo, hasAudio]);
+  }, [cameraStream, screenStream, id, user, hasVideo, hasAudio, envChecked]);
 
   // AI Proctoring Canvas Overlay Loop
   useEffect(() => {
@@ -628,8 +737,52 @@ export const AttemptTestPage = () => {
     // Sort rawQuestions by ID to ensure identical ordering as the backend
     const sortedQuestions = [...rawQuestions].sort((a, b) => (a.id || "").localeCompare(b.id || ""));
     const seed = `${user?.userId || "student"}-${test.id}`;
-    return getDeterministicSubset(sortedQuestions, test.total_questions, seed);
+    return getSectionalQuestions(test, sortedQuestions, seed);
   }, [test, rawQuestions, user?.userId]);
+
+  const isSectional = Boolean(test?.sections && test.sections.length > 0);
+
+  const sectionsWithRanges = useMemo(() => {
+    if (!test || !test.sections || test.sections.length === 0 || questions.length === 0) {
+      return [];
+    }
+    
+    let currentIdx = 0;
+    const sortedQuestions = [...rawQuestions].sort((a, b) => (a.id || "").localeCompare(b.id || ""));
+    const seed = `${user?.userId || "student"}-${test.id}`;
+    const usedIds = new Set<string>();
+
+    return test.sections.map((sec) => {
+      const secQuestionIds = new Set(sec.questions || []);
+      const secAllQuestions = sortedQuestions.filter(q => q.id && secQuestionIds.has(q.id) && !usedIds.has(q.id));
+      const secCount = Number(sec.questions_count ?? secAllQuestions.length);
+      const secSelected = getDeterministicSubset(secAllQuestions, secCount, seed + "-" + sec.name);
+      
+      secSelected.forEach((q) => {
+        if (q.id) {
+          usedIds.add(q.id);
+        }
+      });
+
+      const count = secSelected.length;
+      const range = {
+        start: currentIdx,
+        end: currentIdx + count - 1
+      };
+      currentIdx += count;
+      return {
+        ...sec,
+        range
+      };
+    });
+  }, [test, rawQuestions, user?.userId, questions]);
+
+  const isQuestionInActiveSection = (idx: number) => {
+    if (!isSectional) return true;
+    const activeRange = sectionsWithRanges[activeSectionIdx]?.range;
+    if (!activeRange) return true;
+    return idx >= activeRange.start && idx <= activeRange.end;
+  };
 
   const imageUrls = useMemo(() => {
     return questions
@@ -716,23 +869,95 @@ export const AttemptTestPage = () => {
 
   // Modals
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sectionConfirmOpen, setSectionConfirmOpen] = useState(false);
+
+  const handleSectionTimeout = () => {
+    if (!test || !test.sections) return;
+    const nextIdx = activeSectionIdx + 1;
+    const prevSec = test.sections[activeSectionIdx];
+    const nextSec = test.sections[nextIdx];
+
+    if (nextSec) {
+      setTimeoutInfo({ prevName: prevSec.name, nextName: nextSec.name });
+      setSectionTimeoutAlertOpen(true);
+      
+      setActiveSectionIdx(nextIdx);
+      const nextDuration = nextSec.duration * 60;
+      setTimeLeft(nextDuration);
+
+      const nextRange = sectionsWithRanges[nextIdx]?.range;
+      if (nextRange && nextRange.start <= nextRange.end) {
+        setCurrentIdx(nextRange.start);
+        setVisited((prev) => ({ ...prev, [nextRange.start]: true }));
+      }
+    }
+  };
 
   // Initialize Timer
   useEffect(() => {
     if (!envChecked) return;
     if (test && timeLeft === null) {
-      let durationSeconds = test.total_time * 60;
-      if (test.end_time) {
-        const now = new Date().getTime();
-        const end = new Date(test.end_time).getTime();
-        if (!isNaN(end) && end > 0) {
-          const remainingWindowSeconds = Math.max(0, Math.floor((end - now) / 1000));
-          durationSeconds = Math.min(durationSeconds, remainingWindowSeconds);
+      let lateSeconds = 0;
+      if (test.start_time) {
+        const testStartTime = new Date(test.start_time).getTime();
+        const now = Date.now();
+        if (!isNaN(testStartTime) && now > testStartTime) {
+          lateSeconds = Math.floor((now - testStartTime) / 1000);
         }
       }
-      setTimeLeft(durationSeconds);
+
+      if (isSectional && test.sections && test.sections.length > 0) {
+        let tempLate = lateSeconds;
+        let startSecIdx = 0;
+        let startSecTimeLeft = 0;
+        let found = false;
+
+        for (let i = 0; i < test.sections.length; i++) {
+          const sec = test.sections[i];
+          const secDur = sec.duration * 60;
+          if (tempLate < secDur) {
+            startSecIdx = i;
+            startSecTimeLeft = secDur - tempLate;
+            found = true;
+            break;
+          } else {
+            tempLate -= secDur;
+          }
+        }
+
+        if (found) {
+          setActiveSectionIdx(startSecIdx);
+          setTimeLeft(startSecTimeLeft);
+          const range = sectionsWithRanges[startSecIdx]?.range;
+          if (range && range.start <= range.end) {
+            setCurrentIdx(range.start);
+            setVisited((prev) => ({ ...prev, [range.start]: true }));
+          }
+        } else {
+          // They missed the entire test duration
+          setActiveSectionIdx(test.sections.length - 1);
+          setTimeLeft(0);
+          const range = sectionsWithRanges[test.sections.length - 1]?.range;
+          if (range) {
+            setCurrentIdx(range.end);
+          }
+        }
+      } else {
+        let durationSeconds = test.total_time * 60;
+        const remainingTime = Math.max(0, durationSeconds - lateSeconds);
+        let finalTime = remainingTime;
+        if (test.end_time) {
+          const now = new Date().getTime();
+          const end = new Date(test.end_time).getTime();
+          if (!isNaN(end) && end > 0) {
+            const remainingWindowSeconds = Math.max(0, Math.floor((end - now) / 1000));
+            finalTime = Math.min(finalTime, remainingWindowSeconds);
+          }
+        }
+        setTimeLeft(finalTime);
+      }
     }
-  }, [test, timeLeft, envChecked]);
+  }, [test, timeLeft, envChecked, isSectional, sectionsWithRanges]);
 
   // Timer Tick — uses a single persistent interval, not one per tick
   useEffect(() => {
@@ -740,7 +965,11 @@ export const AttemptTestPage = () => {
 
     // If timer already expired when effect runs (e.g. page load with 0s left)
     if (timeLeft <= 0) {
-      triggerAutoSubmit();
+      if (isSectional && activeSectionIdx < (test?.sections?.length ?? 0) - 1) {
+        handleSectionTimeout();
+      } else {
+        triggerAutoSubmit();
+      }
       return;
     }
 
@@ -749,8 +978,14 @@ export const AttemptTestPage = () => {
         if (prev === null) return null;
         const next = prev - 1;
         if (next <= 0) {
-          // Use setTimeout to trigger submit outside of setState call
-          setTimeout(() => triggerAutoSubmit(), 0);
+          // Use setTimeout to trigger timeout/submit outside of setState call
+          setTimeout(() => {
+            if (isSectional && activeSectionIdx < (test?.sections?.length ?? 0) - 1) {
+              handleSectionTimeout();
+            } else {
+              triggerAutoSubmit();
+            }
+          }, 0);
           return 0;
         }
         return next;
@@ -764,7 +999,7 @@ export const AttemptTestPage = () => {
 
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeLeft === null, envChecked]);
+  }, [timeLeft === null, envChecked, activeSectionIdx, isSectional]);
 
   // Mutation to submit the attempt
   const submitMutation = useMutation({
@@ -978,6 +1213,7 @@ export const AttemptTestPage = () => {
     { name: "Internet Connection", passed: isOnline, label: isOnline ? "Connected to Internet" : "No Internet Connection" },
     { name: "Screen Resolution", passed: isScreenSizeOk, label: isScreenSizeOk ? "Desktop/Tablet OK" : "Screen Width too small (<768px)" },
     { name: "Fullscreen Mode", passed: isFullscreen, label: isFullscreen ? "Fullscreen Enabled" : "Fullscreen Required" },
+    { name: "Screen Sharing", passed: Boolean(screenStream), label: screenStream ? "Screen Sharing Authorized" : "Screen Sharing Required" },
     { name: "Resources Loaded", passed: resourcesLoaded, label: resourcesLoaded ? "Questions & Assets Preloaded" : "Preloading exam assets..." },
     { name: "Instructions Accepted", passed: acknowledged, label: acknowledged ? "Rules Acknowledged" : "Instructions Not Accepted" },
   ];
@@ -1118,6 +1354,30 @@ export const AttemptTestPage = () => {
                   </div>
                 </div>
 
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${screenStream ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                      {screenStream ? "✓" : "⚠"}
+                    </span>
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block">Screen Sharing Authorization</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">
+                        {screenStream ? "Active screen capture relayed to proctors" : "Screen sharing is required to start the exam"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${screenStream ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                      {screenStream ? "Authorized" : "Required"}
+                    </span>
+                    {!screenStream && (
+                      <Button onClick={handleAuthorizeScreenSharing} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 py-0 px-3 font-semibold">
+                        Authorize Screen Sharing
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
                   <div className="flex items-center gap-3">
                     <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${resourcesLoaded ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600 animate-pulse"}`}>
@@ -1250,6 +1510,17 @@ export const AttemptTestPage = () => {
             </section>
           </div>
         </main>
+      </div>
+    );
+  }
+
+  if (!currentQuestion) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-500">
+        <div className="text-center">
+          <Spinner />
+          <p className="mt-3 text-sm font-medium">Preparing question content...</p>
+        </div>
       </div>
     );
   }
@@ -1529,6 +1800,13 @@ export const AttemptTestPage = () => {
               </div>
             </div>
 
+            {isSectional && (
+              <div className="mb-4 bg-indigo-50/45 dark:bg-indigo-950/20 border border-indigo-100/60 dark:border-indigo-900/40 rounded-xl px-4 py-2.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center justify-between shadow-sm">
+                <span>Active Section: {test.sections![activeSectionIdx].name} ({test.sections![activeSectionIdx].subject})</span>
+                <span className="bg-indigo-100/80 dark:bg-indigo-900/50 px-2 py-0.5 rounded-md text-[10px] uppercase tracking-wider font-extrabold">Locked Sectional Timer</span>
+              </div>
+            )}
+
             {/* Split layout: Question details on the left, Option selector cards on the right */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
               {/* Left Column: Dedicated to the question context */}
@@ -1685,7 +1963,7 @@ export const AttemptTestPage = () => {
               <div className="flex gap-2">
                 <Button
                   variant="secondary"
-                  disabled={currentIdx === 0}
+                  disabled={currentIdx === 0 || !isQuestionInActiveSection(currentIdx - 1)}
                   onClick={handlePrev}
                   className="h-10 text-xs px-3"
                   icon={<ChevronLeft className="h-4 w-4" />}
@@ -1693,22 +1971,54 @@ export const AttemptTestPage = () => {
                   Previous
                 </Button>
 
-                {currentIdx === totalQuestions - 1 ? (
-                  <Button
-                    onClick={handleManualSubmit}
-                    className="h-10 text-xs px-5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    Finish Test
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleNext}
-                    className="h-10 text-xs px-5 bg-indigo-600 hover:bg-indigo-700 text-white"
-                    icon={<ChevronRight className="h-4 w-4" />}
-                  >
-                    Save & Next
-                  </Button>
-                )}
+                {(() => {
+                  const activeRange = isSectional ? sectionsWithRanges[activeSectionIdx]?.range : null;
+                  const isLastQuestionOfSection = activeRange ? (currentIdx === activeRange.end) : (currentIdx === totalQuestions - 1);
+                  const isLastSection = !isSectional || (activeSectionIdx === sectionsWithRanges.length - 1);
+
+                  if (isLastQuestionOfSection) {
+                    if (isLastSection) {
+                      return (
+                        <Button
+                          onClick={handleManualSubmit}
+                          className="h-10 text-xs px-5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          Finish Test
+                        </Button>
+                      );
+                    } else {
+                      return (
+                        <Button
+                          onClick={() => setSectionConfirmOpen(true)}
+                          className="h-10 text-xs px-5 bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1"
+                          icon={<ChevronRight className="h-4 w-4" />}
+                        >
+                          Submit Section & Proceed
+                        </Button>
+                      );
+                    }
+                  } else {
+                    return (
+                      <div className="flex gap-2">
+                        {isSectional && !isLastSection && (
+                          <Button
+                            onClick={() => setSectionConfirmOpen(true)}
+                            className="h-10 text-xs px-4 bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-sm font-bold"
+                          >
+                            Submit Section & Proceed
+                          </Button>
+                        )}
+                        <Button
+                          onClick={handleNext}
+                          className="h-10 text-xs px-5 bg-indigo-600 hover:bg-indigo-700 text-white"
+                          icon={<ChevronRight className="h-4 w-4" />}
+                        >
+                          Save & Next
+                        </Button>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
             </div>
           </article>
@@ -1722,10 +2032,13 @@ export const AttemptTestPage = () => {
             const isMarked = marked[qId] === true;
             const isVis = visited[idx] === true;
             const isCurrent = currentIdx === idx;
+            const inActiveSec = isQuestionInActiveSection(idx);
 
             let btnBg = "bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-955 dark:border-slate-800";
 
-            if (isAns && isMarked) {
+            if (!inActiveSec) {
+              btnBg = "bg-slate-100/50 border-slate-200/45 text-slate-300 dark:bg-slate-950/40 dark:border-slate-850/50 cursor-not-allowed opacity-30";
+            } else if (isAns && isMarked) {
               btnBg = "bg-purple-500 border-purple-500 text-white";
             } else if (isMarked) {
               btnBg = "bg-purple-100 border-purple-200 text-purple-700 dark:bg-purple-955/30 dark:border-purple-900/50 dark:text-purple-300";
@@ -1739,9 +2052,10 @@ export const AttemptTestPage = () => {
               <button
                 key={qId}
                 data-index={idx}
+                disabled={!inActiveSec}
                 onClick={() => handleSelectQuestion(idx)}
                 className={`h-10 w-10 rounded-xl font-bold text-xs border flex items-center justify-center transition-all shrink-0 ${btnBg} ${isCurrent ? "ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900 scale-105 shadow-sm" : ""}`}
-                title={`Question ${idx + 1}`}
+                title={inActiveSec ? `Question ${idx + 1}` : `Question ${idx + 1} (Locked)`}
               >
                 {idx + 1}
               </button>
@@ -1821,14 +2135,125 @@ export const AttemptTestPage = () => {
 
       {warningMessage && <Toast tone="error">{warningMessage}</Toast>}
 
+      {/* Section Timeout Modal */}
+      <Modal
+        open={sectionTimeoutAlertOpen}
+        title="Section Completed"
+        onClose={() => setSectionTimeoutAlertOpen(false)}
+        footer={
+          <Button
+            onClick={() => setSectionTimeoutAlertOpen(false)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white w-full font-bold"
+          >
+            Start Next Section
+          </Button>
+        }
+      >
+        <div className="text-center p-4">
+          <Clock className="h-16 w-16 text-indigo-500 mx-auto mb-4 animate-pulse" />
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Section Time Expired!</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed font-semibold">
+            Time is up for <span className="text-indigo-650 dark:text-indigo-400 font-extrabold">"{timeoutInfo?.prevName}"</span>.
+          </p>
+          <p className="text-xs text-slate-400 mt-2 font-semibold">
+            You have been locked out of the previous section and automatically transitioned to:
+          </p>
+          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-3 inline-block font-extrabold text-indigo-600 mt-2">
+            {timeoutInfo?.nextName}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Section Submission Confirmation Modal */}
+      <Modal
+        open={sectionConfirmOpen}
+        title="Submit Section"
+        onClose={() => setSectionConfirmOpen(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setSectionConfirmOpen(false)}>
+              Resume Section
+            </Button>
+            <Button
+              onClick={() => {
+                setSectionConfirmOpen(false);
+                handleSectionTimeout();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold"
+            >
+              Yes, Submit Section
+            </Button>
+          </>
+        }
+      >
+        <div className="text-slate-650 dark:text-slate-350 text-sm">
+          <p className="font-bold text-slate-805 dark:text-slate-100 text-base mb-3">
+            Are you sure you want to submit the section "{test.sections && test.sections[activeSectionIdx]?.name}"?
+          </p>
+          <p className="mb-4">
+            Once submitted, you will proceed to the next section and will NOT be able to return to this section.
+          </p>
+        </div>
+      </Modal>
+
+      {/* Screen share violation overlay */}
+      {isScreenStoppedMidTest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6">
+          <div className="text-center max-w-md rounded-2xl border-2 border-rose-500 bg-white dark:bg-slate-900 p-8 shadow-2xl space-y-6">
+            <AlertTriangle className="h-16 w-16 text-rose-500 mx-auto animate-bounce" />
+            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">Screen Sharing Disconnected!</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
+              You stopped sharing your screen. This is a proctoring violation. Workspace inputs are blocked.
+            </p>
+            <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50 p-4 rounded-xl">
+              <p className="text-xs text-rose-700 dark:text-rose-400 font-bold leading-normal">
+                Please re-authorize screen sharing immediately to resume the test.
+              </p>
+            </div>
+            <Button
+              onClick={handleAuthorizeScreenSharing}
+              className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold h-12 rounded-xl text-sm transition-all shadow-md shadow-rose-500/20 animate-pulse"
+            >
+              Re-authorize Screen Sharing
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Hidden video element to keep the camera stream alive in the background */}
       <video
         ref={hiddenVideoRef}
         autoPlay
         playsInline
         muted
-        className="hidden"
-        style={{ width: "1px", height: "1px", opacity: 0.001, pointerEvents: "none" }}
+        style={{
+          position: "fixed",
+          width: "4px",
+          height: "4px",
+          opacity: 0.01,
+          pointerEvents: "none",
+          bottom: "10px",
+          right: "10px",
+          zIndex: -9999
+        }}
+      />
+
+      {/* Hidden video element to keep the screen capture stream alive in the background */}
+      <video
+        ref={screenVideoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{
+          position: "fixed",
+          width: "4px",
+          height: "4px",
+          opacity: 0.01,
+          pointerEvents: "none",
+          bottom: "10px",
+          right: "15px",
+          zIndex: -9999
+        }}
       />
     </div>
   );

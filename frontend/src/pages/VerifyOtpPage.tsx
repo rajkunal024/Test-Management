@@ -10,6 +10,7 @@ export const VerifyOtpPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const emailParam = searchParams.get("email") || "";
+  const role = searchParams.get("role") || "student";
 
   const [email, setEmail] = useState(emailParam);
   const [otp, setOtp] = useState("");
@@ -19,7 +20,7 @@ export const VerifyOtpPage = () => {
 
   useEffect(() => {
     if (!emailParam) {
-      navigate("/forgot-password", { replace: true });
+      navigate(`/forgot-password?role=${role}`, { replace: true });
     } else {
       setEmail(emailParam);
     }
@@ -45,7 +46,7 @@ export const VerifyOtpPage = () => {
       const response = await verifyOtp(email, otp.trim());
       setSuccess(response.message || "OTP verified! Loading reset terminal...");
       setTimeout(() => {
-        navigate(`/reset-password?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp.trim())}`);
+        navigate(`/reset-password?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp.trim())}&role=${role}`);
       }, 1500);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -126,7 +127,7 @@ export const VerifyOtpPage = () => {
 
           {/* Go Back Link */}
           <Link 
-            to="/forgot-password" 
+            to={`/forgot-password?role=${role}`} 
             className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold mb-8 group self-start transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />

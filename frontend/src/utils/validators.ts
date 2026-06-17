@@ -24,6 +24,12 @@ export const testSchema = z.object({
   total_questions: numericRequired("Total questions").int().positive("Total questions must be greater than 0"),
   start_time: z.string().min(1, "Start time slot is required"),
   end_time: z.string().min(1, "End time slot is required"),
+  sections: z.array(z.object({
+    name: z.string().min(1, "Section name is required"),
+    subject: z.string().min(1, "Subject is required"),
+    duration: z.coerce.number().positive("Duration must be greater than 0"),
+    questions_count: z.coerce.number().int().positive("Questions count must be greater than 0")
+  })).optional(),
 }).refine((data) => {
   if (data.start_time) {
     const now = new Date().getTime();
@@ -45,6 +51,63 @@ export const testSchema = z.object({
 }, {
   message: "End time slot cannot be earlier than start time slot",
   path: ["end_time"],
+}).refine((data) => {
+  if (data.start_time && data.end_time) {
+    const start = new Date(data.start_time).getTime();
+    const end = new Date(data.end_time).getTime();
+    const slotMins = Math.floor((end - start) / (60 * 1000));
+    return Number(data.total_time) <= slotMins;
+  }
+  return true;
+}, {
+  message: "Test duration cannot be greater than the schedule time slot duration",
+  path: ["total_time"],
+}).refine((data) => {
+  if (data.sections && data.sections.length > 0 && data.start_time && data.end_time) {
+    const start = new Date(data.start_time).getTime();
+    const end = new Date(data.end_time).getTime();
+    const slotMins = Math.floor((end - start) / (60 * 1000));
+    const sumDurations = data.sections.reduce((acc, sec) => acc + Number(sec.duration || 0), 0);
+    return sumDurations <= slotMins;
+  }
+  return true;
+}, {
+  message: "The sum of section durations cannot be greater than the schedule time slot duration",
+  path: ["total_time"],
+}).refine((data) => {
+  if (data.sections && data.sections.length > 0) {
+    const sumDurations = data.sections.reduce((acc, sec) => acc + Number(sec.duration || 0), 0);
+    return sumDurations === Number(data.total_time);
+  }
+  return true;
+}, {
+  message: "The sum of section durations must equal the total test time",
+  path: ["total_time"],
+}).refine((data) => {
+  if (data.sections && data.sections.length > 0) {
+    const sumQuestions = data.sections.reduce((acc, sec) => acc + Number(sec.questions_count || 0), 0);
+    return sumQuestions === Number(data.total_questions);
+  }
+  return true;
+}, {
+  message: "The sum of section question counts must equal the total questions target",
+  path: ["total_questions"],
+}).superRefine((data, ctx) => {
+  if (data.sections && data.sections.length > 0 && data.start_time && data.end_time) {
+    const start = new Date(data.start_time).getTime();
+    const end = new Date(data.end_time).getTime();
+    const slotMins = Math.floor((end - start) / (60 * 1000));
+    data.sections.forEach((sec, idx) => {
+      const secDuration = Number(sec.duration || 0);
+      if (secDuration > slotMins) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Section duration (${secDuration} mins) cannot be greater than the schedule time slot (${slotMins} mins)`,
+          path: ["sections", idx, "duration"]
+        });
+      }
+    });
+  }
 });
 
 export const questionSchema = z.object({

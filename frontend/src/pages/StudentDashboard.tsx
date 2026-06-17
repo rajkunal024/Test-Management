@@ -79,6 +79,14 @@ const getSubjectTheme = (subjectStr: string) => {
   };
 };
 
+const isSameDay = (d1: Date, d2: Date) => {
+  return (
+    d1.getDate() === d2.getDate() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getFullYear() === d2.getFullYear()
+  );
+};
+
 export const StudentDashboard = () => {
   const user = useAuthStore((state) => state.user);
   const { data: tests = [], isLoading: isLoadingTests } = useTests();
@@ -94,6 +102,7 @@ export const StudentDashboard = () => {
 
   // Calendar state management
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
   const [hoveredExams, setHoveredExams] = useState<any[]>([]);
   const [hoveredDateText, setHoveredDateText] = useState<string | null>(null);
   const [hoveredDatePosition, setHoveredDatePosition] = useState<{ x: number; y: number } | null>(null);
@@ -236,7 +245,12 @@ export const StudentDashboard = () => {
         }
       }
 
-      return matchesSearch && matchesSubject;
+      let matchesCalendarDate = true;
+      if (selectedCalendarDate && test.start_time) {
+        matchesCalendarDate = isSameDay(new Date(test.start_time), selectedCalendarDate);
+      }
+
+      return matchesSearch && matchesSubject && matchesCalendarDate;
     });
 
     const getTestCreationTime = (test: typeof liveTests[0]) => {
@@ -256,7 +270,7 @@ export const StudentDashboard = () => {
       const timeB = getTestCreationTime(b);
       return timeB - timeA;
     });
-  }, [liveTests, search, subjectFilter]);
+  }, [liveTests, search, subjectFilter, selectedCalendarDate]);
 
   // Calculate student statistics
   const stats = useMemo(() => {
@@ -386,7 +400,7 @@ export const StudentDashboard = () => {
         </section>
 
         {/* Tab switcher */}
-        <div className="mb-8 flex p-1 bg-slate-100/80 dark:bg-slate-905 rounded-2xl max-w-sm border border-slate-200/30 dark:border-slate-800/40 shadow-inner backdrop-blur-sm" id="exams-list-section">
+        <div className="mb-8 flex p-1 bg-slate-100/80 dark:bg-slate-900 rounded-2xl max-w-sm border border-slate-200/30 dark:border-slate-800/40 shadow-inner backdrop-blur-sm" id="exams-list-section">
           <button
             onClick={() => setActiveTab("exams")}
             className={`flex-1 py-3 px-5 text-xs font-bold rounded-xl transition-all duration-300 ${activeTab === "exams"
@@ -440,8 +454,27 @@ export const StudentDashboard = () => {
             {/* Test Catalog */}
             <h2 className="mb-5 text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <BookOpenCheck className="h-5 w-5 text-indigo-500" />
-              Active Exams & Time Slots
+              {selectedCalendarDate ? (
+                <span>Exams for {selectedCalendarDate.toLocaleDateString([], { dateStyle: "medium" })}</span>
+              ) : (
+                <span>Active Exams & Time Slots</span>
+              )}
             </h2>
+
+            {selectedCalendarDate && (
+              <div className="mb-6 flex items-center justify-between p-3.5 rounded-xl border border-indigo-100 dark:border-indigo-950/35 bg-indigo-50/30 dark:bg-indigo-950/10 text-xs font-bold text-indigo-650 dark:text-indigo-400 animate-fade-in">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-indigo-550 animate-pulse" />
+                  Filtering by date: {selectedCalendarDate.toLocaleDateString([], { dateStyle: "long" })}
+                </span>
+                <button
+                  onClick={() => setSelectedCalendarDate(null)}
+                  className="px-2.5 py-1 rounded-lg bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-950 dark:hover:bg-indigo-900 transition-colors uppercase text-[9px] font-black tracking-wider"
+                >
+                  Clear Date Filter
+                </button>
+              </div>
+            )}
 
             {isLoading ? (
               <div className="flex h-64 items-center justify-center text-slate-500 dark:text-slate-400">
@@ -563,7 +596,7 @@ export const StudentDashboard = () => {
                                 </Button>
                               </Link>
                             ) : (
-                              <Button disabled className="h-9.5 text-xs font-bold px-4 bg-slate-50 dark:bg-slate-905 text-slate-350 dark:text-slate-650 border-slate-100 dark:border-slate-850 rounded-xl cursor-not-allowed">
+                              <Button disabled className="h-9.5 text-xs font-bold px-4 bg-slate-50 dark:bg-slate-900 text-slate-350 dark:text-slate-650 border-slate-100 dark:border-slate-850 rounded-xl cursor-not-allowed">
                                 {isUpcoming ? "Upcoming" : isEnded ? "Closed" : "No Questions"}
                               </Button>
                             )
@@ -582,13 +615,56 @@ export const StudentDashboard = () => {
           <div className="space-y-4">
             <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-5">
               <Award className="h-5 w-5 text-indigo-500" />
-              Completed Test Performance
+              {selectedCalendarDate ? (
+                <span>Results for {selectedCalendarDate.toLocaleDateString([], { dateStyle: "medium" })}</span>
+              ) : (
+                <span>Completed Test Performance</span>
+              )}
             </h2>
+
+            {selectedCalendarDate && (
+              <div className="mb-6 flex items-center justify-between p-3.5 rounded-xl border border-indigo-100 dark:border-indigo-950/35 bg-indigo-50/30 dark:bg-indigo-950/10 text-xs font-bold text-indigo-650 dark:text-indigo-400 animate-fade-in">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-indigo-550 animate-pulse" />
+                  Filtering by date: {selectedCalendarDate.toLocaleDateString([], { dateStyle: "long" })}
+                </span>
+                <button
+                  onClick={() => setSelectedCalendarDate(null)}
+                  className="px-2.5 py-1 rounded-lg bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-950 dark:hover:bg-indigo-900 transition-colors uppercase text-[9px] font-black tracking-wider"
+                >
+                  Clear Date Filter
+                </button>
+              </div>
+            )}
+
             {(() => {
               const studentAttempts = attempts.filter((a) => {
                 if (a.user_id !== user?.userId) return false;
                 const test = tests.find((t) => t.id === a.test_id);
                 if (!test) return false;
+
+                // Match search
+                const testName = (a.test_name || test.name || "").toLowerCase();
+                const matchesSearch = testName.includes(search.toLowerCase());
+
+                // Match subject
+                let matchesSubject = subjectFilter === "all";
+                if (!matchesSubject && test.subject) {
+                  if (Array.isArray(test.subject)) {
+                    matchesSubject = test.subject.includes(subjectFilter);
+                  } else {
+                    matchesSubject = test.subject === subjectFilter;
+                  }
+                }
+
+                // Match selected calendar date (using attempt submitted_at time)
+                let matchesCalendarDate = true;
+                if (selectedCalendarDate && a.submitted_at) {
+                  matchesCalendarDate = isSameDay(new Date(a.submitted_at), selectedCalendarDate);
+                }
+
+                if (!matchesSearch || !matchesSubject || !matchesCalendarDate) return false;
+
                 if (test.start_time) {
                   const testStart = new Date(test.start_time).getTime();
                   const parsedIdTime = (() => {
@@ -633,6 +709,12 @@ export const StudentDashboard = () => {
 
                     const theme = getSubjectTheme(subjectsName);
 
+                    const diffLower = test ? (test.difficulty || "").toLowerCase().trim() : "";
+                    const difficultyColor =
+                      diffLower === "easy" ? "green" :
+                        diffLower === "medium" ? "yellow" :
+                          (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
+
                     return (
                       <article
                         key={attempt.id}
@@ -644,6 +726,9 @@ export const StudentDashboard = () => {
                         <div>
                           <div className="mb-4 flex flex-wrap items-center gap-2 relative z-10">
                             <Badge tone={theme.badgeTone} className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{subjectsName}</Badge>
+                            {test && (
+                              <Badge tone={difficultyColor} className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{test.difficulty}</Badge>
+                            )}
                             <Badge tone="green" className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">Attempt Completed</Badge>
                           </div>
                           <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-2 tracking-tight line-clamp-1 group-hover:text-indigo-650 dark:group-hover:text-indigo-400 transition-colors" title={attempt.test_name || test?.name}>
@@ -718,11 +803,12 @@ export const StudentDashboard = () => {
             </div>
 
             {/* Weekdays */}
-            <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+            <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
               {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
                 <div key={day} className="py-1">{day}</div>
               ))}
             </div>
+            <div className="border-b border-slate-100 dark:border-slate-800/60 mb-2.5" />
 
             {/* Days Grid */}
             <div className="grid grid-cols-7 gap-1">
@@ -730,27 +816,49 @@ export const StudentDashboard = () => {
                 const dayExams = getExamsForDate(cell.date);
                 const hasExams = dayExams.length > 0;
                 const isTodayStr = new Date().toDateString() === cell.date.toDateString();
+                const isSelected = selectedCalendarDate && isSameDay(selectedCalendarDate, cell.date);
 
-                let cellClass = "aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-bold transition-all relative cursor-default";
-                
-                if (cell.isCurrentMonth) {
-                  cellClass += " text-slate-700 dark:text-slate-350";
-                } else {
-                  cellClass += " text-slate-300 dark:text-slate-600";
-                }
+                let cellClass = "aspect-square flex flex-col items-center justify-center rounded-xl text-xs transition-all relative cursor-pointer active:scale-95 select-none";
+                let textClass = "font-bold";
 
-                if (isTodayStr) {
-                  cellClass += " border border-indigo-500 bg-indigo-500/5 dark:bg-indigo-500/10 font-black";
+                if (isSelected) {
+                  cellClass += " bg-gradient-to-br from-indigo-600 to-[#6c7df7] shadow-lg shadow-indigo-500/25 scale-105 ring-2 ring-indigo-450 dark:ring-indigo-600 z-10";
+                  textClass = "text-white font-black";
+                } else if (isTodayStr) {
+                  cellClass += " border-2 border-indigo-550 dark:border-indigo-400 bg-indigo-550/5 dark:bg-indigo-500/10";
+                  textClass = "text-indigo-600 dark:text-indigo-400 font-black";
                 } else if (hasExams) {
-                  cellClass += " hover:bg-indigo-500/10 dark:hover:bg-indigo-500/20";
+                  cellClass += " bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-150/20 dark:border-indigo-900/25 hover:bg-indigo-550/15 dark:hover:bg-indigo-500/25";
+                  textClass = cell.isCurrentMonth ? "text-slate-800 dark:text-slate-200" : "text-slate-350 dark:text-slate-650";
                 } else {
-                  cellClass += " hover:bg-slate-50 dark:hover:bg-slate-850/50";
+                  cellClass += " hover:bg-slate-50 dark:hover:bg-slate-800/30";
+                  textClass = cell.isCurrentMonth ? "text-slate-600 dark:text-slate-450" : "text-slate-300 dark:text-slate-700";
                 }
+
+                const getDotColor = (exam: any) => {
+                  const subjectName = Array.isArray(exam.subject) ? exam.subject.join(", ") : exam.subject;
+                  const theme = getSubjectTheme(subjectName);
+                  switch (theme.badgeTone) {
+                    case "blue":
+                      return "bg-blue-500 dark:bg-blue-400";
+                    case "green":
+                      return "bg-emerald-500 dark:bg-emerald-400";
+                    case "yellow":
+                      return "bg-amber-500 dark:bg-amber-400";
+                    case "slate":
+                      return "bg-violet-500 dark:bg-violet-400";
+                    default:
+                      return "bg-indigo-500 dark:bg-indigo-400";
+                  }
+                };
 
                 return (
                   <div
                     key={idx}
                     className={cellClass}
+                    onClick={() => {
+                      setSelectedCalendarDate(isSelected ? null : cell.date);
+                    }}
                     onMouseEnter={(e) => {
                       if (hasExams) {
                         const rect = e.currentTarget.getBoundingClientRect();
@@ -768,14 +876,82 @@ export const StudentDashboard = () => {
                       setHoveredDatePosition(null);
                     }}
                   >
-                    <span>{cell.day}</span>
+                    <span className={textClass}>{cell.day}</span>
                     {hasExams && (
-                      <span className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-[#6c7df7] animate-pulse" />
+                      <span className={`absolute bottom-1 h-1.5 w-1.5 rounded-full animate-pulse ${
+                        isSelected ? "bg-white animate-none" : getDotColor(dayExams[0])
+                      }`} />
                     )}
                   </div>
                 );
               })}
             </div>
+
+            {/* Legend & Details */}
+            <div className="mt-4 pt-3 border-t border-slate-150 dark:border-slate-800/80 flex items-center justify-between text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <div className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                <span>Exam Scheduled</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full border border-indigo-500 bg-indigo-550/5 dark:bg-indigo-500/10" />
+                <span>Today</span>
+              </div>
+            </div>
+
+            {selectedCalendarDate && (
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-3 animate-fade-in">
+                <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  <span>Exams on this date</span>
+                  <button 
+                    onClick={() => setSelectedCalendarDate(null)}
+                    className="text-indigo-500 hover:text-indigo-650 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline cursor-pointer font-bold text-[9px]"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+                {getExamsForDate(selectedCalendarDate).length > 0 ? (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {getExamsForDate(selectedCalendarDate).map((exam, index) => {
+                      const theme = getSubjectTheme(Array.isArray(exam.subject) ? exam.subject.join(", ") : exam.subject);
+                      const startTime = exam.start_time ? new Date(exam.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+                      const subjectName = Array.isArray(exam.subject) ? exam.subject.join(", ") : exam.subject;
+                      return (
+                        <div 
+                          key={exam.id || index} 
+                          className="p-2.5 rounded-xl border border-slate-200/50 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30 hover:border-indigo-500/40 transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-200 truncate max-w-[170px]">
+                              {exam.name}
+                            </span>
+                            <Badge tone={theme.badgeTone} className="font-extrabold text-[8px] px-1.5 py-0.5 rounded-md shrink-0">
+                              {subjectName}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-3 text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-1.5">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3 text-slate-400" />
+                              {exam.total_time}m
+                            </span>
+                            {startTime && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3 text-slate-400" />
+                                {startTime}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-4 text-center text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                    No exams scheduled for this date.
+                  </div>
+                )}
+              </div>
+            )}
           </aside>
         </div>
       </PageWrapper>

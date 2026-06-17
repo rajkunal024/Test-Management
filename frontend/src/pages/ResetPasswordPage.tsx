@@ -11,6 +11,7 @@ export const ResetPasswordPage = () => {
   const [searchParams] = useSearchParams();
   const email = searchParams.get("email") || "";
   const otp = searchParams.get("otp") || "";
+  const role = searchParams.get("role") || "student";
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,9 +21,9 @@ export const ResetPasswordPage = () => {
 
   useEffect(() => {
     if (!email || !otp) {
-      navigate("/forgot-password", { replace: true });
+      navigate(`/forgot-password?role=${role}`, { replace: true });
     }
-  }, [email, otp, navigate]);
+  }, [email, otp, navigate, role]);
 
   // Client-side password rules validation
   const rules = {
@@ -60,7 +61,7 @@ export const ResetPasswordPage = () => {
       const response = await resetPassword({ email, otp, newPassword });
       setSuccess(response.message || "Password reset successful! Redirecting to login...");
       setTimeout(() => {
-        navigate("/login/student");
+        navigate(`/login/${role}`);
       }, 2000);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -141,7 +142,7 @@ export const ResetPasswordPage = () => {
 
           {/* Go Back Link */}
           <Link 
-            to="/forgot-password" 
+            to={`/forgot-password?role=${role}`} 
             className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold mb-8 group self-start transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />

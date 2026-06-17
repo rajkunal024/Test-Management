@@ -4,6 +4,81 @@ import { checkRole } from "../middlewares/auth.js";
 import { TestModel, ResultModel, StudentModel, QuestionModel, NotificationModel, SubjectModel, TopicModel, SubTopicModel } from "../models/index.js";
 import { performShareResults } from "../services/shareService.js";
 
+const distributeQuestionsIntoSections = async (testQuestions: string[], sections: any[]) => {
+  if (!sections || !Array.isArray(sections) || sections.length === 0) {
+    return sections;
+  }
+
+  // Load all question documents
+  const questionDocs = await QuestionModel.find({ id: { $in: testQuestions } });
+  
+  // Group question IDs by their subject name (lowercase for robust match)
+  const questionsBySubject: Record<string, string[]> = {};
+  for (const q of questionDocs) {
+    if (q.topic_id) {
+      const topic = await TopicModel.findOne({ id: q.topic_id });
+      if (topic) {
+        const subject = await SubjectModel.findOne({ id: topic.subject_id });
+        if (subject) {
+          const subName = subject.name.toLowerCase().trim();
+          if (!questionsBySubject[subName]) {
+            questionsBySubject[subName] = [];
+          }
+          questionsBySubject[subName].push(q.id);
+        }
+      }
+    }
+  }
+
+  // For each section, assign matching questions
+  return sections.map((sec: any) => {
+    const secSub = (sec.subject || "").toLowerCase().trim();
+    return {
+      name: sec.name,
+      subject: sec.subject,
+      duration: sec.duration,
+      questions_count: Number(sec.questions_count || 0),
+      questions: questionsBySubject[secSub] || []
+    };
+  });
+};
+
+const calculateTestDifficulty = async (questionIds: string[], defaultDiff: string): Promise<string> => {
+  if (!questionIds || questionIds.length === 0) return defaultDiff;
+  const questionDocs = await QuestionModel.find({ id: { $in: questionIds } });
+  const total = questionDocs.length;
+  if (total === 0) return defaultDiff;
+
+  let easyCount = 0;
+  let mediumCount = 0;
+  let hardCount = 0;
+
+  for (const q of questionDocs) {
+    const diff = (q.difficulty || "").toLowerCase().trim();
+    if (diff === "easy") {
+      easyCount++;
+    } else if (diff === "medium") {
+      mediumCount++;
+    } else if (diff === "hard" || diff === "difficult") {
+      hardCount++;
+    }
+  }
+
+  if (hardCount > 0.5 * total) {
+    return "hard";
+  }
+  if (hardCount > 0) {
+    return "medium";
+  }
+  if (mediumCount > 0.5 * total) {
+    return "medium";
+  }
+  if (easyCount > 0.5 * total) {
+    return "easy";
+  }
+  return "medium";
+};
+
 export const getTests = async (request: IncomingMessage, response: ServerResponse) => {
   try {
     const now = new Date().getTime();
@@ -30,6 +105,19 @@ export const createTest = async (request: IncomingMessage, response: ServerRespo
   }
   try {
     const payload = JSON.parse(await readBody(request));
+    if (payload.sections && Array.isArray(payload.sections) && payload.sections.length > 0) {
+      const sumDurations = payload.sections.reduce((acc: number, sec: any) => acc + Number(sec.duration || 0), 0);
+      if (payload.total_time !== undefined && sumDurations !== Number(payload.total_time)) {
+        json(response, 400, { success: false, message: "The sum of section durations must equal the total test time" });
+        return;
+      }
+      const sumQuestions = payload.sections.reduce((acc: number, sec: any) => acc + Number(sec.questions_count || 0), 0);
+      if (payload.total_questions !== undefined && sumQuestions !== Number(payload.total_questions)) {
+        json(response, 400, { success: false, message: "The sum of section question counts must equal the total questions target" });
+        return;
+      }
+    }
+
     if (payload.start_time && payload.end_time) {
       const start = new Date(payload.start_time).getTime();
       const end = new Date(payload.end_time).getTime();
@@ -37,10 +125,39 @@ export const createTest = async (request: IncomingMessage, response: ServerRespo
         json(response, 400, { success: false, message: "End time slot cannot be earlier than start time slot" });
         return;
       }
+      const slotMins = Math.floor((end - start) / (60 * 1000));
+      if (payload.sections && Array.isArray(payload.sections) && payload.sections.length > 0) {
+        const sumDurations = payload.sections.reduce((acc: number, sec: any) => acc + Number(sec.duration || 0), 0);
+        if (sumDurations > slotMins) {
+          json(response, 400, { success: false, message: "The sum of section durations cannot be greater than the schedule time slot duration" });
+          return;
+        }
+        for (const sec of payload.sections) {
+          if (Number(sec.duration || 0) > slotMins) {
+            json(response, 400, { success: false, message: `Section duration (${sec.duration} mins) cannot be greater than the schedule time slot (${slotMins} mins)` });
+            return;
+          }
+        }
+      } else {
+        if (payload.total_time !== undefined && Number(payload.total_time) > slotMins) {
+          json(response, 400, { success: false, message: "Test duration cannot be greater than the schedule time slot duration" });
+          return;
+        }
+      }
+    }
+    let sections = payload.sections;
+    if (sections && Array.isArray(sections) && sections.length > 0) {
+      sections = await distributeQuestionsIntoSections(payload.questions || [], sections);
+    }
+    let difficulty = payload.difficulty || "medium";
+    if (payload.questions && Array.isArray(payload.questions) && payload.questions.length > 0) {
+      difficulty = await calculateTestDifficulty(payload.questions, difficulty);
     }
     const newTest = new TestModel({
       id: `test-${Date.now()}`,
       ...payload,
+      difficulty,
+      sections,
       questions: payload.questions || [],
       created_at: new Date()
     });
@@ -106,14 +223,63 @@ export const updateTest = async (request: IncomingMessage, response: ServerRespo
     }
 
     const payload = JSON.parse(await readBody(request));
-    if (payload.start_time && payload.end_time) {
-      const start = new Date(payload.start_time).getTime();
-      const end = new Date(payload.end_time).getTime();
+    const startTime = payload.start_time !== undefined ? payload.start_time : existingTest.start_time;
+    const endTime = payload.end_time !== undefined ? payload.end_time : existingTest.end_time;
+    const totalTime = payload.total_time !== undefined ? payload.total_time : existingTest.total_time;
+    const totalQuestions = payload.total_questions !== undefined ? payload.total_questions : existingTest.total_questions;
+    const sectionsVal = payload.sections !== undefined ? payload.sections : existingTest.sections;
+
+    if (sectionsVal && Array.isArray(sectionsVal) && sectionsVal.length > 0) {
+      const sumDurations = sectionsVal.reduce((acc: number, sec: any) => acc + Number(sec.duration || 0), 0);
+      if (totalTime !== undefined && sumDurations !== Number(totalTime)) {
+        json(response, 400, { success: false, message: "The sum of section durations must equal the total test time" });
+        return;
+      }
+      const sumQuestions = sectionsVal.reduce((acc: number, sec: any) => acc + Number(sec.questions_count || 0), 0);
+      if (totalQuestions !== undefined && sumQuestions !== Number(totalQuestions)) {
+        json(response, 400, { success: false, message: "The sum of section question counts must equal the total questions target" });
+        return;
+      }
+    }
+
+    if (startTime && endTime) {
+      const start = new Date(startTime).getTime();
+      const end = new Date(endTime).getTime();
       if (end < start) {
         json(response, 400, { success: false, message: "End time slot cannot be earlier than start time slot" });
         return;
       }
+      const slotMins = Math.floor((end - start) / (60 * 1000));
+      if (sectionsVal && Array.isArray(sectionsVal) && sectionsVal.length > 0) {
+        const sumDurations = sectionsVal.reduce((acc: number, sec: any) => acc + Number(sec.duration || 0), 0);
+        if (sumDurations > slotMins) {
+          json(response, 400, { success: false, message: "The sum of section durations cannot be greater than the schedule time slot duration" });
+          return;
+        }
+        for (const sec of sectionsVal) {
+          if (Number(sec.duration || 0) > slotMins) {
+            json(response, 400, { success: false, message: `Section duration (${sec.duration} mins) cannot be greater than the schedule time slot (${slotMins} mins)` });
+            return;
+          }
+        }
+      } else {
+        if (totalTime !== undefined && Number(totalTime) > slotMins) {
+          json(response, 400, { success: false, message: "Test duration cannot be greater than the schedule time slot duration" });
+          return;
+        }
+      }
     }
+
+    let sections = payload.sections || existingTest.sections;
+    const testQuestions = payload.questions !== undefined ? payload.questions : existingTest.questions;
+    if (sections && Array.isArray(sections) && sections.length > 0) {
+      payload.sections = await distributeQuestionsIntoSections(testQuestions, sections);
+    }
+    let difficulty = payload.difficulty !== undefined ? payload.difficulty : existingTest.difficulty;
+    if (testQuestions && Array.isArray(testQuestions) && testQuestions.length > 0) {
+      difficulty = await calculateTestDifficulty(testQuestions, difficulty);
+    }
+    payload.difficulty = difficulty;
     const isNowLive = payload.status === "live" && existingTest.status !== "live";
     const test = await TestModel.findOneAndUpdate({ id }, payload, { new: true });
     if (test) {
@@ -441,6 +607,12 @@ export const bulkCreateTestFromCsv = async (request: IncomingMessage, response: 
     const resolvedSubject = testSubjectNames.length === 1 ? testSubjectNames[0] : testSubjectNames;
     const cleanStatus = status === "live" ? "live" : "draft";
 
+    let sections = body.sections;
+    if (sections && Array.isArray(sections) && sections.length > 0) {
+      sections = await distributeQuestionsIntoSections(questionIds, sections);
+    }
+
+    const testDifficulty = await calculateTestDifficulty(questionIds, difficulty);
     const newTest = new TestModel({
       id: testId,
       name,
@@ -453,12 +625,13 @@ export const bulkCreateTestFromCsv = async (request: IncomingMessage, response: 
       correct_marks: Number(correct_marks),
       wrong_marks: Number(wrong_marks || 0),
       unattempt_marks: Number(unattempt_marks || 0),
-      difficulty,
+      difficulty: testDifficulty,
       total_time: Number(total_time),
       total_marks: Number(correct_marks) * (total_questions !== undefined && total_questions !== null && !isNaN(Number(total_questions)) && Number(total_questions) > 0 ? Number(total_questions) : questionIds.length),
       total_questions: total_questions !== undefined && total_questions !== null && !isNaN(Number(total_questions)) && Number(total_questions) > 0 ? Number(total_questions) : questionIds.length,
       status: cleanStatus,
       questions: questionIds,
+      sections,
       created_at: new Date(),
       class: className || questions[0]?.class || "Class 10",
       start_time,

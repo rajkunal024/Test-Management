@@ -12,20 +12,47 @@ export const seedDatabase = async () => {
   try {
 
 
+    const isAlreadyHashed = (pwd: string) => {
+      if (!pwd) return false;
+      if (pwd.includes(":")) return true;
+      if (pwd.startsWith("$2a$") || pwd.startsWith("$2b$") || pwd.startsWith("$2y$")) return true;
+      return false;
+    };
+
     // Migrate existing users with plain-text passwords to hashed passwords
     const admins = await AdminModel.find({});
     for (const admin of admins) {
-      if (admin.password && !admin.password.includes(":")) {
+      let updated = false;
+      if (admin.password && !isAlreadyHashed(admin.password)) {
         admin.password = hashPassword(admin.password);
-        await admin.save();
+        updated = true;
         console.log(`Migrated Admin ${admin.userId} password to hash.`);
+      }
+      const usernameDefault = `${admin.userId.toLowerCase()}@parikshya.admin.com`;
+      const legacyUsernameDefault = `${admin.userId.toLowerCase()}@admin.com`;
+      const nameStr = admin.name || admin.userId || "admin";
+      const namePrefix = nameStr.toLowerCase().replace(/\s+/g, "");
+      const nameDefault = namePrefix.includes("@") ? namePrefix : `${namePrefix}@parikshya.admin.com`;
+
+      if (
+        !(admin as any).email || 
+        (admin as any).email === usernameDefault || 
+        (admin as any).email === legacyUsernameDefault ||
+        (admin as any).email.endsWith("@admin.com")
+      ) {
+        (admin as any).email = nameDefault;
+        updated = true;
+        console.log(`Migrated Admin ${admin.userId} email to ${(admin as any).email}.`);
+      }
+      if (updated) {
+        await admin.save();
       }
     }
 
     const teachers = await TeacherModel.find({});
     for (const teacher of teachers) {
       let updated = false;
-      if (teacher.password && !teacher.password.includes(":")) {
+      if (teacher.password && !isAlreadyHashed(teacher.password)) {
         teacher.password = hashPassword(teacher.password);
         updated = true;
         console.log(`Migrated Teacher ${teacher.userId} password to hash.`);
@@ -43,7 +70,7 @@ export const seedDatabase = async () => {
     const students = await StudentModel.find({});
     for (const student of students) {
       let updated = false;
-      if (student.password && !student.password.includes(":")) {
+      if (student.password && !isAlreadyHashed(student.password)) {
         student.password = hashPassword(student.password);
         updated = true;
         console.log(`Migrated Student ${student.userId} password to hash.`);
@@ -68,10 +95,56 @@ export const seedDatabase = async () => {
 
     const testsToMigrate = await TestModel.find({});
     for (const test of testsToMigrate) {
+      let updated = false;
       if (!test.class) {
         test.class = "Class 10";
-        await test.save();
+        updated = true;
         console.log(`Migrated Test ${test.name} class to Class 10.`);
+      }
+
+      // Calculate dynamic test difficulty based on questions
+      const questionIds = test.questions || [];
+      const questionDocs = await QuestionModel.find({ id: { $in: questionIds } });
+      const total = questionDocs.length;
+      let targetDifficulty = test.difficulty || "medium";
+
+      if (total > 0) {
+        let easyCount = 0;
+        let mediumCount = 0;
+        let hardCount = 0;
+
+        for (const q of questionDocs) {
+          const diff = (q.difficulty || "").toLowerCase().trim();
+          if (diff === "easy") {
+            easyCount++;
+          } else if (diff === "medium") {
+            mediumCount++;
+          } else if (diff === "hard" || diff === "difficult") {
+            hardCount++;
+          }
+        }
+
+        if (hardCount > 0.5 * total) {
+          targetDifficulty = "hard";
+        } else if (hardCount > 0) {
+          targetDifficulty = "medium";
+        } else if (mediumCount > 0.5 * total) {
+          targetDifficulty = "medium";
+        } else if (easyCount > 0.5 * total) {
+          targetDifficulty = "easy";
+        } else {
+          targetDifficulty = "medium";
+        }
+      }
+
+      if (test.difficulty !== targetDifficulty) {
+        test.difficulty = targetDifficulty;
+        updated = true;
+        console.log(`Updated Test ${test.name} difficulty to ${targetDifficulty} based on dynamic calculation.`);
+      }
+
+      if (updated) {
+        await test.save();
       }
     }
 

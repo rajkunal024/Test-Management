@@ -134,9 +134,38 @@ export const TestResultPage = () => {
         return result;
       };
 
+      const getSectionalQuestions = <T extends { id?: string }>(
+        test: any,
+        sortedQuestions: T[],
+        seed: string
+      ): T[] => {
+        if (test.sections && test.sections.length > 0) {
+          const selected: T[] = [];
+          const usedIds = new Set<string>();
+
+          test.sections.forEach((sec: any) => {
+            const secQuestionIds = new Set(sec.questions || []);
+            const secAllQuestions = sortedQuestions.filter(q => q.id && secQuestionIds.has(q.id) && !usedIds.has(q.id));
+            const secCount = Number(sec.questions_count ?? secAllQuestions.length);
+            const secSelected = getDeterministicSubset(secAllQuestions, secCount, seed + "-" + sec.name);
+            
+            secSelected.forEach((q) => {
+              if (q.id && !usedIds.has(q.id)) {
+                selected.push(q);
+                usedIds.add(q.id);
+              }
+            });
+          });
+
+          return selected;
+        }
+
+        return getDeterministicSubset(sortedQuestions, test.total_questions, seed);
+      };
+
       const sortedQuestions = [...baseQuestions].sort((a: any, b: any) => (a.id || "").localeCompare(b.id || ""));
       const seed = `${attempt.user_id}-${test.id}`;
-      return getDeterministicSubset(sortedQuestions, test.total_questions, seed);
+      return getSectionalQuestions(test, sortedQuestions, seed);
     }
 
     return baseQuestions;

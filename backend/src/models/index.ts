@@ -60,6 +60,7 @@ export const AdminSchema = new Schema({
   password: { type: String, required: true },
   name: { type: String, required: true },
   role: { type: String, default: "Admin" },
+  email: { type: String, unique: true },
   requiresPasswordChange: { type: Boolean, default: false }
 });
 export const AdminModel = mongoose.model("Admin", AdminSchema);
@@ -140,13 +141,23 @@ export const TestSchema = new Schema({
   total_marks: { type: Number, required: true },
   total_questions: { type: Number, required: true },
   status: { type: String, default: "draft" },
-  questions: { type: [String], default: [] },
-  created_at: { type: Date, default: Date.now },
-  start_time: { type: String },
-  end_time: { type: String },
-  results_shared: { type: Boolean, default: false },
-  class: { type: String }
-});
+    questions: { type: [String], default: [] },
+    created_at: { type: Date, default: Date.now },
+    start_time: { type: String },
+    end_time: { type: String },
+    results_shared: { type: Boolean, default: false },
+    class: { type: String },
+    sections: {
+      type: [{
+        name: { type: String, required: true },
+        subject: { type: String, required: true },
+        duration: { type: Number, required: true },
+        questions_count: { type: Number, required: true },
+        questions: { type: [String], default: [] }
+      }],
+      default: undefined
+    }
+  });
 export const TestModel = mongoose.model("Test", TestSchema);
 
 export const NotificationSchema = new Schema({
