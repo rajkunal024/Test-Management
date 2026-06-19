@@ -2000,14 +2000,6 @@ export const AttemptTestPage = () => {
                   } else {
                     return (
                       <div className="flex gap-2">
-                        {isSectional && !isLastSection && (
-                          <Button
-                            onClick={() => setSectionConfirmOpen(true)}
-                            className="h-10 text-xs px-4 bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-sm font-bold"
-                          >
-                            Submit Section & Proceed
-                          </Button>
-                        )}
                         <Button
                           onClick={handleNext}
                           className="h-10 text-xs px-5 bg-indigo-600 hover:bg-indigo-700 text-white"

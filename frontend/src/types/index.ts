@@ -11,6 +11,7 @@ export interface User {
   gender?: string;
   requiresPasswordChange?: boolean;
   joined_at?: string;
+  profilePicture?: string;
 }
 
 export interface LoginRequest {

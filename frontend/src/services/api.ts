@@ -331,3 +331,12 @@ export const resetPassword = async (payload: { email: string; otp: string; newPa
   return data;
 };
 
+export const uploadProfilePicture = async (formData: FormData): Promise<{ success: boolean; profilePicture: string }> => {
+  const { data } = await api.post<{ success: boolean; profilePicture: string }>("/auth/profile-picture", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return data;
+};
+

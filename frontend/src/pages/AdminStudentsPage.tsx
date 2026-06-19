@@ -288,8 +288,12 @@ export const AdminStudentsPage = () => {
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-black shadow-sm group-hover:scale-105 transition duration-200">
-                              {student.name?.charAt(0).toUpperCase() || "S"}
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-black shadow-sm group-hover:scale-105 transition duration-200 overflow-hidden">
+                              {student.profilePicture ? (
+                                <img src={student.profilePicture} alt={student.name} className="h-full w-full object-cover" />
+                              ) : (
+                                student.name?.charAt(0).toUpperCase() || "S"
+                              )}
                             </div>
                             <div className="min-w-0">
                               <div className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate">

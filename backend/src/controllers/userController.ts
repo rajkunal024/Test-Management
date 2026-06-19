@@ -19,7 +19,8 @@ export const getUsers = async (request: IncomingMessage, response: ServerRespons
         class: s.class,
         gender: s.gender,
         requiresPasswordChange: s.requiresPasswordChange,
-        joined_at: (s.toObject({ defaults: false } as any) as any).joined_at || s._id.getTimestamp()
+        joined_at: (s.toObject({ defaults: false } as any) as any).joined_at || s._id.getTimestamp(),
+        profilePicture: s.profilePicture
       })),
       ...teachers.map((t: any) => ({
         id: t._id,
@@ -30,7 +31,8 @@ export const getUsers = async (request: IncomingMessage, response: ServerRespons
         role: "Teacher",
         subject: t.subject,
         gender: t.gender,
-        requiresPasswordChange: t.requiresPasswordChange
+        requiresPasswordChange: t.requiresPasswordChange,
+        profilePicture: t.profilePicture
       }))
     ];
     

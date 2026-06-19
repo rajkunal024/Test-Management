@@ -1,4 +1,4 @@
-import { ReactNode, useState, useMemo } from "react";
+import { ReactNode, useState, useMemo, useRef } from "react";
 import { NavLink, useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -21,10 +21,19 @@ import {
   Sun,
   Moon,
   Menu,
+  Mail,
+  Calendar,
+  Clock,
+  Heart,
+  BookOpen,
+  Camera,
+  Crop,
+  ArrowLeft,
+  Check,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuthStore } from "../../store/authStore";
-import { logout as apiLogout, getNotifications, markNotificationsRead, clearAllNotifications, changePassword } from "../../services/api";
+import { logout as apiLogout, getNotifications, markNotificationsRead, clearAllNotifications, changePassword, uploadProfilePicture, getErrorMessage } from "../../services/api";
 import { Modal } from "../ui/Modal";
 import { PasswordInput } from "../ui/PasswordInput";
 import { Button } from "../ui/Button";
@@ -37,6 +46,18 @@ const sidebarItems = [
 ];
 
 const railIcons = [BookOpenCheck, ShieldCheck, BarChart3, ClipboardList, Settings];
+
+const dataURLtoFile = (dataurl: string, filename: string): File => {
+  const arr = dataurl.split(",");
+  const mime = arr[0].match(/:(.*?);/)![1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
 
 export const AppShell = ({ children, compactRail = false }: { children: ReactNode; compactRail?: boolean }) => {
   const user = useAuthStore((state) => state.user);
@@ -86,6 +107,165 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // States for Profile Photo Cropping & Upload flow
+  const [cropStep, setCropStep] = useState<"view" | "crop" | "preview">("view");
+  const [selectedImage, setSelectedImage] = useState("");
+  const [croppedImage, setCroppedImage] = useState("");
+  const [imgAspect, setImgAspect] = useState(1);
+  const [zoom, setZoom] = useState(1);
+  const [offsetX, setOffsetX] = useState(0);
+  const [offsetY, setOffsetY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - offsetX, y: e.clientY - offsetY });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setOffsetX(e.clientX - dragStart.x);
+    setOffsetY(e.clientY - dragStart.y);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    setIsDragging(true);
+    setDragStart({ x: e.touches[0].clientX - offsetX, y: e.touches[0].clientY - offsetY });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    setOffsetX(e.touches[0].clientX - dragStart.x);
+    setOffsetY(e.touches[0].clientY - dragStart.y);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleCropConfirm = () => {
+    const imgElement = document.getElementById("crop-image-preview") as HTMLImageElement | null;
+    if (!imgElement) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 300;
+    canvas.height = 300;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const viewportSize = 192;
+    const canvasSize = 300;
+    const scaleRatio = canvasSize / viewportSize;
+
+    const renderedWidth = imgAspect > 1 ? viewportSize * imgAspect : viewportSize;
+    const renderedHeight = imgAspect > 1 ? viewportSize : viewportSize / imgAspect;
+
+    const baseStartX = (viewportSize - renderedWidth) / 2;
+    const baseStartY = (viewportSize - renderedHeight) / 2;
+
+    const totalX = baseStartX + offsetX;
+    const totalY = baseStartY + offsetY;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+    const centerX = totalX + renderedWidth / 2;
+    const centerY = totalY + renderedHeight / 2;
+
+    const finalWidth = renderedWidth * zoom;
+    const finalHeight = renderedHeight * zoom;
+
+    const finalStartX = centerX - finalWidth / 2;
+    const finalStartY = centerY - finalHeight / 2;
+
+    ctx.drawImage(
+      imgElement,
+      finalStartX * scaleRatio,
+      finalStartY * scaleRatio,
+      finalWidth * scaleRatio,
+      finalHeight * scaleRatio
+    );
+
+    const croppedDataUrl = canvas.toDataURL("image/png");
+    setCroppedImage(croppedDataUrl);
+    setCropStep("preview");
+  };
+
+  const handleUploadCropped = async () => {
+    if (!croppedImage) return;
+
+    setUploading(true);
+    setUploadError("");
+
+    try {
+      const croppedFile = dataURLtoFile(croppedImage, "profile-picture.png");
+      const formData = new FormData();
+      formData.append("file", croppedFile);
+      
+      const res = await uploadProfilePicture(formData);
+      if (res.success && res.profilePicture) {
+        const currentUser = useAuthStore.getState().user;
+        if (currentUser) {
+          const updatedUser = { ...currentUser, profilePicture: res.profilePicture };
+          useAuthStore.getState().setAuth({
+            token: useAuthStore.getState().token || "",
+            user: updatedUser
+          });
+        }
+        setCropStep("view");
+        setSelectedImage("");
+        setCroppedImage("");
+        setProfileModalOpen(false);
+      } else {
+        setUploadError("Failed to upload profile picture.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setUploadError(getErrorMessage(err));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("Image size should be less than 5MB");
+      return;
+    }
+
+    setUploadError("");
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        setImgAspect(img.width / img.height);
+        setSelectedImage(reader.result as string);
+        setZoom(1);
+        setOffsetX(0);
+        setOffsetY(0);
+        setCropStep("crop");
+      };
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => {
+      setUploadError("Failed to read image file.");
+    };
+    reader.readAsDataURL(file);
+  };
 
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -389,8 +569,14 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
               className="flex items-center gap-3 text-left focus:outline-none hover:opacity-85 transition group cursor-pointer"
               title="User menu"
             >
-              <div className="h-12 w-12 overflow-hidden rounded-full border border-primary-400 bg-[#ffd584] group-hover:ring-2 group-hover:ring-primary-200 transition">
-                <div className="mt-1 text-center text-3xl">🙂</div>
+              <div className="h-12 w-12 overflow-hidden rounded-full border border-primary-400 group-hover:ring-2 group-hover:ring-primary-200 transition">
+                {user?.profilePicture ? (
+                  <img src={user.profilePicture} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full bg-[#ffd584] flex items-center justify-center text-3xl">
+                    <span className="mt-1">🙂</span>
+                  </div>
+                )}
               </div>
               <div className="hidden sm:block">
                 <div className="flex items-center gap-2 text-lg font-bold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition">
@@ -438,41 +624,283 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
       {/* Modal 1: View Profile */}
       <Modal
         open={profileModalOpen}
-        title="My Profile"
-        onClose={() => setProfileModalOpen(false)}
+        title={cropStep === "crop" ? "Crop Profile Photo" : cropStep === "preview" ? "Preview Photo" : "My Profile"}
+        onClose={() => {
+          setProfileModalOpen(false);
+          setCropStep("view");
+          setSelectedImage("");
+          setCroppedImage("");
+          setZoom(1);
+          setOffsetX(0);
+          setOffsetY(0);
+        }}
       >
-        <div className="space-y-6 max-w-md mx-auto">
-          <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
-            <div className="h-16 w-16 overflow-hidden rounded-full border border-primary-300 bg-[#ffd584] flex items-center justify-center text-4xl">
-              🙂
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-800">{user?.name ?? "Alex Wando"}</h3>
-              <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary-50 text-primary-700">
-                {user?.role ?? "Admin"}
-              </span>
-            </div>
-          </div>
+        {cropStep === "view" && (
+          <div className="space-y-6 max-w-md mx-auto overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl">
+            {/* Cover Header Graphic with role-themed gradient */}
+            {(() => {
+              const coverGradient =
+                user?.role === "Admin" ? "from-slate-900 via-indigo-950 to-purple-950" :
+                user?.role === "Teacher" ? "from-emerald-600 via-teal-600 to-indigo-600" :
+                "from-blue-500 via-indigo-600 to-violet-600";
+              return (
+                <div className={`relative h-24 bg-gradient-to-r ${coverGradient} p-4 flex items-end justify-center`}>
+                  <div className="absolute -bottom-10 h-20 w-20 rounded-full border-4 border-white dark:border-slate-900 shadow-md bg-gradient-to-br from-[#ffd584] to-[#fbc564] flex items-center justify-center text-4xl group/avatar overflow-hidden">
+                    {user?.profilePicture ? (
+                      <img src={user.profilePicture} alt="Profile" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="mt-1">🙂</span>
+                    )}
+                    {/* Hover Overlay for upload */}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-200 text-white cursor-pointer"
+                      title="Upload profile picture"
+                      type="button"
+                    >
+                      {uploading ? (
+                        <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                      ) : (
+                        <Camera className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
-          <div className="space-y-3.5 text-sm text-slate-600">
-            <div className="flex justify-between items-center py-2 border-b border-slate-100/50">
-              <span className="font-semibold text-slate-400 uppercase text-[11px] tracking-wider">User ID / Username</span>
-              <span className="font-semibold text-slate-700">{user?.userId ?? "admin1"}</span>
+            {/* User Name & Role */}
+            <div className="px-6 pt-12 pb-4 text-center border-b border-slate-100 dark:border-slate-800/60">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+              />
+              <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
+                {user?.name ?? "Alex Wando"}
+              </h3>
+              <span className="mt-2 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 border border-indigo-200/30">
+                {user?.role ?? "Admin"} Account
+              </span>
+              {uploadError && (
+                <p className="mt-2 text-xs font-semibold text-rose-500">{uploadError}</p>
+              )}
+              {uploading && (
+                <p className="mt-2 text-xs font-semibold text-indigo-500 animate-pulse">Uploading photo...</p>
+              )}
             </div>
-            {user?.role === "Teacher" && user?.subject && (
-              <div className="flex justify-between items-center py-2 border-b border-slate-100/50">
-                <span className="font-semibold text-slate-400 uppercase text-[11px] tracking-wider">Assigned Subject</span>
-                <span className="font-semibold text-emerald-600">{user.subject}</span>
+
+            {/* Details list */}
+            <div className="p-6 pt-2 space-y-4 text-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 shrink-0">
+                  <User className="h-5 w-5" />
+                </div>
+                <div>
+                  <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Username / ID</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-350 block">{user?.userId ?? "admin1"}</span>
+                </div>
               </div>
-            )}
-            {user?.role === "Student" && user?.class && (
-              <div className="flex justify-between items-center py-2 border-b border-slate-100/50">
-                <span className="font-semibold text-slate-400 uppercase text-[11px] tracking-wider">Assigned Class</span>
-                <span className="font-semibold text-indigo-600">{user.class}</span>
+
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 shrink-0">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div className="overflow-hidden">
+                  <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Email Address</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-300 block truncate">{user?.email || "N/A"}</span>
+                </div>
               </div>
-            )}
+
+              {user?.role === "Teacher" && user?.subject && (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shrink-0">
+                    <BookOpen className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Specialist Subject</span>
+                    <span className="font-semibold text-emerald-650 dark:text-emerald-400 block">{user.subject}</span>
+                  </div>
+                </div>
+              )}
+
+              {user?.role === "Student" && user?.class && (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 shrink-0">
+                    <BookOpen className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Assigned Class</span>
+                    <span className="font-semibold text-indigo-650 dark:text-indigo-400 block">{user.class}</span>
+                  </div>
+                </div>
+              )}
+
+              {user?.gender && (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 shrink-0">
+                    <Heart className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Gender</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300 block">{user.gender}</span>
+                  </div>
+                </div>
+              )}
+
+              {user?.dob && (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 shrink-0">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Date of Birth</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300 block">{user.dob}</span>
+                  </div>
+                </div>
+              )}
+
+              {user?.joined_at && (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 shrink-0">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Member Since</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300 block">
+                      {new Date(user.joined_at).toLocaleDateString([], { year: "numeric", month: "long", day: "numeric" })}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {cropStep === "crop" && (
+          <div className="space-y-6 max-w-md mx-auto overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6 flex flex-col items-center animate-fade-in">
+            <p className="text-xs text-slate-500 text-center font-medium">
+              Drag the photo to position it, and adjust the scale slider below.
+            </p>
+            
+            {/* Viewport frame */}
+            <div 
+              className="w-48 h-48 rounded-full border-4 border-primary-500 shadow-lg overflow-hidden relative cursor-move bg-slate-950/40 flex items-center justify-center select-none"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <img
+                src={selectedImage}
+                alt="Crop Target"
+                className="max-w-none pointer-events-none select-none"
+                style={{
+                  height: imgAspect > 1 ? "192px" : "auto",
+                  width: imgAspect > 1 ? "auto" : "192px",
+                  transform: `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`,
+                  transformOrigin: "center center",
+                }}
+                id="crop-image-preview"
+              />
+            </div>
+
+            {/* Slider */}
+            <div className="w-full space-y-2">
+              <div className="flex justify-between text-xs text-slate-400 font-bold">
+                <span>Zoom / Scale</span>
+                <span>{Math.round(zoom * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="3"
+                step="0.01"
+                value={zoom}
+                onChange={(e) => setZoom(parseFloat(e.target.value))}
+                className="w-full accent-primary-600 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+
+            {uploadError && (
+              <p className="text-xs font-semibold text-rose-500 w-full text-center">{uploadError}</p>
+            )}
+
+            <div className="flex gap-3 w-full pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setCropStep("view");
+                  setSelectedImage("");
+                }}
+                className="flex-1 font-bold h-10 rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCropConfirm}
+                className="flex-1 font-bold h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white"
+              >
+                <Crop className="mr-2 h-4 w-4" /> Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {cropStep === "preview" && (
+          <div className="space-y-6 max-w-md mx-auto overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6 flex flex-col items-center animate-fade-in">
+            <p className="text-xs text-slate-500 text-center font-medium">
+              Review your cropped profile picture below.
+            </p>
+
+            {/* Cropped Image Preview */}
+            <div className="w-48 h-48 rounded-full border-4 border-white dark:border-slate-900 shadow-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+              <img
+                src={croppedImage}
+                alt="Cropped Preview"
+                className="h-full w-full object-cover"
+              />
+            </div>
+
+            {uploadError && (
+              <p className="text-xs font-semibold text-rose-500 w-full text-center">{uploadError}</p>
+            )}
+            
+            {uploading && (
+              <p className="text-xs font-semibold text-indigo-500 animate-pulse w-full text-center">Uploading photo...</p>
+            )}
+
+            <div className="flex gap-3 w-full pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => setCropStep("crop")}
+                disabled={uploading}
+                className="flex-1 font-bold h-10 rounded-xl"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button
+                onClick={handleUploadCropped}
+                disabled={uploading}
+                className="flex-1 font-bold h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white"
+              >
+                {uploading ? (
+                  <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <>
+                    <Check className="mr-2 h-4 w-4" /> Upload
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Modal 2: Change Password */}

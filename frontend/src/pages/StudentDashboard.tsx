@@ -803,7 +803,7 @@ export const StudentDashboard = () => {
             </div>
 
             {/* Weekdays */}
-            <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+            <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider mb-1">
               {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
                 <div key={day} className="py-1">{day}</div>
               ))}
@@ -888,7 +888,7 @@ export const StudentDashboard = () => {
             </div>
 
             {/* Legend & Details */}
-            <div className="mt-4 pt-3 border-t border-slate-150 dark:border-slate-800/80 flex items-center justify-between text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            <div className="mt-4 pt-3 border-t border-slate-150 dark:border-slate-800/80 flex items-center justify-between text-[9px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider">
               <div className="flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
                 <span>Exam Scheduled</span>
@@ -929,7 +929,7 @@ export const StudentDashboard = () => {
                               {subjectName}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-3 text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-1.5">
+                          <div className="flex items-center gap-3 text-[10px] text-slate-505 dark:text-slate-400 font-bold mt-1.5">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3 text-slate-400" />
                               {exam.total_time}m
@@ -946,7 +946,7 @@ export const StudentDashboard = () => {
                     })}
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-4 text-center text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                  <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-4 text-center text-[10px] font-bold text-slate-400 dark:text-slate-550">
                     No exams scheduled for this date.
                   </div>
                 )}

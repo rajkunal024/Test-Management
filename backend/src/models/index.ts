@@ -30,7 +30,8 @@ export const TeacherSchema = new Schema({
   email: { type: String, required: true, unique: true },
   dob: { type: String, required: true },
   gender: { type: String, enum: ["Male", "Female"], default: "Male" },
-  requiresPasswordChange: { type: Boolean, default: false }
+  requiresPasswordChange: { type: Boolean, default: false },
+  profilePicture: { type: String, default: "" }
 });
 export const TeacherModel = mongoose.model("Teacher", TeacherSchema);
 
@@ -44,6 +45,7 @@ export const StudentSchema = new Schema({
   class: { type: String },
   gender: { type: String, enum: ["Male", "Female"], default: "Male" },
   requiresPasswordChange: { type: Boolean, default: false },
+  profilePicture: { type: String, default: "" },
   joined_at: { type: Date, default: Date.now },
   results: [{
     test_id: { type: String, required: true },
@@ -61,7 +63,8 @@ export const AdminSchema = new Schema({
   name: { type: String, required: true },
   role: { type: String, default: "Admin" },
   email: { type: String, unique: true },
-  requiresPasswordChange: { type: Boolean, default: false }
+  requiresPasswordChange: { type: Boolean, default: false },
+  profilePicture: { type: String, default: "" }
 });
 export const AdminModel = mongoose.model("Admin", AdminSchema);
 

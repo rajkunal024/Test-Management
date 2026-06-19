@@ -379,10 +379,11 @@ export const DashboardPage = () => {
     <AppShell>
       <PageWrapper>
         {/* Welcome Header */}
-        <div className="relative mb-8 overflow-hidden rounded-3xl bg-slate-950 dark:bg-slate-950 p-6 md:p-10 text-white shadow-2xl border border-slate-800">
+        <div className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 p-6 md:p-10 text-white shadow-2xl border border-indigo-900/40">
           {/* Glowing Decorative Background Gradients */}
-          <div className="absolute top-0 right-0 -mr-20 -mt-20 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 -mr-20 -mt-20 h-80 w-80 rounded-full bg-indigo-500/30 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-80 w-80 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
+          <div className="absolute top-1/2 left-1/3 -ml-20 h-60 w-60 rounded-full bg-pink-500/15 blur-3xl pointer-events-none" />
           
           {/* Grid pattern overlay */}
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-25 pointer-events-none" />
@@ -405,12 +406,12 @@ export const DashboardPage = () => {
                 </span>
                 <span className="h-1.5 w-1.5 rounded-full bg-slate-800" />
                 <span className="text-xs text-slate-500">
-                  Parikshya OS v1.2.0
+                  Parikshya Administrative Engine v1.2.0
                 </span>
               </div>
             </div>
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-slate-900 border border-slate-800 text-4xl shadow-2xl relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse" />
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-slate-900/80 border border-indigo-500/20 text-4xl shadow-2xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse" />
               <span className="group-hover:rotate-45 transition-transform duration-500">⚙️</span>
             </div>
           </div>
@@ -418,70 +419,70 @@ export const DashboardPage = () => {
 
         {/* Stats Grid */}
         <section className="mb-8 grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <article className="group flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-indigo-500/30">
+          <article className="group flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-850 bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-white dark:to-slate-900 p-6 shadow-sm hover:shadow-lg dark:hover:shadow-indigo-950/20 hover:-translate-y-1 hover:border-indigo-400 dark:hover:border-indigo-800/80 transition-all duration-300 border-t-4 border-t-indigo-500">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform duration-350">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500 text-white shadow-md shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-350">
                 <Users className="h-7 w-7" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Students</p>
-                <h3 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mt-1 tracking-tight">
+                <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Students</p>
+                <h3 className="text-2xl font-extrabold text-indigo-950 dark:text-indigo-50 mt-1 tracking-tight">
                   {adminUsers.filter(u => u.role === "Student").length}
                 </h3>
               </div>
             </div>
-            <div className="text-xs font-bold text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 px-2.5 py-1 rounded-md">
+            <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-md">
               Active
             </div>
           </article>
 
-          <article className="group flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-emerald-500/30">
+          <article className="group flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white dark:to-slate-900 p-6 shadow-sm hover:shadow-lg dark:hover:shadow-emerald-950/20 hover:-translate-y-1 hover:border-emerald-400 dark:hover:border-emerald-800/80 transition-all duration-300 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-450 group-hover:scale-110 transition-transform duration-350">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-md shadow-emerald-500/20 group-hover:scale-110 transition-transform duration-350">
                 <GraduationCap className="h-7 w-7" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Teachers</p>
-                <h3 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mt-1 tracking-tight">
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Teachers</p>
+                <h3 className="text-2xl font-extrabold text-emerald-950 dark:text-emerald-50 mt-1 tracking-tight">
                   {adminUsers.filter(u => u.role === "Teacher").length}
                 </h3>
               </div>
             </div>
-            <div className="text-xs font-bold text-emerald-500 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2.5 py-1 rounded-md">
+            <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md">
               Faculty
             </div>
           </article>
 
-          <article className="group flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-amber-500/30">
+          <article className="group flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white dark:to-slate-900 p-6 shadow-sm hover:shadow-lg dark:hover:shadow-amber-950/20 hover:-translate-y-1 hover:border-amber-400 dark:hover:border-amber-800/80 transition-all duration-300 border-t-4 border-t-amber-500">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform duration-350">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/20 group-hover:scale-110 transition-transform duration-350">
                 <BookOpen className="h-7 w-7" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Subjects</p>
-                <h3 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mt-1 tracking-tight">
+                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Subjects</p>
+                <h3 className="text-2xl font-extrabold text-amber-950 dark:text-amber-50 mt-1 tracking-tight">
                   {subjects.length}
                 </h3>
               </div>
             </div>
-            <div className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 rounded-md">
+            <div className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md">
               Curricula
             </div>
           </article>
 
-          <article className="group flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-blue-500/30">
+          <article className="group flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-white dark:to-slate-900 p-6 shadow-sm hover:shadow-lg dark:hover:shadow-purple-950/20 hover:-translate-y-1 hover:border-purple-400 dark:hover:border-purple-800/80 transition-all duration-300 border-t-4 border-t-purple-500">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform duration-350">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-md shadow-purple-500/20 group-hover:scale-110 transition-transform duration-350">
                 <ClipboardList className="h-7 w-7" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Tests</p>
-                <h3 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mt-1 tracking-tight">
+                <p className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest">Tests</p>
+                <h3 className="text-2xl font-extrabold text-purple-950 dark:text-purple-50 mt-1 tracking-tight">
                   {tests.length}
                 </h3>
               </div>
             </div>
-            <div className="text-xs font-bold text-blue-500 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 px-2.5 py-1 rounded-md">
+            <div className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-md">
               Created
             </div>
           </article>
@@ -493,8 +494,8 @@ export const DashboardPage = () => {
             <button
               onClick={() => setActiveTab("tests")}
               className={`py-2 px-6 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === "tests"
-                ? "bg-white dark:bg-slate-900 text-[#6c7df7] dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-800/50"
-                : "text-slate-500 hover:text-slate-750 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-800/50"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
                 }`}
             >
               Test Configurations
@@ -502,8 +503,8 @@ export const DashboardPage = () => {
             <button
               onClick={() => setActiveTab("users")}
               className={`py-2 px-6 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === "users"
-                ? "bg-white dark:bg-slate-900 text-[#6c7df7] dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-800/50"
-                : "text-slate-500 hover:text-slate-750 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-800/50"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
                 }`}
             >
               User Accounts
@@ -556,7 +557,7 @@ export const DashboardPage = () => {
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input 
-                  className="pl-10 h-12 rounded-xl border border-slate-200 dark:border-slate-805 dark:bg-slate-950 focus:border-indigo-500 focus:ring-indigo-500/20 text-sm" 
+                  className="pl-10 h-12 rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-950 focus:border-indigo-500 focus:ring-indigo-500/20 text-sm" 
                   placeholder="Search by test name..." 
                   value={search} 
                   onChange={(event) => setSearch(event.target.value)} 
@@ -565,7 +566,7 @@ export const DashboardPage = () => {
               <select
                 value={status}
                 onChange={(event) => setStatus(event.target.value)}
-                className="h-12 rounded-xl border border-slate-250 dark:border-slate-750 bg-slate-50 dark:bg-slate-950 px-4 text-sm text-slate-700 dark:text-slate-300 font-semibold outline-none transition-all focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                className="h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 text-sm text-slate-700 dark:text-slate-300 font-semibold outline-none transition-all focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
               >
                 <option value="all" className="dark:bg-slate-950 dark:text-slate-350">All Statuses</option>
                 <option value="draft" className="dark:bg-slate-950 dark:text-slate-350">Draft</option>
@@ -577,7 +578,7 @@ export const DashboardPage = () => {
 
             <section className="overflow-hidden rounded-2xl border border-slate-200/85 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-sm mb-12">
               <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-slate-50/70 dark:bg-slate-950/40 text-xs uppercase tracking-wider text-slate-450 dark:text-slate-450 border-b border-slate-100 dark:border-slate-800/80">
+                <thead className="bg-slate-50/70 dark:bg-slate-950/40 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800/80">
                   <tr>
                     <th className="px-6 py-4 font-bold">Test Name</th>
                     <th className="px-6 py-4 font-bold">Subject</th>
@@ -589,7 +590,7 @@ export const DashboardPage = () => {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {isLoading ? (
                     <tr>
-                      <td className="px-6 py-12 text-center text-slate-500 dark:text-slate-450" colSpan={5}>
+                      <td className="px-6 py-12 text-center text-slate-500 dark:text-slate-400" colSpan={5}>
                         <Spinner /> <span className="ml-2">Loading test configurations...</span>
                       </td>
                     </tr>
@@ -606,8 +607,17 @@ export const DashboardPage = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredTests.map((test) => (
-                      <tr key={test.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
+                    filteredTests.map((test) => {
+                    const statusVal = getTestStatus(test);
+                    const statusBorder = {
+                      live: "border-l-4 border-l-emerald-500 hover:bg-emerald-500/[0.02] dark:hover:bg-emerald-500/[0.01]",
+                      upcoming: "border-l-4 border-l-amber-500 hover:bg-amber-500/[0.02] dark:hover:bg-amber-500/[0.01]",
+                      completed: "border-l-4 border-l-blue-500 hover:bg-blue-500/[0.02] dark:hover:bg-blue-500/[0.01]",
+                      draft: "border-l-4 border-l-slate-400 hover:bg-slate-500/[0.02] dark:hover:bg-slate-500/[0.01]",
+                    }[statusVal];
+
+                    return (
+                      <tr key={test.id} className={`transition-all duration-150 ${statusBorder}`}>
                         <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">{test.name}</td>
                         <td className="px-6 py-4">
                           <span className="font-semibold text-slate-600 dark:text-slate-400 text-xs bg-slate-100/60 dark:bg-slate-800/50 border border-slate-200/40 dark:border-slate-700/40 rounded-md px-2.5 py-1">
@@ -646,7 +656,7 @@ export const DashboardPage = () => {
                             );
                           })()}
                         </td>
-                        <td className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-450">{new Date(test.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                        <td className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400">{new Date(test.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-2">
                             <Link to={`/tests/${test.id}/preview`}>
@@ -690,15 +700,16 @@ export const DashboardPage = () => {
                                 Delete
                               </Button>
                             ) : (
-                              <Button variant="ghost" className="h-9 px-3 rounded-xl font-bold text-xs text-rose-600 dark:text-rose-450 hover:bg-rose-500/10" onClick={() => setDeleteTarget(test)} icon={<Trash2 className="h-3.5 w-3.5" />}>
+                              <Button variant="ghost" className="h-9 px-3 rounded-xl font-bold text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-500/10" onClick={() => setDeleteTarget(test)} icon={<Trash2 className="h-3.5 w-3.5" />}>
                                 Delete
                               </Button>
                             )}
                           </div>
                         </td>
                       </tr>
-                    ))
-                  )}
+                    );
+                  })
+                )}
                 </tbody>
               </table>
             </section>
@@ -711,7 +722,7 @@ export const DashboardPage = () => {
                   <Users className="h-6 w-6 text-indigo-500" />
                   User Directory
                 </h2>
-                <p className="text-xs text-slate-450 dark:text-slate-500 mt-1">
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                   Supervise registered students and faculties, create single accounts, or perform bulk uploads.
                 </p>
               </div>
@@ -736,7 +747,7 @@ export const DashboardPage = () => {
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
-                  className="pl-10 h-12 rounded-xl border border-slate-200 dark:border-slate-805 dark:bg-slate-950 focus:border-indigo-500 focus:ring-indigo-500/20 text-sm"
+                  className="pl-10 h-12 rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-950 focus:border-indigo-500 focus:ring-indigo-500/20 text-sm"
                   placeholder="Search users by name or email..."
                   value={userSearch}
                   onChange={(event) => setUserSearch(event.target.value)}
@@ -752,18 +763,18 @@ export const DashboardPage = () => {
                     setSubjectFilter("all");
                   }
                 }}
-                className="h-12 rounded-xl border border-slate-250 dark:border-slate-750 bg-slate-50 dark:bg-slate-950 px-4 text-sm text-slate-700 dark:text-slate-300 font-semibold outline-none transition-all focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                className="h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 text-sm text-slate-700 dark:text-slate-300 font-semibold outline-none transition-all focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
               >
                 <option value="all" className="dark:bg-slate-950 dark:text-slate-350">All Roles</option>
-                <option value="Student" className="dark:bg-slate-950 dark:text-slate-355">Student</option>
-                <option value="Teacher" className="dark:bg-slate-950 dark:text-slate-355">Teacher</option>
+                <option value="Student" className="dark:bg-slate-950 dark:text-slate-300">Student</option>
+                <option value="Teacher" className="dark:bg-slate-950 dark:text-slate-300">Teacher</option>
               </select>
 
               {roleFilter === "Teacher" ? (
                 <select
                   value={subjectFilter}
                   onChange={(event) => setSubjectFilter(event.target.value)}
-                  className="h-12 rounded-xl border border-slate-250 dark:border-slate-750 bg-slate-50 dark:bg-slate-950 px-4 text-sm text-slate-700 dark:text-slate-300 font-semibold outline-none transition-all focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                  className="h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 text-sm text-slate-700 dark:text-slate-300 font-semibold outline-none transition-all focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                 >
                   <option value="all" className="dark:bg-slate-950 dark:text-slate-350">All Subjects</option>
                   {subjects.map((sub: any) => (
@@ -776,7 +787,7 @@ export const DashboardPage = () => {
                 <select
                   value={classFilter}
                   onChange={(event) => setClassFilter(event.target.value)}
-                  className="h-12 rounded-xl border border-slate-250 dark:border-slate-750 bg-slate-50 dark:bg-slate-950 px-4 text-sm text-slate-700 dark:text-slate-300 font-semibold outline-none transition-all focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                  className="h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 text-sm text-slate-700 dark:text-slate-300 font-semibold outline-none transition-all focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                 >
                   <option value="all" className="dark:bg-slate-950 dark:text-slate-350">All Classes</option>
                   <option value="Class 9" className="dark:bg-slate-950 dark:text-slate-350">Class 9</option>
@@ -789,7 +800,7 @@ export const DashboardPage = () => {
 
             <section className="overflow-hidden rounded-2xl border border-slate-200/85 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-sm mb-12">
               <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-slate-50/70 dark:bg-slate-950/40 text-xs uppercase tracking-wider text-slate-450 dark:text-slate-450 border-b border-slate-100 dark:border-slate-800/80">
+                <thead className="bg-slate-50/70 dark:bg-slate-950/40 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800/80">
                   <tr>
                     <th className="px-6 py-4 font-bold">Name</th>
                     <th className="px-6 py-4 font-bold">Email</th>
@@ -803,13 +814,13 @@ export const DashboardPage = () => {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {isLoadingUsers ? (
                     <tr>
-                      <td className="px-6 py-12 text-center text-slate-500 dark:text-slate-450" colSpan={7}>
+                      <td className="px-6 py-12 text-center text-slate-500 dark:text-slate-400" colSpan={7}>
                         <Spinner /> <span className="ml-2">Loading user directory...</span>
                       </td>
                     </tr>
                   ) : errorUsers ? (
                     <tr>
-                      <td className="px-6 py-12 text-center text-rose-500 dark:text-rose-450 font-semibold" colSpan={7}>
+                      <td className="px-6 py-12 text-center text-rose-500 dark:text-rose-400 font-semibold" colSpan={7}>
                         {getErrorMessage(errorUsers)}
                       </td>
                     </tr>
@@ -831,18 +842,26 @@ export const DashboardPage = () => {
                         "from-amber-500 to-orange-500"
                       ];
                       const grad = gradients[nameSum % gradients.length];
+                      const roleBorder = {
+                        Teacher: "border-l-4 border-l-emerald-500 hover:bg-emerald-500/[0.02] dark:hover:bg-emerald-500/[0.01]",
+                        Student: "border-l-4 border-l-indigo-500 hover:bg-indigo-500/[0.02] dark:hover:bg-indigo-500/[0.01]",
+                      }[usr.role as "Teacher" | "Student"] || "border-l-4 border-l-slate-400 hover:bg-slate-500/[0.02] dark:hover:bg-slate-500/[0.01]";
                       
                       return (
-                        <tr key={usr.id || usr.email} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
+                        <tr key={usr.id || usr.email} className={`transition-all duration-150 ${roleBorder}`}>
                           <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3">
-                            <div className={`h-8 w-8 rounded-full bg-gradient-to-tr ${grad} flex items-center justify-center text-white text-xs font-black shadow-xs`}>
-                              {initials}
+                            <div className={`h-8 w-8 rounded-full bg-gradient-to-tr ${grad} flex items-center justify-center text-white text-xs font-black shadow-xs overflow-hidden`}>
+                              {usr.profilePicture ? (
+                                <img src={usr.profilePicture} alt={usr.name} className="h-full w-full object-cover" />
+                              ) : (
+                                initials
+                              )}
                             </div>
                             <span>{usr.name}</span>
                           </td>
-                          <td className="px-6 py-4 text-slate-600 dark:text-slate-450 font-medium">{usr.email}</td>
-                          <td className="px-6 py-4 text-slate-650 dark:text-slate-400 font-semibold text-xs">{usr.gender || "Male"}</td>
-                          <td className="px-6 py-4 text-slate-500 dark:text-slate-450 font-medium text-xs">{usr.dob}</td>
+                          <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-medium">{usr.email}</td>
+                          <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-semibold text-xs">{usr.gender || "Male"}</td>
+                          <td className="px-6 py-4 text-slate-500 dark:text-slate-400 font-medium text-xs">{usr.dob}</td>
                           <td className="px-6 py-4">
                             <Badge tone={usr.role === "Teacher" ? "blue" : "slate"} className="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider">
                               {usr.role}
@@ -894,7 +913,7 @@ export const DashboardPage = () => {
           }
         >
           <p className="text-sm text-slate-600 dark:text-slate-400">Delete {deleteTarget?.name}? This action cannot be undone.</p>
-          {deleteMutation.error ? <p className="mt-3 text-sm text-rose-600 dark:text-rose-450">{getErrorMessage(deleteMutation.error)}</p> : null}
+          {deleteMutation.error ? <p className="mt-3 text-sm text-rose-600 dark:text-rose-400">{getErrorMessage(deleteMutation.error)}</p> : null}
         </Modal>
 
         {/* Register User Modal (Unified Wizard) */}
@@ -995,7 +1014,7 @@ export const DashboardPage = () => {
             <div className="space-y-6 py-2">
               <div className="text-center mb-2">
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Choose registration method for <span className="font-semibold text-indigo-650 dark:text-indigo-400">{regRole.toLowerCase()}s</span>.
+                  Choose registration method for <span className="font-semibold text-indigo-600 dark:text-indigo-400">{regRole.toLowerCase()}s</span>.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1170,7 +1189,7 @@ export const DashboardPage = () => {
           {regWizardStep === 3 && regMethod === "csv" && (
             <form id="bulk-user-form" onSubmit={handleBulkImportSubmit} className="space-y-4">
               {csvFileError && (
-                <div className="rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 p-3.5 text-xs font-semibold text-rose-750 dark:text-rose-455 max-h-36 overflow-y-auto whitespace-pre-line font-mono">
+                <div className="rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 p-3.5 text-xs font-semibold text-rose-700 dark:text-rose-400 max-h-36 overflow-y-auto whitespace-pre-line font-mono">
                   {csvFileError}
                 </div>
               )}
@@ -1183,7 +1202,7 @@ export const DashboardPage = () => {
 
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 leading-relaxed">
-                  Upload a `.csv` file or paste raw comma-separated values. Default password for all imported users is <strong className="text-indigo-650 dark:text-indigo-400">abc123</strong>.
+                  Upload a `.csv` file or paste raw comma-separated values. Default password for all imported users is <strong className="text-indigo-600 dark:text-indigo-400">abc123</strong>.
                 </p>
 
                 {/* Template reference */}
@@ -1204,7 +1223,7 @@ export const DashboardPage = () => {
                 </div>
 
                 {/* File selector */}
-                <div className="relative mb-4 flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 hover:border-indigo-450 dark:border-slate-800 dark:hover:border-indigo-900 bg-white/40 dark:bg-slate-900/40 transition">
+                <div className="relative mb-4 flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 hover:border-indigo-400 dark:border-slate-800 dark:hover:border-indigo-900 bg-white/40 dark:bg-slate-900/40 transition">
                   <input
                     type="file"
                     accept=".csv"
@@ -1220,7 +1239,7 @@ export const DashboardPage = () => {
                     }}
                     className="absolute inset-0 cursor-pointer opacity-0"
                   />
-                  <span className="text-xs font-bold text-indigo-650 dark:text-indigo-400">
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
                     Select CSV File Upload
                   </span>
                   <span className="mt-1 text-[10px] text-slate-400">
@@ -1248,7 +1267,7 @@ export const DashboardPage = () => {
               {/* Preview table */}
               {parsedPreviewUsers.length > 0 && (
                 <div className="mt-4">
-                  <span className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-2">
+                  <span className="block text-xs font-bold text-slate-600 dark:text-slate-350 mb-2">
                     CSV Preview ({parsedPreviewUsers.length} Users):
                   </span>
                   <div className="max-h-44 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
@@ -1311,7 +1330,7 @@ export const DashboardPage = () => {
         >
           <form id="register-subject-form" onSubmit={handleSubjectSubmit} className="space-y-4">
             {subjectFormError && (
-              <div className="rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 p-3.5 text-xs font-semibold text-rose-700 dark:text-rose-450">
+              <div className="rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 p-3.5 text-xs font-semibold text-rose-700 dark:text-rose-400">
                 {subjectFormError}
               </div>
             )}

@@ -13,6 +13,8 @@ import {
   ArrowDownRight,
   Sparkles,
   School,
+  User,
+  Heart,
 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -154,9 +156,13 @@ export const AdminStudentProfilePage = () => {
           {/* Identity Card */}
           <article className="md:col-span-1 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-md flex flex-col justify-between h-fit">
             {/* Header graphic */}
-            <div className="relative h-24 bg-gradient-to-r from-[#5f38f9] to-[#7d5bfc] p-4 flex items-end justify-center">
+            <div className="relative h-24 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-4 flex items-end justify-center">
               <div className="absolute -bottom-10 h-20 w-20 overflow-hidden rounded-full border-4 border-white dark:border-slate-900 bg-gradient-to-br from-[#ffd584] to-[#fbc564] shadow flex items-center justify-center text-4xl">
-                🙂
+                {student.profilePicture ? (
+                  <img src={student.profilePicture} alt={student.name} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="mt-1">🙂</span>
+                )}
               </div>
             </div>
 
@@ -174,32 +180,66 @@ export const AdminStudentProfilePage = () => {
             {/* Detailed Metadata fields */}
             <div className="p-6 space-y-4 text-sm">
               <div className="flex items-center gap-3">
-                <div className="flex h-8.5 w-8.5 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-850/50 text-slate-400 shrink-0">
-                  <Mail className="h-4.5 w-4.5" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 shrink-0 shadow-sm border border-indigo-100/30">
+                  <User className="h-5 w-5" />
                 </div>
-                <div className="overflow-hidden">
-                  <span className="text-[9px] uppercase font-black text-slate-400 block tracking-widest">Email Address</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-300 block truncate">{student.email}</span>
+                <div>
+                  <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Username / ID</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-300 block">{student.userId || "N/A"}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="flex h-8.5 w-8.5 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-850/50 text-slate-400 shrink-0">
-                  <School className="h-4.5 w-4.5" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 dark:bg-sky-950/45 text-sky-600 dark:text-sky-400 shrink-0 shadow-sm border border-sky-100/30">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div className="overflow-hidden">
+                  <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Email Address</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-300 block truncate">{student.email || "N/A"}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-450 shrink-0 shadow-sm border border-emerald-100/30">
+                  <School className="h-5 w-5" />
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase font-black text-slate-400 block tracking-widest">Class Level</span>
+                  <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Class Level</span>
                   <Badge tone={classTone} className="font-extrabold mt-0.5">{student.class || "Class 10"}</Badge>
                 </div>
               </div>
 
+              {student.gender && (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-950/45 text-rose-600 dark:text-rose-400 shrink-0 shadow-sm border border-rose-100/30">
+                    <Heart className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Gender</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300 block">{student.gender}</span>
+                  </div>
+                </div>
+              )}
+
+              {student.dob && (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/45 text-amber-600 dark:text-amber-400 shrink-0 shadow-sm border border-amber-100/30">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Date of Birth</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300 block">{student.dob}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-3">
-                <div className="flex h-8.5 w-8.5 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-850/50 text-slate-400 shrink-0">
-                  <Calendar className="h-4.5 w-4.5" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-950/45 text-purple-600 dark:text-purple-400 shrink-0 shadow-sm border border-purple-100/30">
+                  <Calendar className="h-5 w-5" />
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase font-black text-slate-400 block tracking-widest">Joined Organization</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-300 mt-0.5 block">
+                  <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Joined Organization</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-300 block">
                     {formatRegistrationDate(student.joined_at, student.id)}
                   </span>
                 </div>

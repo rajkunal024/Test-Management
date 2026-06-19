@@ -1152,7 +1152,7 @@ export const TeacherDashboard = () => {
         {activeTab === "add" && addSubTab === null && (
           <div className="space-y-8 animate-fade-in">
             {/* Header Banner */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-teal-500 via-[#10b981] to-[#047857] p-6 text-white shadow-lg md:p-8">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 via-cyan-600 to-indigo-600 p-6 text-white shadow-xl md:p-8">
               <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
                   <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-100">
@@ -1165,7 +1165,7 @@ export const TeacherDashboard = () => {
                   <p className="mt-2 text-sm text-teal-50 max-w-xl">
                     Create and manage your question pool for <strong>{teacherSubject.name}</strong>. Monitor class distribution, perform bulk spreadsheet uploads, or add single questions manually.
                   </p>
-                  <p className="mt-4 text-xs text-emerald-800 bg-white/95 rounded-full px-4 py-1.5 inline-block font-bold shadow-sm dark:bg-slate-900/90 dark:text-emerald-450">
+                  <p className="mt-4 text-xs text-indigo-800 bg-white/95 rounded-full px-4 py-1.5 inline-block font-bold shadow-sm dark:bg-slate-900/90 dark:text-indigo-400">
                     Active Teacher: {user?.name || "Teacher"} ({teacherSubject.name} Specialist)
                   </p>
                 </div>
@@ -1181,22 +1181,59 @@ export const TeacherDashboard = () => {
             <div>
               <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4">Class Pool Distribution</h2>
               <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-                {["Class 9", "Class 10", "Class 11", "Class 12"].map((cls) => {
+                {["Class 9", "Class 10", "Class 11", "Class 12"].map((cls, idx) => {
                   const count = subjectQuestions.filter((q) => q.class === cls).length;
                   const totalCount = subjectQuestions.length;
                   const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
+                  
+                  // Color themes for each class to keep it dynamic and colorful
+                  const theme = [
+                    {
+                      bg: "bg-emerald-50/20 dark:bg-emerald-950/10",
+                      border: "border-emerald-200/50 dark:border-emerald-900/20",
+                      hoverBorder: "hover:border-emerald-400 dark:hover:border-emerald-800/80",
+                      text: "text-emerald-600 dark:text-emerald-400",
+                      bar: "from-emerald-500 to-teal-500",
+                      shadow: "hover:shadow-emerald-500/5"
+                    },
+                    {
+                      bg: "bg-indigo-50/20 dark:bg-indigo-950/10",
+                      border: "border-indigo-200/50 dark:border-indigo-900/20",
+                      hoverBorder: "hover:border-indigo-400 dark:hover:border-indigo-800/80",
+                      text: "text-indigo-600 dark:text-indigo-400",
+                      bar: "from-indigo-500 to-blue-500",
+                      shadow: "hover:shadow-indigo-500/5"
+                    },
+                    {
+                      bg: "bg-amber-50/20 dark:bg-amber-950/10",
+                      border: "border-amber-200/50 dark:border-amber-900/20",
+                      hoverBorder: "hover:border-amber-400 dark:hover:border-amber-800/80",
+                      text: "text-amber-600 dark:text-amber-400",
+                      bar: "from-amber-500 to-orange-500",
+                      shadow: "hover:shadow-amber-500/5"
+                    },
+                    {
+                      bg: "bg-purple-50/20 dark:bg-purple-950/10",
+                      border: "border-purple-200/50 dark:border-purple-900/20",
+                      hoverBorder: "hover:border-purple-400 dark:hover:border-purple-800/80",
+                      text: "text-purple-600 dark:text-purple-400",
+                      bar: "from-purple-500 to-pink-500",
+                      shadow: "hover:shadow-purple-500/5"
+                    }
+                  ][idx];
+
                   return (
                     <div
                       key={cls}
-                      className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-5 shadow-sm hover:shadow-md hover:border-emerald-500/30 transition-all duration-300 dark:hover:border-emerald-500/20 flex flex-col justify-between"
+                      className={`rounded-xl border ${theme.border} ${theme.bg} ${theme.hoverBorder} ${theme.shadow} p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between`}
                     >
                       <div>
-                        <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wide">Class Level</span>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Class Level</span>
                         <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{cls}</h4>
                       </div>
                       <div className="mt-4">
                         <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-450">{count}</span>
+                          <span className={`text-2xl font-black ${theme.text}`}>{count}</span>
                           <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Questions</span>
                         </div>
                         <div className="mt-3">
@@ -1204,9 +1241,9 @@ export const TeacherDashboard = () => {
                             <span>Pool Ratio</span>
                             <span>{pct}%</span>
                           </div>
-                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div className="w-full bg-slate-100 dark:bg-slate-800/60 h-1.5 rounded-full overflow-hidden">
                             <div 
-                              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500" 
+                              className={`bg-gradient-to-r ${theme.bar} h-full rounded-full transition-all duration-500`} 
                               style={{ width: `${pct}%` }} 
                             />
                           </div>
@@ -1224,9 +1261,9 @@ export const TeacherDashboard = () => {
               <div className="grid gap-6 md:grid-cols-2">
                 <article
                   onClick={() => setAddSubTab("manual")}
-                  className="group cursor-pointer rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm hover:shadow-md dark:hover:shadow-slate-950/40 hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-emerald-500"
+                  className="group cursor-pointer rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white dark:to-slate-900 p-6 shadow-sm hover:shadow-lg dark:hover:shadow-emerald-950/20 hover:-translate-y-1 hover:border-emerald-400 dark:hover:border-emerald-800/80 transition-all duration-300 border-t-4 border-t-emerald-500"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500 dark:bg-emerald-600 text-white mb-4 group-hover:scale-110 transition-transform shadow-md shadow-emerald-500/20">
                     <Plus className="h-6 w-6" />
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
@@ -1242,9 +1279,9 @@ export const TeacherDashboard = () => {
 
                 <article
                   onClick={() => setAddSubTab("csv")}
-                  className="group cursor-pointer rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm hover:shadow-md dark:hover:shadow-slate-950/40 hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-teal-500"
+                  className="group cursor-pointer rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-teal-500/10 via-teal-500/5 to-white dark:to-slate-900 p-6 shadow-sm hover:shadow-lg dark:hover:shadow-teal-950/20 hover:-translate-y-1 hover:border-teal-400 dark:hover:border-teal-800/80 transition-all duration-300 border-t-4 border-t-teal-500"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 mb-4 group-hover:scale-110 transition-transform">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500 dark:bg-teal-600 text-white mb-4 group-hover:scale-110 transition-transform shadow-md shadow-teal-500/20">
                     <Upload className="h-6 w-6" />
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
@@ -1269,25 +1306,33 @@ export const TeacherDashboard = () => {
                   <p className="text-xs mt-1">Use the actions above to populate your question pool.</p>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="grid gap-4 md:grid-cols-3">
                   {subjectQuestions.slice(-3).reverse().map((q, idx) => {
                     const diffLower = (q.difficulty || "").toLowerCase().trim();
                     const difficultyColor =
                       diffLower === "easy" ? "green" :
                         diffLower === "medium" ? "yellow" :
                           (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
+                    
+                    const borderTheme = 
+                      diffLower === "easy" ? "border-l-emerald-500 bg-gradient-to-br from-emerald-500/5 to-transparent dark:from-emerald-950/5" :
+                      diffLower === "medium" ? "border-l-amber-500 bg-gradient-to-br from-amber-500/5 to-transparent dark:from-amber-950/5" :
+                      (diffLower === "hard" || diffLower === "difficult" ? "border-l-rose-500 bg-gradient-to-br from-rose-500/5 to-transparent dark:from-rose-950/5" : "border-l-slate-500");
+                    
                     return (
-                      <div key={q.id || idx} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition">
+                      <div 
+                        key={q.id || idx} 
+                        className={`p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 border-l-4 ${borderTheme} shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between`}
+                      >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">{q.question}</p>
-                          <div className="flex items-center gap-2 mt-2">
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-2 leading-relaxed">{q.question}</p>
+                          <div className="flex items-center gap-2 mt-4">
                             <Badge tone="blue">{q.class}</Badge>
                             <Badge tone={difficultyColor}>{q.difficulty}</Badge>
-                            {q.topic_name && <span className="text-xs text-slate-400 dark:text-slate-550">{q.topic_name}</span>}
                           </div>
                         </div>
-                        <div className="text-xs text-slate-450 dark:text-slate-500 shrink-0 font-medium">
-                          Option 1: <span className="text-slate-600 dark:text-slate-300 font-semibold">{q.option1}</span>
+                        <div className="text-xs text-slate-400 dark:text-slate-500 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0 font-medium">
+                          Option 1: <span className="text-slate-700 dark:text-slate-350 font-bold">{q.option1}</span>
                         </div>
                       </div>
                     );
@@ -1353,7 +1398,7 @@ export const TeacherDashboard = () => {
                       <Plus className="h-5 w-5 text-emerald-500" />
                       Create New MCQ Question
                     </h2>
-                    <p className="text-xs text-slate-450 dark:text-slate-500 mt-0.5 font-medium">Add a structured multiple-choice question to the global pool.</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 font-medium">Add a structured multiple-choice question to the global pool.</p>
                   </div>
                   <button
                     type="button"
@@ -1372,7 +1417,7 @@ export const TeacherDashboard = () => {
                       <label className="block">
                         <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Type</span>
                         <select
-                          className="h-11 w-full appearance-none rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm text-slate-750 dark:text-slate-200 outline-none transition focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 cursor-pointer font-semibold"
+                          className="h-11 w-full appearance-none rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 cursor-pointer font-semibold"
                           {...register("type")}
                         >
                           <option value="mcq">Standard Single MCQ</option>
@@ -1383,13 +1428,13 @@ export const TeacherDashboard = () => {
 
                     {/* Passage Creation */}
                     {selectedType === "passage_sub_question" && (
-                      <div className="space-y-4 border border-dashed border-slate-205 dark:border-slate-800 rounded-xl p-4 bg-slate-50/30 dark:bg-slate-950/10">
+                      <div className="space-y-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/30 dark:bg-slate-950/10">
                         <div className="space-y-2">
                           <label className="block">
                             <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Title</span>
                             <input
                               type="text"
-                              className="h-11 w-full rounded-xl border border-slate-250 dark:border-slate-805 bg-white dark:bg-slate-950 px-4 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold"
+                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold"
                               placeholder="Enter a descriptive title for this passage"
                               {...register("passage_title")}
                             />
@@ -1403,7 +1448,7 @@ export const TeacherDashboard = () => {
                           <label className="block">
                             <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Content</span>
                             <textarea
-                              className="h-40 w-full resize-none rounded-xl border border-slate-250 dark:border-slate-805/80 dark:bg-slate-955 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold leading-relaxed"
+                              className="h-40 w-full resize-none rounded-xl border border-slate-200 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold leading-relaxed"
                               placeholder="Enter the full comprehension passage text here..."
                               {...register("passage_content")}
                             />
@@ -1418,14 +1463,14 @@ export const TeacherDashboard = () => {
                     {selectedType === "passage_sub_question" ? (
                       <div className="space-y-6">
                         {/* CSV Import Section for Passage Sub-Questions */}
-                        <div className="border border-dashed border-slate-250 dark:border-slate-800 rounded-2xl p-5 bg-white/70 dark:bg-slate-900/40 shadow-sm space-y-4">
+                        <div className="border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white/70 dark:bg-slate-900/40 shadow-sm space-y-4">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-extrabold text-slate-755 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                               <FileSpreadsheet className="h-4 w-4 text-emerald-600 animate-bounce" />
                               Quick Import Sub-Questions via CSV
                             </h3>
                           </div>
-                          <p className="text-[11px] text-slate-455 dark:text-slate-500 font-semibold leading-relaxed">
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold leading-relaxed">
                             Instead of adding questions one by one manually, you can paste CSV text or select a CSV file containing your questions.
                           </p>
 
@@ -1437,7 +1482,7 @@ export const TeacherDashboard = () => {
                                   value={passageCsvText}
                                   onChange={(e) => setPassageCsvText(e.target.value)}
                                   placeholder="question,option1,option2,option3,option4,correct_option&#10;What is 1+1?,2,3,4,5,option1&#10;What is 2+2?,3,4,5,6,option2"
-                                  className="h-24 w-full resize-none rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-55/20 dark:bg-slate-955 p-3 text-xs font-mono outline-none focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all leading-normal"
+                                  className="h-24 w-full resize-none rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950 p-3 text-xs font-mono outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all leading-normal"
                                 />
                               </label>
                             </div>
@@ -1445,7 +1490,7 @@ export const TeacherDashboard = () => {
                             <div className="flex flex-col justify-between">
                               <div>
                                 <span className="mb-2 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Upload CSV File</span>
-                                <label className="flex flex-col items-center justify-center border border-dashed border-slate-250 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-700/60 rounded-xl p-5 bg-slate-50/20 dark:bg-slate-900/35 cursor-pointer group transition-all h-24">
+                                <label className="flex flex-col items-center justify-center border border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-700/60 rounded-xl p-5 bg-slate-50/20 dark:bg-slate-900/35 cursor-pointer group transition-all h-24">
                                   <Upload className="h-5 w-5 text-slate-400 group-hover:text-emerald-500 transition-colors mb-1.5" />
                                   <span className="text-[10px] font-bold text-slate-500 group-hover:text-emerald-600 transition-colors">Select CSV file</span>
                                   <input
@@ -1498,7 +1543,7 @@ export const TeacherDashboard = () => {
                                 Remove Question
                               </button>
                             )}
-                            <h4 className="text-xs font-extrabold text-indigo-650 dark:text-indigo-400 uppercase tracking-wider">
+                            <h4 className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                               Question {subIdx + 1}
                             </h4>
 
@@ -1507,7 +1552,7 @@ export const TeacherDashboard = () => {
                               <label className="block">
                                 <span className="mb-2 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Prompt</span>
                                 <textarea
-                                  className="h-24 w-full resize-none rounded-xl border border-slate-250 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold leading-relaxed"
+                                  className="h-24 w-full resize-none rounded-xl border border-slate-200 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold leading-relaxed"
                                   placeholder="Enter the question text or problem description here..."
                                   value={subQ.question}
                                   onChange={(e) => {
@@ -1521,8 +1566,8 @@ export const TeacherDashboard = () => {
 
                             {/* Options List */}
                              <div className="space-y-3">
-                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 pb-2 border-b border-slate-100 dark:border-slate-805">
-                                 <span className="text-[10px] font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                                    Options (Select Correct Indicator)
                                  </span>
                                  <label className="relative inline-flex items-center cursor-pointer select-none">
@@ -1532,7 +1577,7 @@ export const TeacherDashboard = () => {
                                      checked={!!subQ.is_msq}
                                      onChange={(e) => handleToggleSubQMsqSwitch(subIdx, e.target.checked)}
                                    />
-                                   <div className="w-8 h-4.5 bg-slate-205 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                   <div className="w-8 h-4.5 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-emerald-500"></div>
                                    <span className="ml-2 text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                                      Multiple Correct Options
                                    </span>
@@ -1542,18 +1587,18 @@ export const TeacherDashboard = () => {
                                  const letter = String.fromCharCode(65 + idx); // A, B, C, D
                                  const isCorrect = subQ.correct_option?.split(",").map(o => o.trim()).includes(opt);
                                  const colors = [
-                                   { text: "text-indigo-650 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
-                                   { text: "text-purple-650 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-100 dark:border-purple-900/40" },
-                                   { text: "text-amber-650 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-100 dark:border-amber-900/40" },
-                                   { text: "text-rose-650 dark:text-rose-450", bg: "bg-rose-50 dark:bg-rose-955/40", border: "border-rose-100 dark:border-rose-900/40" },
+                                   { text: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
+                                   { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-100 dark:border-purple-900/40" },
+                                   { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-100 dark:border-amber-900/40" },
+                                   { text: "text-rose-600 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/40", border: "border-rose-100 dark:border-rose-900/40" },
                                  ][idx];
 
                                  return (
                                    <div
                                      key={opt}
-                                     className={`flex items-center gap-3.5 p-2 px-3 rounded-2xl border-2 transition-all duration-250 ${isCorrect
-                                       ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-955/10 shadow-sm"
-                                       : "border-slate-150 dark:border-slate-800/80 hover:border-slate-250 dark:hover:border-slate-700 bg-slate-50/20 dark:bg-slate-900/30"
+                                     className={`flex items-center gap-3.5 p-3 rounded-2xl border-2 transition-all duration-200 ${isCorrect
+                                       ? "border-emerald-500 bg-emerald-500/10 dark:bg-emerald-950/25 shadow-md shadow-emerald-500/5"
+                                       : `${colors.border} ${colors.bg} hover:border-indigo-400/50 dark:hover:border-indigo-800/50`
                                        }`}
                                    >
                                      <button
@@ -1587,9 +1632,9 @@ export const TeacherDashboard = () => {
                                       <input
                                         type="text"
                                         placeholder={`Option ${idx + 1}`}
-                                        className={`h-9 w-full rounded-md px-3 text-sm font-semibold border transition-all focus:outline-none focus:ring-4 focus:ring-indigo-550/10 dark:bg-slate-900 dark:text-slate-205 ${isCorrect
-                                          ? "border-emerald-250 dark:border-emerald-900 focus:border-emerald-500"
-                                          : "border-slate-200 dark:border-slate-850 focus:border-indigo-505"
+                                        className={`h-9 w-full rounded-md px-3 text-sm font-semibold border transition-all focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:bg-slate-900 dark:text-slate-200 ${isCorrect
+                                          ? "border-emerald-200 dark:border-emerald-900 focus:border-emerald-500"
+                                          : "border-slate-200 dark:border-slate-850 focus:border-indigo-500"
                                           }`}
                                         value={subQ[opt]}
                                         onChange={(e) => {
@@ -1628,7 +1673,7 @@ export const TeacherDashboard = () => {
                           <label className="block">
                             <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Prompt</span>
                             <textarea
-                              className="h-32 w-full resize-none rounded-xl border border-slate-250 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold leading-relaxed"
+                              className="h-32 w-full resize-none rounded-xl border border-slate-200 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold leading-relaxed"
                               placeholder="Enter the question text or problem description here..."
                               {...register("question")}
                             />
@@ -1641,7 +1686,7 @@ export const TeacherDashboard = () => {
                         {/* Options List */}
                         <div className="space-y-3">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-                            <span className="text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                               Options (Select Correct Indicator)
                             </span>
                             <label className="relative inline-flex items-center cursor-pointer select-none">
@@ -1662,18 +1707,18 @@ export const TeacherDashboard = () => {
                             const letter = String.fromCharCode(65 + idx); // A, B, C, D
                             const isCorrect = correctOptionValue?.split(",").map(o => o.trim()).includes(opt);
                             const colors = [
-                              { text: "text-indigo-650 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
-                              { text: "text-purple-650 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-100 dark:border-purple-900/40" },
-                              { text: "text-amber-650 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-100 dark:border-amber-900/40" },
-                              { text: "text-rose-650 dark:text-rose-450", bg: "bg-rose-50 dark:bg-rose-955/40", border: "border-rose-100 dark:border-rose-900/40" },
+                              { text: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-100 dark:border-indigo-900/40" },
+                              { text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-100 dark:border-purple-900/40" },
+                              { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-100 dark:border-amber-900/40" },
+                              { text: "text-rose-600 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/40", border: "border-rose-100 dark:border-rose-900/40" },
                             ][idx];
 
                             return (
                               <div
                                 key={opt}
-                                className={`flex items-center gap-3.5 p-3.5 rounded-2xl border-2 transition-all duration-250 ${isCorrect
-                                  ? "border-emerald-500 bg-emerald-50/15 dark:bg-emerald-955/10 shadow-sm"
-                                  : "border-slate-150 dark:border-slate-800/80 hover:border-slate-250 dark:hover:border-slate-700 bg-slate-55/20 dark:bg-slate-900/30"
+                                className={`flex items-center gap-3.5 p-3.5 rounded-2xl border-2 transition-all duration-200 ${isCorrect
+                                  ? "border-emerald-500 bg-emerald-500/10 dark:bg-emerald-950/25 shadow-md shadow-emerald-500/5"
+                                  : `${colors.border} ${colors.bg} hover:border-indigo-400/50 dark:hover:border-indigo-800/50`
                                   }`}
                               >
                                 <button
@@ -1697,8 +1742,8 @@ export const TeacherDashboard = () => {
                                 <div className="flex-1">
                                   <Input
                                     placeholder={`Option ${idx + 1}`}
-                                    className={`h-10 text-sm font-semibold transition-all focus:ring-4 focus:ring-indigo-550/10 ${isCorrect
-                                      ? "border-emerald-250 dark:border-emerald-900 focus:border-emerald-500"
+                                    className={`h-10 text-sm font-semibold transition-all focus:ring-4 focus:ring-indigo-500/10 ${isCorrect
+                                      ? "border-emerald-200 dark:border-emerald-900 focus:border-emerald-500"
                                       : "border-slate-200 dark:border-slate-850 focus:border-indigo-500"
                                       }`}
                                     error={errors[opt]?.message}
@@ -1729,9 +1774,9 @@ export const TeacherDashboard = () => {
                                 e.preventDefault();
                                 setValue("class", cls);
                               }}
-                              className={`py-2.5 px-3.5 rounded-xl text-xs font-bold border transition-all duration-205 ${isActive
-                                  ? "bg-indigo-605 border-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]"
-                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                              className={`py-2.5 px-3.5 rounded-xl text-xs font-bold border transition-all duration-200 ${isActive
+                                  ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]"
+                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
                                 }`}
                             >
                               {cls}
@@ -1759,9 +1804,9 @@ export const TeacherDashboard = () => {
                                 e.preventDefault();
                                 setValue("difficulty", diff.value);
                               }}
-                              className={`py-2.5 px-1.5 rounded-xl text-xs font-bold border text-center transition-all duration-205 ${isActive
+                              className={`py-2.5 px-1.5 rounded-xl text-xs font-bold border text-center transition-all duration-200 ${isActive
                                   ? `${diff.activeClass} shadow-md scale-[1.02]`
-                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
                                 }`}
                             >
                               {diff.label}
@@ -1849,7 +1894,7 @@ export const TeacherDashboard = () => {
                         </div>
                       ) : (
                         <div
-                          className="border-2 border-dashed border-slate-250 dark:border-slate-750 hover:border-indigo-400 dark:hover:border-indigo-850 rounded-2xl p-6 text-center cursor-pointer bg-slate-50/40 dark:bg-slate-950/10 max-w-md transition duration-200 hover:shadow-sm"
+                          className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-850 rounded-2xl p-6 text-center cursor-pointer bg-slate-50/40 dark:bg-slate-950/10 max-w-md transition duration-200 hover:shadow-sm"
                           onDragOver={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -2025,7 +2070,7 @@ export const TeacherDashboard = () => {
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-pink-500/10 border border-indigo-150/50 dark:border-indigo-900/30 p-6 shadow-sm backdrop-blur-md">
               <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="mb-2 flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-indigo-650 dark:text-indigo-400">
+                  <div className="mb-2 flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
                     <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
                     Subject Question Repository
                   </div>
@@ -2033,12 +2078,12 @@ export const TeacherDashboard = () => {
                     <FolderPlus className="h-6.5 w-6.5 text-indigo-500" />
                     {selectedClass === "all" ? "All Questions Bank" : `${selectedClass} Questions Bank`}
                   </h1>
-                  <p className="text-xs text-slate-450 dark:text-slate-500 font-semibold mt-1">
-                    Subject Domain: <span className="font-bold text-indigo-650 dark:text-indigo-400">{teacherSubject.name}</span>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold mt-1">
+                    Subject Domain: <span className="font-bold text-indigo-600 dark:text-indigo-400">{teacherSubject.name}</span>
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-[10px] font-extrabold text-indigo-650 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/45 px-3.5 py-2 rounded-xl border border-indigo-100/60 dark:border-indigo-900/40 shadow-sm">
+                  <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/45 px-3.5 py-2 rounded-xl border border-indigo-100/60 dark:border-indigo-900/40 shadow-sm">
                     {filteredQuestions.length} Questions Displayed
                   </span>
                 </div>
@@ -2048,64 +2093,112 @@ export const TeacherDashboard = () => {
 
             {/* Stats Grid */}
             <section className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+              {/* Total Pool */}
               <article
                 onClick={() => setDifficultyFilter("all")}
-                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "all"
-                  ? "border-indigo-500 bg-indigo-50/20 dark:border-indigo-855 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20"
-                  : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-slate-350 dark:hover:border-slate-700 shadow-sm"
-                  }`}
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
+                  difficultyFilter === "all"
+                    ? "border-transparent bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white shadow-lg shadow-indigo-500/25 ring-2 ring-indigo-500/20"
+                    : "border-indigo-200 bg-indigo-50/20 dark:border-indigo-900/40 dark:bg-indigo-950/15 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50/35 dark:hover:bg-indigo-950/25 hover:border-indigo-400 dark:hover:border-indigo-800"
+                }`}
               >
-                <div className="p-2 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl text-indigo-500 mb-2.5 group-hover:scale-110 transition-transform">
+                <div className={`p-2.5 rounded-xl mb-2.5 group-hover:scale-110 transition-transform ${
+                  difficultyFilter === "all" ? "bg-white/20 text-white" : "bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400"
+                }`}>
                   <BookOpen className="h-5 w-5" />
                 </div>
-                <p className="text-[10px] font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest">Total Pool</p>
-                <h3 className="text-3xl font-black text-slate-800 dark:text-slate-200 mt-1">{stats.total} <span className="text-xs font-bold text-slate-450">Qs</span></h3>
-                <div className="absolute bottom-2 text-[9px] font-bold text-indigo-650 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">Click to view all</div>
+                <p className={`text-[10px] font-extrabold uppercase tracking-widest ${
+                  difficultyFilter === "all" ? "text-indigo-100" : "text-indigo-600 dark:text-indigo-400/80"
+                }`}>Total Pool</p>
+                <h3 className={`text-3xl font-black mt-1 ${
+                  difficultyFilter === "all" ? "text-white" : "text-indigo-900 dark:text-indigo-200"
+                }`}>
+                  {stats.total} <span className="text-xs font-bold opacity-80">Qs</span>
+                </h3>
+                <div className={`absolute bottom-2 text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${
+                  difficultyFilter === "all" ? "text-white/90" : "text-indigo-600 dark:text-indigo-400"
+                }`}>Click to view all</div>
               </article>
 
+              {/* Easy Level */}
               <article
                 onClick={() => setDifficultyFilter("easy")}
-                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "easy"
-                  ? "border-emerald-500 bg-emerald-50/20 dark:border-emerald-855 dark:bg-emerald-955/20 ring-2 ring-emerald-500/20"
-                  : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-emerald-300 dark:hover:border-emerald-900/40 shadow-sm"
-                  }`}
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
+                  difficultyFilter === "easy"
+                    ? "border-transparent bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-500/20"
+                    : "border-emerald-200 bg-emerald-50/20 dark:border-emerald-900/40 dark:bg-emerald-950/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50/35 dark:hover:bg-emerald-950/25 hover:border-emerald-400 dark:hover:border-emerald-800"
+                }`}
               >
-                <div className="p-2 bg-emerald-50 dark:bg-emerald-950/50 rounded-xl text-emerald-500 mb-2.5 group-hover:scale-110 transition-transform">
+                <div className={`p-2.5 rounded-xl mb-2.5 group-hover:scale-110 transition-transform ${
+                  difficultyFilter === "easy" ? "bg-white/20 text-white" : "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400"
+                }`}>
                   <CheckCircle2 className="h-5 w-5" />
                 </div>
-                <p className="text-[10px] font-extrabold text-emerald-555 dark:text-emerald-455 uppercase tracking-widest">Easy Level</p>
-                <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats.easy} <span className="text-xs font-bold text-emerald-500 dark:text-emerald-555">Qs</span></h3>
-                <div className="absolute bottom-2 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">Filter by easy</div>
+                <p className={`text-[10px] font-extrabold uppercase tracking-widest ${
+                  difficultyFilter === "easy" ? "text-emerald-100" : "text-emerald-600 dark:text-emerald-400/80"
+                }`}>Easy Level</p>
+                <h3 className={`text-3xl font-black mt-1 ${
+                  difficultyFilter === "easy" ? "text-white" : "text-emerald-950 dark:text-emerald-200"
+                }`}>
+                  {stats.easy} <span className="text-xs font-bold opacity-80">Qs</span>
+                </h3>
+                <div className={`absolute bottom-2 text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${
+                  difficultyFilter === "easy" ? "text-white/90" : "text-emerald-600 dark:text-emerald-400"
+                }`}>Filter by easy</div>
               </article>
 
+              {/* Medium Level */}
               <article
                 onClick={() => setDifficultyFilter("medium")}
-                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "medium"
-                  ? "border-amber-500 bg-amber-50/20 dark:border-amber-855 dark:bg-amber-955/20 ring-2 ring-amber-500/20"
-                  : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-amber-300 dark:hover:border-amber-900/40 shadow-sm"
-                  }`}
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
+                  difficultyFilter === "medium"
+                    ? "border-transparent bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white shadow-lg shadow-amber-500/25 ring-2 ring-amber-500/20"
+                    : "border-amber-200 bg-amber-50/20 dark:border-amber-900/40 dark:bg-amber-950/15 text-amber-700 dark:text-amber-400 hover:bg-amber-50/35 dark:hover:bg-amber-950/25 hover:border-amber-400 dark:hover:border-amber-800"
+                }`}
               >
-                <div className="p-2 bg-amber-50 dark:bg-amber-955/50 rounded-xl text-amber-500 mb-2.5 group-hover:scale-110 transition-transform">
+                <div className={`p-2.5 rounded-xl mb-2.5 group-hover:scale-110 transition-transform ${
+                  difficultyFilter === "medium" ? "bg-white/20 text-white" : "bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400"
+                }`}>
                   <HelpCircle className="h-5 w-5" />
                 </div>
-                <p className="text-[10px] font-extrabold text-amber-555 dark:text-amber-455 uppercase tracking-widest">Medium Level</p>
-                <h3 className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-1">{stats.medium} <span className="text-xs font-bold text-amber-555 dark:text-amber-455">Qs</span></h3>
-                <div className="absolute bottom-2 text-[9px] font-bold text-amber-655 dark:text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity">Filter by medium</div>
+                <p className={`text-[10px] font-extrabold uppercase tracking-widest ${
+                  difficultyFilter === "medium" ? "text-amber-100" : "text-amber-600 dark:text-amber-400/80"
+                }`}>Medium Level</p>
+                <h3 className={`text-3xl font-black mt-1 ${
+                  difficultyFilter === "medium" ? "text-white" : "text-amber-950 dark:text-amber-200"
+                }`}>
+                  {stats.medium} <span className="text-xs font-bold opacity-80">Qs</span>
+                </h3>
+                <div className={`absolute bottom-2 text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${
+                  difficultyFilter === "medium" ? "text-white/90" : "text-amber-600 dark:text-amber-400"
+                }`}>Filter by medium</div>
               </article>
 
+              {/* Difficult Level */}
               <article
                 onClick={() => setDifficultyFilter("hard")}
-                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${difficultyFilter === "hard"
-                  ? "border-rose-500 bg-rose-50/20 dark:border-rose-855 dark:bg-rose-955/20 ring-2 ring-rose-500/20"
-                  : "border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 hover:border-rose-300 dark:hover:border-rose-900/40 shadow-sm"
-                  }`}
+                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
+                  difficultyFilter === "hard"
+                    ? "border-transparent bg-gradient-to-br from-rose-500 via-rose-600 to-pink-600 text-white shadow-lg shadow-rose-500/25 ring-2 ring-rose-500/20"
+                    : "border-rose-200 bg-rose-50/20 dark:border-rose-900/40 dark:bg-rose-950/15 text-rose-700 dark:text-rose-400 hover:bg-rose-50/35 dark:hover:bg-rose-950/25 hover:border-rose-400 dark:hover:border-rose-800"
+                }`}
               >
-                <div className="p-2 bg-rose-50 dark:bg-rose-955/50 rounded-xl text-rose-500 mb-2.5 group-hover:scale-110 transition-transform">
+                <div className={`p-2.5 rounded-xl mb-2.5 group-hover:scale-110 transition-transform ${
+                  difficultyFilter === "hard" ? "bg-white/20 text-white" : "bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400"
+                }`}>
                   <Sparkles className="h-5 w-5" />
                 </div>
-                <p className="text-[10px] font-extrabold text-rose-555 dark:text-rose-455 uppercase tracking-widest">Difficult Level</p>
-                <h3 className="text-3xl font-black text-rose-600 dark:text-rose-450 mt-1">{stats.hard} <span className="text-xs font-bold text-rose-500 dark:text-rose-555">Qs</span></h3>
-                <div className="absolute bottom-2 text-[9px] font-bold text-rose-600 dark:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity">Filter by hard</div>
+                <p className={`text-[10px] font-extrabold uppercase tracking-widest ${
+                  difficultyFilter === "hard" ? "text-rose-100" : "text-rose-600 dark:text-rose-400/80"
+                }`}>Difficult Level</p>
+                <h3 className={`text-3xl font-black mt-1 ${
+                  difficultyFilter === "hard" ? "text-white" : "text-rose-950 dark:text-rose-200"
+                }`}>
+                  {stats.hard} <span className="text-xs font-bold opacity-80">Qs</span>
+                </h3>
+                <div className={`absolute bottom-2 text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${
+                  difficultyFilter === "hard" ? "text-white/90" : "text-rose-600 dark:text-rose-400"
+                }`}>Filter by hard</div>
               </article>
             </section>
 
@@ -2114,7 +2207,7 @@ export const TeacherDashboard = () => {
               <div className="relative w-full">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
-                  className="pl-11 h-11 rounded-xl border-slate-250 dark:border-slate-800 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm w-full bg-white dark:bg-slate-950/60"
+                  className="pl-11 h-11 rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm w-full bg-white dark:bg-slate-950/60"
                   placeholder="Search questions by keyword or prompt text..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -2125,7 +2218,7 @@ export const TeacherDashboard = () => {
                 <select
                   value={topicFilter}
                   onChange={(e) => setTopicFilter(e.target.value)}
-                  className="h-11 w-full appearance-none rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm text-slate-750 dark:text-slate-200 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 cursor-pointer"
+                  className="h-11 w-full appearance-none rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 cursor-pointer"
                 >
                   <option value="all">All Topic Nodes</option>
                   {filteredTopics.map((t) => (
@@ -2134,7 +2227,7 @@ export const TeacherDashboard = () => {
                     </option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-550">
+                <div className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500">
                   <Filter className="h-4 w-4" />
                 </div>
               </div>
@@ -2150,7 +2243,7 @@ export const TeacherDashboard = () => {
 
                 {selectedIds.length > 0 && (
                   <div className="flex items-center gap-3 bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-150/50 dark:border-indigo-900/40 px-4 py-2 rounded-xl animate-fade-in">
-                    <span className="text-xs font-bold text-slate-650 dark:text-slate-400">
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
                       {selectedIds.length} question{selectedIds.length > 1 ? "s" : ""} selected:
                     </span>
                     <Button
@@ -2163,10 +2256,10 @@ export const TeacherDashboard = () => {
                     </Button>
                     <Button
                       variant="ghost"
-                      className="h-8 rounded-lg px-3 text-xs text-rose-650 hover:bg-rose-50 dark:hover:bg-rose-955/40 border border-rose-200 dark:border-rose-900/40 font-bold transition-all hover:shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                      className="h-8 rounded-lg px-3 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 font-bold transition-all hover:shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer"
                       onClick={handleDeleteSelected}
                       disabled={isDeletingSelected}
-                      icon={<Trash2 className="h-3.5 w-3.5 text-rose-555" />}
+                      icon={<Trash2 className="h-3.5 w-3.5 text-rose-500" />}
                     >
                       {isDeletingSelected ? "Deleting..." : "Delete Selected"}
                     </Button>
@@ -2175,16 +2268,16 @@ export const TeacherDashboard = () => {
               </div>
 
               {isLoadingQuestions ? (
-                <div className="flex h-64 items-center justify-center text-slate-550 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex h-64 items-center justify-center text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <Spinner /> <span className="ml-2 font-semibold text-sm">Loading question bank...</span>
                 </div>
               ) : filteredQuestions.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/40 dark:bg-slate-955/20 py-20 text-center text-slate-550 dark:text-slate-400 shadow-inner flex flex-col items-center justify-center space-y-3">
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900 text-slate-450 dark:text-slate-550 rounded-full border border-slate-200 dark:border-slate-800">
+                <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/40 dark:bg-slate-950/20 py-20 text-center text-slate-500 dark:text-slate-400 shadow-inner flex flex-col items-center justify-center space-y-3">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 rounded-full border border-slate-200 dark:border-slate-800">
                     <FileQuestion className="h-6 w-6" />
                   </div>
                   <div className="space-y-1">
-                    <p className="font-bold text-slate-750 dark:text-slate-350">No questions found</p>
+                    <p className="font-bold text-slate-700 dark:text-slate-350">No questions found</p>
                     <p className="text-xs text-slate-400 dark:text-slate-500">Create new questions or adjust search filters.</p>
                   </div>
                 </div>
@@ -2206,7 +2299,7 @@ export const TeacherDashboard = () => {
                                     setSelectedIds([]);
                                   }
                                 }}
-                                className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-650 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                                className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
                               />
                             )}
                           </th>
@@ -2228,8 +2321,46 @@ export const TeacherDashboard = () => {
                                 (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
 
                           const isSelected = selectedIds.includes(q.id || "");
+                          
+                          const difficultyTheme = {
+                            easy: "hover:bg-emerald-500/[0.04] dark:hover:bg-emerald-500/[0.02] border-l-4 border-l-transparent hover:border-l-emerald-500",
+                            medium: "hover:bg-amber-500/[0.04] dark:hover:bg-amber-500/[0.02] border-l-4 border-l-transparent hover:border-l-amber-500",
+                            hard: "hover:bg-rose-500/[0.04] dark:hover:bg-rose-500/[0.02] border-l-4 border-l-transparent hover:border-l-rose-500",
+                            difficult: "hover:bg-rose-500/[0.04] dark:hover:bg-rose-500/[0.02] border-l-4 border-l-transparent hover:border-l-rose-500",
+                          }[diffLower as "easy" | "medium" | "hard" | "difficult"] || "hover:bg-slate-500/[0.04] border-l-4 border-l-transparent";
+
+                          const selectedTheme = {
+                            easy: "bg-emerald-500/[0.06] dark:bg-emerald-500/[0.04] border-l-4 border-l-emerald-500 shadow-md shadow-emerald-500/5",
+                            medium: "bg-amber-500/[0.06] dark:bg-amber-500/[0.04] border-l-4 border-l-amber-500 shadow-md shadow-amber-500/5",
+                            hard: "bg-rose-500/[0.06] dark:bg-rose-500/[0.04] border-l-4 border-l-rose-500 shadow-md shadow-rose-500/5",
+                            difficult: "bg-rose-500/[0.06] dark:bg-rose-500/[0.04] border-l-4 border-l-rose-500 shadow-md shadow-rose-500/5",
+                          }[diffLower as "easy" | "medium" | "hard" | "difficult"] || "bg-indigo-500/[0.06] dark:bg-indigo-500/[0.04] border-l-4 border-l-indigo-500 shadow-md shadow-indigo-500/5";
+
                           return (
-                            <tr key={q.id ?? index} className={`group odd:bg-white/40 even:bg-slate-55/10 dark:odd:bg-slate-900/20 dark:even:bg-slate-900/5 hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10 transition-all duration-200 ${isSelected ? "bg-indigo-50/10 dark:bg-indigo-950/5" : ""}`}>
+                            <tr 
+                              key={q.id ?? index} 
+                              onClick={(e) => {
+                                const target = e.target as HTMLElement;
+                                if (
+                                  target.closest("button") ||
+                                  target.closest("input") ||
+                                  target.closest("img") ||
+                                  target.closest(".preview-trigger")
+                                ) {
+                                  return;
+                                }
+                                if (q.id) {
+                                  if (isSelected) {
+                                    setSelectedIds(selectedIds.filter(id => id !== q.id));
+                                  } else {
+                                    setSelectedIds([...selectedIds, q.id]);
+                                  }
+                                }
+                              }}
+                              className={`group odd:bg-white/40 even:bg-slate-50/10 dark:odd:bg-slate-900/20 dark:even:bg-slate-900/5 transition-all duration-200 cursor-pointer ${
+                                isSelected ? selectedTheme : `${difficultyTheme} text-slate-700 dark:text-slate-350`
+                              }`}
+                            >
                               <td className="px-6 py-4.5 text-center">
                                 <input
                                   type="checkbox"
@@ -2241,28 +2372,43 @@ export const TeacherDashboard = () => {
                                       setSelectedIds(selectedIds.filter(id => id !== q.id));
                                     }
                                   }}
-                                  className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-650 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                                  className={`h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600 transition-transform duration-200 ${
+                                    isSelected ? "scale-110" : ""
+                                  }`}
                                 />
                               </td>
-                              <td className="px-6 py-4.5 text-center font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">{index + 1}</td>
+                              <td className="px-6 py-4.5 text-center font-bold">
+                                <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-black transition-all duration-300 ${
+                                  isSelected 
+                                    ? {
+                                        easy: "bg-emerald-500 text-white shadow-md shadow-emerald-500/20 scale-110",
+                                        medium: "bg-amber-500 text-white shadow-md shadow-amber-500/20 scale-110",
+                                        hard: "bg-rose-500 text-white shadow-md shadow-rose-500/20 scale-110",
+                                        difficult: "bg-rose-500 text-white shadow-md shadow-rose-500/20 scale-110",
+                                      }[diffLower as "easy" | "medium" | "hard" | "difficult"] || "bg-indigo-500 text-white scale-110"
+                                    : "text-slate-400 group-hover:text-indigo-500"
+                                }`}>
+                                  {index + 1}
+                                </span>
+                              </td>
                               <td className="px-6 py-4.5">
                                 <div
-                                  className="font-bold text-slate-800 dark:text-slate-200 leading-relaxed max-w-xl group-hover:text-indigo-650 dark:group-hover:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline cursor-pointer transition-all"
+                                  className="preview-trigger font-bold text-slate-800 dark:text-slate-200 leading-relaxed max-w-xl group-hover:text-indigo-600 dark:group-hover:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-350 hover:underline cursor-pointer transition-all"
                                   onClick={() => setPreviewQuestion(q)}
                                   title="Click to preview question details"
                                 >
                                   {q.question}
                                 </div>
                                 <div className="mt-2.5 flex flex-wrap items-center gap-3">
-                                  <span className="text-[10px] text-slate-455 dark:text-slate-500 font-extrabold uppercase tracking-wider bg-slate-100 dark:bg-slate-800/60 px-2 py-1 rounded-md">
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider bg-slate-100 dark:bg-slate-800/60 px-2 py-1 rounded-md">
                                     Class: {q.class || "Class 10"}
                                   </span>
-                                  <span className="text-[10px] text-emerald-655 dark:text-emerald-400 font-extrabold flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md shadow-sm">
+                                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md shadow-sm">
                                     <Check className="h-3 w-3 stroke-[3]" />
                                     Correct Option: <span className="font-black uppercase">{q.correct_option?.split(",").map(o => o.trim().replace("option", "Option ")).join(", ")}</span>
                                   </span>
                                   {q.sub_topic_name && (
-                                    <span className="text-[10px] text-slate-455 dark:text-slate-500 font-bold">
+                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">
                                       Subtopic: <span className="text-slate-600 dark:text-slate-400">{q.sub_topic_name}</span>
                                     </span>
                                   )}
@@ -2276,10 +2422,10 @@ export const TeacherDashboard = () => {
                                     className="h-10 w-10 object-contain rounded-md border border-slate-200 bg-white"
                                   />
                                 ) : (
-                                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-550 bg-slate-100 dark:bg-slate-800/60 px-2 py-1 rounded-md select-none">No Image</span>
+                                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/60 px-2 py-1 rounded-md select-none">No Image</span>
                                 )}
                               </td>
-                              <td className="px-6 py-4.5 text-slate-500 dark:text-slate-450 font-medium">
+                              <td className="px-6 py-4.5 text-slate-500 dark:text-slate-400 font-medium">
                                 <Badge tone="blue" className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide">{topicName}</Badge>
                               </td>
                               <td className="px-6 py-4.5">
@@ -2299,19 +2445,19 @@ export const TeacherDashboard = () => {
                                       </Button>
                                       <Button
                                         variant="ghost"
-                                        className="h-8.5 rounded-lg px-3 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-955/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/40 font-bold transition-all hover:shadow-sm active:scale-95 cursor-pointer"
+                                        className="h-8.5 rounded-lg px-3 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/40 font-bold transition-all hover:shadow-sm active:scale-95 cursor-pointer"
                                         onClick={() => {
                                           if (confirm("Delete this question from pool?")) {
                                             deleteMutation.mutate(q.id ?? "");
                                           }
                                         }}
-                                        icon={<Trash2 className="h-3.5 w-3.5 text-rose-555" />}
+                                        icon={<Trash2 className="h-3.5 w-3.5 text-rose-500" />}
                                       >
                                         Delete
                                       </Button>
                                     </>
                                   ) : (
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 bg-slate-100/50 dark:bg-slate-800/40 px-2.5 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-800/50 select-none">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100/50 dark:bg-slate-800/40 px-2.5 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-800/50 select-none">
                                       View Only
                                     </span>
                                   )}
@@ -2379,14 +2525,14 @@ export const TeacherDashboard = () => {
                               ) : (
                                 <Badge tone="green">Live Now</Badge>
                               )}
-                              <span className="text-xs font-semibold text-slate-500 dark:text-slate-450">{test.class || "All Classes"}</span>
+                              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{test.class || "All Classes"}</span>
                             </div>
                             <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm mb-1">{test.name}</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Subject: {Array.isArray(test.subject) ? test.subject.join(", ") : test.subject}</p>
                             {isFuture ? (
                               <Button
                                 disabled
-                                className="w-full bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-550 font-bold h-9 text-xs border border-slate-200 dark:border-slate-850 cursor-not-allowed"
+                                className="w-full bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-500 font-bold h-9 text-xs border border-slate-200 dark:border-slate-850 cursor-not-allowed"
                               >
                                 Starts in {getRemainingTimeStr(test.start_time || "")}
                               </Button>
@@ -2444,21 +2590,33 @@ export const TeacherDashboard = () => {
 
                 {/* Proctor Console metrics bar */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-xl p-4.5 flex flex-col shadow-sm">
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">Monitored Session</span>
-                    <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200 mt-1">Active Sockets</span>
+                  <div className="bg-gradient-to-br from-indigo-500/5 to-purple-500/5 dark:from-indigo-950/20 dark:to-purple-950/10 border border-indigo-150/40 dark:border-indigo-900/35 rounded-xl p-4.5 flex flex-col shadow-sm">
+                    <span className="text-[9px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest font-mono">Monitored Session</span>
+                    <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200 mt-1 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                      Active Sockets
+                    </span>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-xl p-4.5 flex flex-col shadow-sm">
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">Proctored Streams</span>
-                    <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-450 mt-1">{activeStreamsList.length} Students Live</span>
+                  <div className="bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-950/20 dark:to-teal-950/10 border border-emerald-200/40 dark:border-emerald-900/35 rounded-xl p-4.5 flex flex-col shadow-sm">
+                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-mono">Proctored Streams</span>
+                    <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      {activeStreamsList.length} Students Live
+                    </span>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-xl p-4.5 flex flex-col shadow-sm">
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">Stream Quality</span>
-                    <span className="text-sm font-extrabold text-indigo-500 dark:text-indigo-400 mt-1">HD WebRTC</span>
+                  <div className="bg-gradient-to-br from-cyan-500/5 to-blue-500/5 dark:from-cyan-950/20 dark:to-blue-950/10 border border-cyan-200/40 dark:border-cyan-900/35 rounded-xl p-4.5 flex flex-col shadow-sm">
+                    <span className="text-[9px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-widest font-mono">Stream Quality</span>
+                    <span className="text-sm font-extrabold text-cyan-600 dark:text-cyan-400 mt-1 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
+                      HD WebRTC
+                    </span>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-xl p-4.5 flex flex-col shadow-sm">
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">System Integrity</span>
-                    <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-455 mt-1">99.98% Shield</span>
+                  <div className="bg-gradient-to-br from-rose-500/5 to-pink-500/5 dark:from-rose-950/20 dark:to-pink-950/10 border border-rose-200/40 dark:border-rose-900/35 rounded-xl p-4.5 flex flex-col shadow-sm">
+                    <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest font-mono">System Integrity</span>
+                    <span className="text-sm font-extrabold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                      99.98% Shield
+                    </span>
                   </div>
                 </div>
 
@@ -2549,10 +2707,10 @@ export const TeacherDashboard = () => {
                 <p className="text-xs text-slate-400 font-mono mt-0.5">{selectedMonitorStudent}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold uppercase ${selectedStudentStream?.hasVideo ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-450" : "bg-red-100 text-red-750 dark:bg-red-955/20 dark:text-red-400"}`}>
+                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold uppercase ${selectedStudentStream?.hasVideo ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" : "bg-red-100 text-red-700 dark:bg-red-950/20 dark:text-red-400"}`}>
                   Webcam: {selectedStudentStream?.hasVideo ? "Active" : "Off"}
                 </span>
-                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold uppercase ${selectedStudentStream?.hasAudio ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-955/20 dark:text-emerald-400" : "bg-red-100 text-red-755 dark:bg-red-955/20 dark:text-red-400"}`}>
+                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold uppercase ${selectedStudentStream?.hasAudio ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" : "bg-red-100 text-red-700 dark:bg-red-950/20 dark:text-red-400"}`}>
                   Mic: {selectedStudentStream?.hasAudio ? "Active" : "Off"}
                 </span>
               </div>
@@ -2561,7 +2719,7 @@ export const TeacherDashboard = () => {
             <div className="grid gap-6 md:grid-cols-2">
               {/* Live Camera Card */}
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm flex flex-col">
-                <div className="bg-slate-50 dark:bg-slate-955 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div className="bg-slate-50 dark:bg-slate-950 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Live Camera Feed</h4>
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
@@ -2583,7 +2741,7 @@ export const TeacherDashboard = () => {
 
               {/* Live Screen Feed Card */}
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm flex flex-col">
-                <div className="bg-slate-50 dark:bg-slate-955 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div className="bg-slate-50 dark:bg-slate-950 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Live Screen Feed</h4>
                   {selectedStudentStream?.screenFrame ? (
                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -2665,7 +2823,7 @@ export const TeacherDashboard = () => {
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Type</span>
                 <select
-                  className="h-10 w-full appearance-none rounded-md border border-slate-300 bg-white dark:bg-slate-950 px-3 text-sm text-slate-750 dark:text-slate-200 outline-none transition focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 cursor-pointer font-semibold"
+                  className="h-10 w-full appearance-none rounded-md border border-slate-300 bg-white dark:bg-slate-950 px-3 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 cursor-pointer font-semibold"
                   {...register("type")}
                 >
                   <option value="mcq">Standard Single MCQ</option>
@@ -2682,7 +2840,7 @@ export const TeacherDashboard = () => {
                     <span className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Title</span>
                     <input
                       type="text"
-                      className="h-10 w-full rounded-md border border-slate-300 dark:border-slate-805 bg-white dark:bg-slate-950 px-3 text-sm outline-none placeholder:text-slate-300 focus:border-indigo-550 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold"
+                      className="h-10 w-full rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm outline-none placeholder:text-slate-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold"
                       placeholder="Enter a descriptive title for this passage"
                       {...register("passage_title")}
                     />
@@ -2695,7 +2853,7 @@ export const TeacherDashboard = () => {
                   <label className="block">
                     <span className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Content</span>
                     <textarea
-                      className="h-28 w-full resize-none rounded-md border border-slate-300 dark:border-slate-805/80 dark:bg-slate-950 px-3 py-2 text-sm outline-none placeholder:text-slate-300 focus:border-indigo-550 focus:ring-4 focus:ring-indigo-550/10 transition-all font-semibold"
+                      className="h-28 w-full resize-none rounded-md border border-slate-300 dark:border-slate-800/80 dark:bg-slate-950 px-3 py-2 text-sm outline-none placeholder:text-slate-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold"
                       placeholder="Enter comprehension passage content..."
                       {...register("passage_content")}
                     />
@@ -2710,7 +2868,7 @@ export const TeacherDashboard = () => {
             {selectedType === "passage_sub_question" && editingQuestionId === null ? (
               <div className="space-y-4">
                 {/* CSV Import Section for Passage Sub-Questions in Modal */}
-                <div className="border border-dashed border-slate-250 dark:border-slate-800 rounded-xl p-4 bg-white/70 dark:bg-slate-900/40 shadow-sm space-y-3 mb-4">
+                <div className="border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-white/70 dark:bg-slate-900/40 shadow-sm space-y-3 mb-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-350 uppercase tracking-wider flex items-center gap-1.5">
                       <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
@@ -2726,7 +2884,7 @@ export const TeacherDashboard = () => {
                           value={passageCsvText}
                           onChange={(e) => setPassageCsvText(e.target.value)}
                           placeholder="question,option1,option2,option3,option4,correct_option&#10;What is 1+1?,2,3,4,5,option1"
-                          className="h-20 w-full resize-none rounded-lg border border-slate-205 dark:border-slate-800 dark:bg-slate-955 p-2 text-xs font-mono outline-none focus:border-indigo-505 focus:ring-4 focus:ring-indigo-550/10 transition-all leading-normal text-slate-800 dark:text-slate-200"
+                          className="h-20 w-full resize-none rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950 p-2 text-xs font-mono outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all leading-normal text-slate-800 dark:text-slate-200"
                         />
                       </label>
                     </div>
@@ -2734,7 +2892,7 @@ export const TeacherDashboard = () => {
                     <div className="flex flex-col justify-between">
                       <div>
                         <span className="mb-1.5 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Upload CSV File</span>
-                        <label className="flex flex-col items-center justify-center border border-dashed border-slate-250 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-700/60 rounded-lg p-4 bg-slate-50/20 dark:bg-slate-900/35 cursor-pointer group transition-all h-20">
+                        <label className="flex flex-col items-center justify-center border border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-700/60 rounded-lg p-4 bg-slate-50/20 dark:bg-slate-900/35 cursor-pointer group transition-all h-20">
                           <Upload className="h-4 w-4 text-slate-400 group-hover:text-emerald-500 transition-colors mb-1" />
                           <span className="text-[10px] font-bold text-slate-500 group-hover:text-emerald-600 transition-colors">Select CSV file</span>
                           <input
@@ -2787,7 +2945,7 @@ export const TeacherDashboard = () => {
                         Remove
                       </button>
                     )}
-                    <h4 className="text-xs font-bold text-indigo-650 dark:text-indigo-400 uppercase tracking-wider">
+                    <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                       Question {subIdx + 1}
                     </h4>
 
@@ -2811,7 +2969,7 @@ export const TeacherDashboard = () => {
                     {/* Options */}
                     <div>
                       <div className="flex items-center justify-between mb-2 border-b border-slate-100 dark:border-slate-800 pb-1.5">
-                        <span className="text-xs font-semibold text-slate-750 dark:text-slate-300">Options</span>
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Options</span>
                         <label className="relative inline-flex items-center cursor-pointer select-none">
                           <input
                             type="checkbox"
@@ -2853,7 +3011,7 @@ export const TeacherDashboard = () => {
                             <input
                               type="text"
                               placeholder={`Option ${idx + 1}`}
-                              className="h-10 w-full rounded-md px-3 text-sm font-semibold border border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-550/10 focus:border-indigo-500"
+                              className="h-10 w-full rounded-md px-3 text-sm font-semibold border border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500"
                               value={subQ[opt]}
                               onChange={(e) => {
                                 const updated = [...subQuestions];
@@ -2901,7 +3059,7 @@ export const TeacherDashboard = () => {
                 {/* Options */}
                 <div>
                   <div className="flex items-center justify-between mb-2 border-b border-slate-105 dark:border-slate-800 pb-2">
-                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-355">Options (Select the correct one)</span>
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Options (Select the correct one)</span>
                     <label className="relative inline-flex items-center cursor-pointer select-none">
                       <input
                         type="checkbox"
@@ -3018,7 +3176,7 @@ export const TeacherDashboard = () => {
 
             {/* Question Image (Optional) */}
             <div className="space-y-2 mb-4">
-              <label className="text-xs font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wide">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                 Question Image (Optional)
               </label>
               {imageUrl ? (
@@ -3050,7 +3208,7 @@ export const TeacherDashboard = () => {
                       <Trash2 className="h-4.5 w-4.5" />
                     </button>
                   </div>
-                  <p className="text-[10px] text-slate-455 mt-1 truncate px-1 text-center">{imageUrl}</p>
+                  <p className="text-[10px] text-slate-400 mt-1 truncate px-1 text-center">{imageUrl}</p>
                 </div>
               ) : (
                 <div
@@ -3085,7 +3243,7 @@ export const TeacherDashboard = () => {
                       </div>
                     ) : (
                       <div className="space-y-1">
-                        <Upload className="h-7 w-7 text-slate-455 mx-auto mb-1" />
+                        <Upload className="h-7 w-7 text-slate-400 mx-auto mb-1" />
                         <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 block">Click or drag & drop to upload question image</span>
                         <span className="text-[10px] text-slate-400 dark:text-slate-500 block">JPG, JPEG, PNG or WEBP up to 5MB</span>
                       </div>
@@ -3122,7 +3280,7 @@ export const TeacherDashboard = () => {
                         <BookOpen className="h-4 w-4 text-indigo-500 shrink-0" />
                         Passage Context: {p.title}
                       </div>
-                      <div className="text-xs text-slate-650 dark:text-slate-350 leading-relaxed font-semibold max-h-40 overflow-y-auto whitespace-pre-wrap">
+                      <div className="text-xs text-slate-600 dark:text-slate-350 leading-relaxed font-semibold max-h-40 overflow-y-auto whitespace-pre-wrap">
                         {p.content}
                       </div>
                     </div>

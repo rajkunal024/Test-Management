@@ -1,10 +1,11 @@
 import { IncomingMessage, ServerResponse } from "node:http";
-import { json, readBody } from "../middlewares/utils.js";
+import { json, readBody, readBodyBuffer } from "../middlewares/utils.js";
 import { AdminModel, TeacherModel, StudentModel } from "../models/index.js";
 import { hashPassword, verifyPassword, signToken } from "../utils/crypto.js";
 import { getUserFromRequest } from "../middlewares/auth.js";
 import bcrypt from "bcryptjs";
 import { requestOtp, verifyOtp as checkOtp, deleteOtp } from "../utils/otpStore.js";
+import { ImageKit } from "@imagekit/nodejs";
 
 export const signupAdmin = async (request: IncomingMessage, response: ServerResponse) => {
   try {
@@ -75,7 +76,7 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { id: admin.id, name: admin.name, userId: admin.userId, role: "Admin", requiresPasswordChange: admin.requiresPasswordChange }
+              user: { id: admin.id, name: admin.name, userId: admin.userId, role: "Admin", email: admin.email, requiresPasswordChange: admin.requiresPasswordChange, profilePicture: admin.profilePicture }
             }
           },
           {
@@ -99,7 +100,7 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { id: teacher.id, name: teacher.name, userId: teacher.userId, role: "Teacher", subject: teacher.subject, gender: teacher.gender, requiresPasswordChange: teacher.requiresPasswordChange }
+              user: { id: teacher.id, name: teacher.name, userId: teacher.userId, role: "Teacher", subject: teacher.subject, gender: teacher.gender, email: teacher.email, dob: teacher.dob, requiresPasswordChange: teacher.requiresPasswordChange, profilePicture: teacher.profilePicture }
             }
           },
           {
@@ -123,7 +124,7 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-            user: { id: student.id, name: student.name, userId: student.userId, role: "Student", class: student.class || "Class 10", gender: student.gender, requiresPasswordChange: student.requiresPasswordChange, joined_at: (student.toObject({ defaults: false } as any) as any).joined_at || student._id.getTimestamp() }
+            user: { id: student.id, name: student.name, userId: student.userId, role: "Student", email: student.email, dob: student.dob, class: student.class || "Class 10", gender: student.gender, requiresPasswordChange: student.requiresPasswordChange, profilePicture: student.profilePicture, joined_at: (student.toObject({ defaults: false } as any) as any).joined_at || student._id.getTimestamp() }
             }
           },
           {
@@ -359,5 +360,155 @@ export const resetPassword = async (request: IncomingMessage, response: ServerRe
     });
   } catch (e) {
     json(response, 500, { success: false, message: "Server error during password reset" });
+  }
+};
+
+let imageKitclient: ImageKit | null = null;
+const getImageKitClient = () => {
+  if (!imageKitclient) {
+    imageKitclient = new ImageKit({
+      privateKey: process.env.IMAGEKIT_PRIVATE_KEY || "",
+    });
+  }
+  return imageKitclient;
+};
+
+export const uploadProfilePicture = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const user = getUserFromRequest(request);
+    if (!user) {
+      json(response, 401, { success: false, message: "Unauthorized" });
+      return;
+    }
+
+    const contentType = request.headers["content-type"] || "";
+    if (!contentType.includes("multipart/form-data")) {
+      json(response, 400, { success: false, message: "Request must be multipart/form-data" });
+      return;
+    }
+
+    const bodyBuffer = await readBodyBuffer(request);
+    
+    // Parse boundary
+    const boundaryMatch = contentType.match(/boundary=([^;]+)/);
+    if (!boundaryMatch) {
+      json(response, 400, { success: false, message: "No multipart boundary found" });
+      return;
+    }
+    
+    let boundaryStr = boundaryMatch[1].trim();
+    if (boundaryStr.startsWith('"') && boundaryStr.endsWith('"')) {
+      boundaryStr = boundaryStr.slice(1, -1);
+    }
+    const boundary = "--" + boundaryStr;
+    const boundaryBuffer = Buffer.from(boundary);
+    
+    let fileBuffer: Buffer | null = null;
+    let fileName = `profile-${Date.now()}.png`;
+    let fileMime = "image/png";
+    
+    let index = 0;
+    while (true) {
+      const start = bodyBuffer.indexOf(boundaryBuffer, index);
+      if (start === -1) break;
+      
+      const nextBoundaryIndex = bodyBuffer.indexOf(boundaryBuffer, start + boundaryBuffer.length);
+      if (nextBoundaryIndex === -1) break;
+      
+      const part = bodyBuffer.subarray(start + boundaryBuffer.length, nextBoundaryIndex);
+      const crlf2 = Buffer.from("\r\n\r\n");
+      const headerEnd = part.indexOf(crlf2);
+      if (headerEnd !== -1) {
+        const headerText = part.subarray(0, headerEnd).toString("utf-8");
+        // Data starts after \r\n\r\n and ends before trailing \r\n (2 bytes)
+        const data = part.subarray(headerEnd + crlf2.length, part.length - 2);
+        
+        // Parse headers
+        const headers: Record<string, string> = {};
+        headerText.split("\r\n").forEach(line => {
+          const colon = line.indexOf(":");
+          if (colon !== -1) {
+            const key = line.substring(0, colon).trim().toLowerCase();
+            const value = line.substring(colon + 1).trim();
+            headers[key] = value;
+          }
+        });
+        
+        const disposition = headers["content-disposition"] || "";
+        const nameMatch = disposition.match(/name="([^"]+)"/);
+        const filenameMatch = disposition.match(/filename="([^"]+)"/);
+        
+        if (nameMatch && nameMatch[1] === "file") {
+          fileBuffer = data;
+          if (filenameMatch) {
+            fileName = filenameMatch[1];
+          }
+          if (headers["content-type"]) {
+            fileMime = headers["content-type"];
+          }
+          break; // Found our file
+        }
+      }
+      
+      index = nextBoundaryIndex;
+    }
+
+    if (!fileBuffer || fileBuffer.length === 0) {
+      json(response, 400, { success: false, message: "No file content uploaded under field 'file'." });
+      return;
+    }
+
+    // Check size limit: 5MB
+    if (fileBuffer.length > 5 * 1024 * 1024) {
+      json(response, 400, { success: false, message: "Image size should be less than 5MB" });
+      return;
+    }
+
+    // Check allowed formats
+    const allowedMimes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const ext = fileName.split(".").pop()?.toLowerCase() || "";
+    const allowedExtensions = ["jpg", "jpeg", "png", "webp"];
+    if (!allowedMimes.includes(fileMime) && !allowedExtensions.includes(ext)) {
+      json(response, 400, { success: false, message: "Allowed formats are JPG, JPEG, PNG, WEBP." });
+      return;
+    }
+
+    const ikData = await getImageKitClient().files.upload({
+      file: fileBuffer.toString("base64"),
+      fileName: "profile_" + user.userId + "_" + Date.now(),
+      folder: "profile_pictures"
+    });
+
+    // Save url in user document
+    let updatedUser: any = null;
+    if (user.role === "Admin") {
+      updatedUser = await AdminModel.findOneAndUpdate(
+        { userId: user.userId },
+        { profilePicture: ikData.url },
+        { new: true }
+      );
+    } else if (user.role === "Teacher") {
+      updatedUser = await TeacherModel.findOneAndUpdate(
+        { userId: user.userId },
+        { profilePicture: ikData.url },
+        { new: true }
+      );
+    } else if (user.role === "Student") {
+      updatedUser = await StudentModel.findOneAndUpdate(
+        { userId: user.userId },
+        { profilePicture: ikData.url },
+        { new: true }
+      );
+    }
+
+    if (!updatedUser) {
+      json(response, 404, { success: false, message: "User account not found" });
+      return;
+    }
+
+    json(response, 200, { success: true, profilePicture: ikData.url });
+  } catch (e) {
+    console.error("Error uploading profile picture:", e);
+    json(response, 500, { success: false, message: "Internal server error during profile picture upload" });
   }
 };
