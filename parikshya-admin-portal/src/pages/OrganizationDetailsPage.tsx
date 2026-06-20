@@ -130,6 +130,7 @@ export const OrganizationDetailsPage: React.FC = () => {
   const [editError, setEditError] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editCountryCode, setEditCountryCode] = useState("+91");
   const [editPhone, setEditPhone] = useState("");
   const [editAddress, setEditAddress] = useState("");
   const [editLogo, setEditLogo] = useState("");
@@ -187,7 +188,15 @@ export const OrganizationDetailsPage: React.FC = () => {
 
         setEditName(oData.name || "");
         setEditEmail(oData.contactEmail || "");
-        setEditPhone(oData.phone || "");
+        const oPhone = oData.phone || "";
+        const matchedCode = ["+91", "+1", "+44", "+61", "+977", "+880", "+971", "+65"].find(code => oPhone.startsWith(code));
+        if (matchedCode) {
+          setEditCountryCode(matchedCode);
+          setEditPhone(oPhone.substring(matchedCode.length).trim());
+        } else {
+          setEditCountryCode("+91");
+          setEditPhone(oPhone);
+        }
         setEditAddress(oData.address || "");
         setEditLogo(oData.logo || "");
         setEditAdminName(oData.adminName || "");
@@ -253,7 +262,7 @@ export const OrganizationDetailsPage: React.FC = () => {
       const payload = {
         name: editName,
         contactEmail: editEmail,
-        phone: editPhone,
+        phone: editPhone.trim() ? `${editCountryCode} ${editPhone.trim()}` : "",
         address: editAddress,
         logo: editLogo,
         adminName: editAdminName,
@@ -870,12 +879,28 @@ export const OrganizationDetailsPage: React.FC = () => {
                     <label className="block font-title text-[11px] font-bold text-slate-400 dark:text-slate-500">
                       Phone Number
                     </label>
-                    <input
-                      type="text"
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value)}
-                      className="w-full bg-transparent text-slate-900 dark:text-white placeholder-slate-550 outline-none font-title text-sm font-bold mt-1"
-                    />
+                    <div className="flex items-center gap-2 mt-1">
+                      <select
+                        value={editCountryCode}
+                        onChange={(e) => setEditCountryCode(e.target.value)}
+                        className="bg-transparent text-slate-900 dark:text-white outline-none font-title text-sm font-bold cursor-pointer dark:bg-[#070A10]"
+                      >
+                        <option value="+91" className="text-slate-900 dark:text-white dark:bg-[#070A10]">IN (+91)</option>
+                        <option value="+1" className="text-slate-900 dark:text-white dark:bg-[#070A10]">US (+1)</option>
+                        <option value="+44" className="text-slate-900 dark:text-white dark:bg-[#070A10]">UK (+44)</option>
+                        <option value="+61" className="text-slate-900 dark:text-white dark:bg-[#070A10]">AU (+61)</option>
+                        <option value="+977" className="text-slate-900 dark:text-white dark:bg-[#070A10]">NP (+977)</option>
+                        <option value="+880" className="text-slate-900 dark:text-white dark:bg-[#070A10]">BD (+880)</option>
+                        <option value="+971" className="text-slate-900 dark:text-white dark:bg-[#070A10]">AE (+971)</option>
+                        <option value="+65" className="text-slate-900 dark:text-white dark:bg-[#070A10]">SG (+65)</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        className="flex-1 bg-transparent text-slate-900 dark:text-white placeholder-slate-550 outline-none font-title text-sm font-bold"
+                      />
+                    </div>
                   </div>
                   <Phone className="w-4.5 h-4.5 text-slate-400 dark:text-slate-500 shrink-0" />
                 </div>

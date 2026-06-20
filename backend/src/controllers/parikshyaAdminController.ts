@@ -195,7 +195,7 @@ export const listOrganizations = async (request: IncomingMessage, response: Serv
   }
 };
 
-// Create Organization + Initial Admin
+// Create Organization
 export const createOrganization = async (request: IncomingMessage, response: ServerResponse) => {
   try {
     const body = JSON.parse(await readBody(request));
@@ -206,13 +206,10 @@ export const createOrganization = async (request: IncomingMessage, response: Ser
       contactEmail,
       phone,
       address,
-      adminName,
-      adminEmail,
-      initialPassword,
       status
     } = body;
 
-    if (!name || !code || !contactEmail || !adminName || !adminEmail || !initialPassword) {
+    if (!name || !code || !contactEmail) {
       json(response, 400, { success: false, message: "Required fields are missing" });
       return;
     }
@@ -224,17 +221,6 @@ export const createOrganization = async (request: IncomingMessage, response: Ser
 
     if (existingOrg) {
       json(response, 400, { success: false, message: "Organization with this Code or Email already exists" });
-      return;
-    }
-
-    // Check if admin user already exists
-    const adminNormalizedEmail = adminEmail.toLowerCase().trim();
-    const existingAdmin = await AdminModel.findOne({
-      $or: [{ userId: adminNormalizedEmail }, { email: adminNormalizedEmail }]
-    });
-
-    if (existingAdmin) {
-      json(response, 400, { success: false, message: "Organization Admin email is already in use" });
       return;
     }
 
@@ -254,29 +240,11 @@ export const createOrganization = async (request: IncomingMessage, response: Ser
 
     await newOrg.save();
 
-    // Create Initial Organization Admin
-    const newAdmin = new AdminModel({
-      userId: adminNormalizedEmail,
-      email: adminNormalizedEmail,
-      password: hashPassword(initialPassword),
-      name: adminName,
-      role: "Admin",
-      organization_id: orgId
-    });
-
-    await newAdmin.save();
-
     json(response, 201, {
       success: true,
-      message: "Organization and Admin user created successfully",
+      message: "Organization created successfully",
       data: {
-        organization: newOrg,
-        admin: {
-          id: newAdmin.id,
-          userId: newAdmin.userId,
-          name: newAdmin.name,
-          email: newAdmin.email
-        }
+        organization: newOrg
       }
     });
   } catch (e) {

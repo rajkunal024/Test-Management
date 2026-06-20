@@ -10,6 +10,8 @@ import {
   ShieldAlert,
   Slash,
   ChevronsUpDown,
+  Building,
+  Image as ImageIcon,
 } from "lucide-react";
 
 interface OrgCounts {
@@ -42,7 +44,6 @@ export const OrganizationsPage: React.FC = () => {
 
   // Wizard modal state
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [wizardStep, setWizardStep] = useState(1);
   const [wizardError, setWizardError] = useState<string | null>(null);
   const [wizardLoading, setWizardLoading] = useState(false);
 
@@ -50,12 +51,44 @@ export const OrganizationsPage: React.FC = () => {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [logo, setLogo] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [contactEmail, setContactEmail] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [adminName, setAdminName] = useState("");
-  const [adminEmail, setAdminEmail] = useState("");
-  const [initialPassword, setInitialPassword] = useState("");
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image size should be less than 5MB");
+      return;
+    }
+
+    try {
+      setUploadingLogo(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await api.post("../questions/upload-image", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.data.success && response.data.image_url) {
+        setLogo(response.data.image_url);
+      } else {
+        alert("Failed to upload image.");
+      }
+    } catch (err) {
+      console.error("Error uploading logo:", err);
+      alert("An error occurred during image upload.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   const fetchOrganizations = async () => {
     try {
@@ -81,13 +114,11 @@ export const OrganizationsPage: React.FC = () => {
     setName("");
     setCode("");
     setLogo("");
+    setUploadingLogo(false);
     setContactEmail("");
+    setCountryCode("+91");
     setPhone("");
     setAddress("");
-    setAdminName("");
-    setAdminEmail("");
-    setInitialPassword("");
-    setWizardStep(1);
     setWizardError(null);
     setIsWizardOpen(false);
   };
@@ -101,32 +132,13 @@ export const OrganizationsPage: React.FC = () => {
     return null;
   };
 
-  const validateStep2 = () => {
-    if (!adminName.trim()) return "Admin Full Name is required.";
-    if (!adminEmail.trim()) return "Admin Email Address is required.";
-    if (!/\S+@\S+\.\S+/.test(adminEmail)) return "Invalid admin email address.";
-    if (!initialPassword) return "Initial password is required.";
-    if (initialPassword.length < 6) return "Password must be at least 6 characters.";
-    return null;
-  };
-
-  const handleNextStep = () => {
-    const step1Err = validateStep1();
-    if (step1Err) {
-      setWizardError(step1Err);
-      return;
-    }
-    setWizardError(null);
-    setWizardStep(2);
-  };
-
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setWizardError(null);
 
-    const step2Err = validateStep2();
-    if (step2Err) {
-      setWizardError(step2Err);
+    const step1Err = validateStep1();
+    if (step1Err) {
+      setWizardError(step1Err);
       return;
     }
 
@@ -137,11 +149,8 @@ export const OrganizationsPage: React.FC = () => {
         code,
         logo,
         contactEmail,
-        phone,
+        phone: phone.trim() ? `${countryCode} ${phone.trim()}` : "",
         address,
-        adminName,
-        adminEmail,
-        initialPassword,
         status: "Active",
       };
 
@@ -366,37 +375,8 @@ export const OrganizationsPage: React.FC = () => {
               <div>
                 <h3 className="font-title font-extrabold text-xl text-white">Register Organization</h3>
                 <p className="text-slate-500 text-xs mt-1">
-                  Complete the multi-step onboarding process to seed a new client environment.
+                  Complete the onboarding profile to seed a new client environment.
                 </p>
-              </div>
-
-              {/* Progress Steps Indicator */}
-              <div className="flex items-center gap-4 text-[10px] uppercase font-bold tracking-wider pt-2">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
-                      wizardStep === 1
-                        ? "bg-[#4B52DC] text-white shadow shadow-indigo-500/20"
-                        : "bg-indigo-950/50 text-[#818CF8] border border-indigo-900/30"
-                    }`}
-                  >
-                    1
-                  </div>
-                  <span className={wizardStep === 1 ? "text-slate-200" : "text-slate-500"}>Profile Details</span>
-                </div>
-                <div className="h-[1px] w-12 bg-[#161B26]" />
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
-                      wizardStep === 2
-                        ? "bg-[#4B52DC] text-white shadow shadow-indigo-500/20"
-                        : "bg-[#151A26] text-slate-550 border border-slate-900/40"
-                    }`}
-                  >
-                    2
-                  </div>
-                  <span className={wizardStep === 2 ? "text-slate-200" : "text-slate-500"}>Admin Credentials</span>
-                </div>
               </div>
             </div>
 
@@ -407,144 +387,138 @@ export const OrganizationsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Step 1 Form: Profile Details */}
-            {wizardStep === 1 ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <input
-                      type="text"
-                      placeholder="Organization Name*"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <input
-                      type="text"
-                      placeholder="Unique Code*"
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold uppercase"
-                    />
-                  </div>
+            {/* Form: Profile Details */}
+            <form onSubmit={handleRegisterSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <input
+                    type="text"
+                    placeholder="Organization Name*"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <input
-                      type="email"
-                      placeholder="Contact Email*"
-                      value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
-                      className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <input
+                    type="text"
+                    placeholder="Unique Code*"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold uppercase"
+                  />
+                </div>
+              </div>
 
-                  <div className="space-y-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <input
+                    type="email"
+                    placeholder="Contact Email*"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex gap-2">
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                      className="px-3 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white outline-none text-xs font-semibold cursor-pointer"
+                    >
+                      <option value="+91">IN (+91)</option>
+                      <option value="+1">US (+1)</option>
+                      <option value="+44">UK (+44)</option>
+                      <option value="+61">AU (+61)</option>
+                      <option value="+977">NP (+977)</option>
+                      <option value="+880">BD (+880)</option>
+                      <option value="+971">AE (+971)</option>
+                      <option value="+65">SG (+65)</option>
+                    </select>
                     <input
                       type="text"
                       placeholder="Phone Number"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
+                      className="flex-1 px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
                     />
                   </div>
-                </div>
-
-                <div className="space-y-1">
-                  <input
-                    type="text"
-                    placeholder="Logo Image URL"
-                    value={logo}
-                    onChange={(e) => setLogo(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <textarea
-                    placeholder="Address"
-                    rows={2}
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold resize-none"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#161B26]/60">
-                  <button
-                    onClick={resetWizard}
-                    className="px-5 py-2.5 text-slate-450 hover:text-white text-xs font-bold transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleNextStep}
-                    className="px-6 py-2.5 bg-[#4B52DC] hover:bg-[#3f47d9] text-white font-bold rounded-xl active:scale-[0.98] transition-all text-xs uppercase tracking-wider"
-                  >
-                    Next Details
-                  </button>
                 </div>
               </div>
-            ) : (
-              /* Step 2 Form: Admin Credentials */
-              <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                <div className="text-[10px] font-bold text-[#4B52DC] uppercase tracking-wider mb-2">
-                  Initial Administrative Account
-                </div>
-                <div className="space-y-1">
-                  <input
-                    type="text"
-                    placeholder="Admin Full Name*"
-                    value={adminName}
-                    onChange={(e) => setAdminName(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
-                  />
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <input
-                      type="email"
-                      placeholder="Admin Login Email*"
-                      value={adminEmail}
-                      onChange={(e) => setAdminEmail(e.target.value)}
-                      className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
-                    />
+              {/* Logo Image Upload */}
+              <div className="rounded-2xl bg-[#0F1422] border border-[#161B26] px-4 py-3 focus-within:border-[#4B52DC] transition-all flex items-center justify-between gap-3 relative">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Logo Image (Optional)
+                  </label>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    {logo ? (
+                      <div className="w-8 h-8 rounded bg-[#0B0E14] border border-[#161B26] overflow-hidden flex items-center justify-center shrink-0">
+                        <img src={logo} alt="Logo Preview" className="w-full h-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded bg-[#151A26] flex items-center justify-center shrink-0 text-slate-500">
+                        <Building className="w-4 h-4" />
+                      </div>
+                    )}
+                    <label className="flex items-center gap-1.5 px-3 py-1 bg-[#121824] hover:bg-[#151A26] border border-[#161B26] text-slate-300 font-title text-[11px] font-bold rounded-lg cursor-pointer transition-colors shadow-sm">
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      <span>{uploadingLogo ? "Uploading..." : "Upload Logo"}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                        disabled={uploadingLogo}
+                      />
+                    </label>
+                    {logo && (
+                      <button
+                        type="button"
+                        onClick={() => setLogo("")}
+                        className="font-title text-[11px] font-bold text-red-500 hover:text-red-400 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
-
-                  <div className="space-y-1">
-                    <input
-                      type="password"
-                      placeholder="Initial Password*"
-                      value={initialPassword}
-                      onChange={(e) => setInitialPassword(e.target.value)}
-                      className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
-                    />
-                  </div>
                 </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#161B26]/60">
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep(1)}
-                    className="px-5 py-2.5 text-slate-450 hover:text-white text-xs font-bold transition-all"
-                  >
-                    Back Details
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={wizardLoading}
-                    className="px-6 py-2.5 bg-gradient-to-r from-[#4B52DC] to-[#7C3AED] hover:from-[#3f47d9] hover:to-[#6d28d9] text-white font-bold rounded-xl shadow-lg active:scale-[0.98] transition-all text-xs disabled:opacity-50 uppercase tracking-wider"
-                  >
-                    {wizardLoading ? "Seeding Account..." : "Confirm Enrollment"}
-                  </button>
+                <div className="text-slate-500 font-title text-[11px] font-semibold max-w-[40%] text-right truncate">
+                  {logo ? "Logo Selected" : "No image selected"}
                 </div>
-              </form>
-            )}
+              </div>
+
+              <div className="space-y-1">
+                <textarea
+                  placeholder="Address"
+                  rows={2}
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#161B26]/60">
+                <button
+                  type="button"
+                  onClick={resetWizard}
+                  className="px-5 py-2.5 text-slate-450 hover:text-white text-xs font-bold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={wizardLoading}
+                  className="px-6 py-2.5 bg-gradient-to-r from-[#4B52DC] to-[#7C3AED] hover:from-[#3f47d9] hover:to-[#6d28d9] text-white font-bold rounded-xl shadow-lg active:scale-[0.98] transition-all text-xs disabled:opacity-50 uppercase tracking-wider"
+                >
+                  {wizardLoading ? "Registering..." : "Register"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

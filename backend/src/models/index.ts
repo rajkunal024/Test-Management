@@ -140,12 +140,12 @@ const parseJoiningDate = (date: any): string => {
 
 
 export const TeacherSchema = new Schema({
-  userId: { type: String, required: true, unique: true },
+  userId: { type: String, required: true },
   password: { type: String, required: true },
   name: { type: String, required: true },
   role: { type: String, default: "Teacher" },
   subject: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true },
   dob: { type: String, required: true },
   gender: { type: String, enum: ["Male", "Female"], default: "Male" },
   requiresPasswordChange: { type: Boolean, default: false },
@@ -153,6 +153,8 @@ export const TeacherSchema = new Schema({
   joined_at: { type: Date, default: Date.now },
   organization_id: { type: String, required: true }
 });
+TeacherSchema.index({ organization_id: 1, userId: 1 }, { unique: true });
+TeacherSchema.index({ organization_id: 1, email: 1 }, { unique: true });
 TeacherSchema.pre("validate", async function (this: any, next) {
   if (this.isModified("name") || this.isModified("subject") || this.isModified("organization_id") || this.isModified("joined_at") || this.isNew) {
     try {
@@ -173,11 +175,11 @@ TeacherSchema.pre("validate", async function (this: any, next) {
 export const TeacherModel = mongoose.model("Teacher", TeacherSchema);
 
 export const StudentSchema = new Schema({
-  userId: { type: String, required: true, unique: true },
+  userId: { type: String, required: true },
   password: { type: String, required: true },
   name: { type: String, required: true },
   role: { type: String, default: "Student" },
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true },
   dob: { type: String, required: true },
   class: { type: String },
   gender: { type: String, enum: ["Male", "Female"], default: "Male" },
@@ -193,6 +195,8 @@ export const StudentSchema = new Schema({
     submitted_at: { type: Date, default: Date.now }
   }]
 });
+StudentSchema.index({ organization_id: 1, userId: 1 }, { unique: true });
+StudentSchema.index({ organization_id: 1, email: 1 }, { unique: true });
 StudentSchema.pre("validate", async function (this: any, next) {
   if (this.isModified("name") || this.isModified("organization_id") || this.isModified("dob") || this.isNew) {
     try {
@@ -212,15 +216,17 @@ StudentSchema.pre("validate", async function (this: any, next) {
 export const StudentModel = mongoose.model("Student", StudentSchema);
 
 export const AdminSchema = new Schema({
-  userId: { type: String, required: true, unique: true },
+  userId: { type: String, required: true },
   password: { type: String, required: true },
   name: { type: String, required: true },
   role: { type: String, default: "Admin" },
-  email: { type: String, unique: true },
+  email: { type: String },
   requiresPasswordChange: { type: Boolean, default: false },
   profilePicture: { type: String, default: "" },
   organization_id: { type: String, required: true }
 });
+AdminSchema.index({ organization_id: 1, userId: 1 }, { unique: true });
+AdminSchema.index({ organization_id: 1, email: 1 }, { unique: true });
 AdminSchema.pre("validate", async function (this: any, next) {
   if (this.isModified("name") || this.isModified("organization_id") || this.isNew) {
     try {
