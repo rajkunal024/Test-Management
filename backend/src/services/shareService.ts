@@ -19,7 +19,8 @@ export const performShareResults = async (testId: string) => {
           message: `Results for test '${test.name}' have been declared. Check your scorecard.`,
           type: "result_declared",
           test_id: test.id,
-          test_name: test.name
+          test_name: test.name,
+          organization_id: test.organization_id || student.organization_id
         });
       }
     } catch (err) {

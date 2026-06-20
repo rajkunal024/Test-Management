@@ -30,10 +30,11 @@ import {
   Crop,
   ArrowLeft,
   Check,
+  Home,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuthStore } from "../../store/authStore";
-import { logout as apiLogout, getNotifications, markNotificationsRead, clearAllNotifications, changePassword, uploadProfilePicture, getErrorMessage } from "../../services/api";
+import { logout as apiLogout, getNotifications, markNotificationsRead, clearAllNotifications, changePassword, uploadProfilePicture, getErrorMessage, getMyOrganization } from "../../services/api";
 import { Modal } from "../ui/Modal";
 import { PasswordInput } from "../ui/PasswordInput";
 import { Button } from "../ui/Button";
@@ -70,6 +71,15 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
   const [navHidden, setNavHidden] = useState(() => {
     return localStorage.getItem("parikshya_nav_hidden") === "true";
   });
+
+  const { data: orgData } = useQuery({
+    queryKey: ["myOrganization"],
+    queryFn: getMyOrganization,
+    enabled: Boolean(user),
+  });
+
+  const orgLogo = orgData?.logo || user?.organizationLogo;
+  const orgName = orgData?.name || user?.organizationName;
 
   const toggleNav = () => {
     setNavHidden((prev) => {
@@ -358,93 +368,114 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
   return (
     <div className="min-h-screen bg-white text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
       <aside
-        className={`fixed inset-y-0 left-0 z-30 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 transition-all duration-300 ${navHidden
+        className={`fixed inset-y-0 left-0 z-30 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 transition-all duration-300 flex flex-col justify-between ${navHidden
             ? "w-0 -translate-x-full border-r-0 opacity-0 pointer-events-none"
             : compactRail
               ? "w-[64px] lg:block hidden"
               : "w-[252px] lg:block hidden"
           }`}
       >
-        <div className={`${compactRail ? "px-0 justify-center" : "px-7"} flex h-[100px] items-center border-b border-slate-100 dark:border-slate-800/80`}>
-          <Link to="/dashboard" className="cursor-pointer hover:opacity-85 transition flex items-center justify-center w-full">
-            <Logo compact={compactRail} />
-          </Link>
-        </div>
-        {compactRail ? (
-          <nav className="flex flex-col items-center gap-6 py-8">
-            {railIcons.map((Icon, index) => (
-              <div key={index} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition cursor-pointer">
-                <Icon className="h-5 w-5" />
-              </div>
-            ))}
-          </nav>
-        ) : (
-          <nav className="space-y-2 px-3 py-8">
-            {currentSidebarItems.map(({ label, icon: Icon, to }) => {
-              const currentPath = location.pathname + location.search;
-
-              const isAddTab = to === "/dashboard?tab=add";
-              const isViewTab = to === "/dashboard?tab=view";
-
-              let isActive = false;
-              if (isAddTab) {
-                isActive = currentPath === "/dashboard" || currentPath === "/dashboard?tab=add" || currentPath.includes("tab=add");
-              } else if (isViewTab) {
-                isActive = currentPath.includes("tab=view");
-              } else {
-                isActive = currentPath === to;
-              }
-
-              const subItems = [
-                { label: "All Questions", classVal: "all" },
-                { label: "Class 9", classVal: "Class 9" },
-                { label: "Class 10", classVal: "Class 10" },
-                { label: "Class 11", classVal: "Class 11" },
-                { label: "Class 12", classVal: "Class 12" },
-              ];
-
-              return (
-                <div key={label} className="space-y-1">
-                  <Link
-                    to={isViewTab ? "/dashboard?tab=view&class=all" : to}
-                    className={`relative flex h-12 items-center gap-3 rounded-md px-4 text-sm font-semibold transition-all ${isActive
-                        ? "bg-primary-50 text-primary-700 dark:bg-primary-950/30 dark:text-primary-400"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-850 dark:hover:text-slate-200"
-                      }`}
-                  >
-                    {isActive ? <span className="absolute left-0 h-9 w-1 rounded-r-full bg-primary-600" /> : null}
-                    <Icon className="h-5 w-5" />
-                    {label}
-                  </Link>
-
-                  {isViewTab && isActive && (
-                    <div className="pl-6 space-y-1 mt-1">
-                      {subItems.map((sub) => {
-                        const subUrl = `/dashboard?tab=view&class=${encodeURIComponent(sub.classVal)}`;
-                        const isSubActive = searchParams.get("class") === sub.classVal ||
-                          (!searchParams.get("class") && sub.classVal === "all");
-                        return (
-                          <Link
-                            key={sub.label}
-                            to={subUrl}
-                            className={`flex h-9 items-center gap-2 rounded-md px-4 text-xs font-semibold transition-all ${isSubActive
-                                ? "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
-                                : "text-slate-400 hover:bg-slate-50 hover:text-slate-650 dark:text-slate-500 dark:hover:bg-slate-850/50 dark:hover:text-slate-300"
-                              }`}
-                          >
-                            <span className={`h-1.5 w-1.5 rounded-full ${isSubActive ? "bg-primary-600 dark:bg-primary-400 animate-pulse" : "bg-slate-300 dark:bg-slate-700"}`} />
-                            {sub.label}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
+        <div className="flex flex-col flex-1 pb-20">
+          <div className={`${compactRail ? "px-0 justify-center" : "px-7"} flex h-[100px] items-center border-b border-slate-100 dark:border-slate-800/80`}>
+            {orgLogo ? (
+              <Link to="/dashboard" className="cursor-pointer hover:opacity-85 transition flex items-center justify-center w-full max-h-[80px]" title={orgName || "Home"}>
+                <img src={orgLogo} alt={orgName || "Home"} className="max-h-[60px] max-w-[85%] object-contain" />
+              </Link>
+            ) : (
+              <Link to="/dashboard" className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition focus:outline-none cursor-pointer" title="Home">
+                <Home className="h-5.5 w-5.5" />
+              </Link>
+            )}
+          </div>
+          {compactRail ? (
+            <nav className="flex flex-col items-center gap-6 py-8">
+              {railIcons.map((Icon, index) => (
+                <div key={index} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition cursor-pointer">
+                  <Icon className="h-5 w-5" />
                 </div>
-              );
-            })}
-          </nav>
-        )}
+              ))}
+            </nav>
+          ) : (
+            <nav className="space-y-2 px-3 py-8">
+              {currentSidebarItems.map(({ label, icon: Icon, to }) => {
+                const currentPath = location.pathname + location.search;
+
+                const isAddTab = to === "/dashboard?tab=add";
+                const isViewTab = to === "/dashboard?tab=view";
+
+                let isActive = false;
+                if (isAddTab) {
+                  isActive = currentPath === "/dashboard" || currentPath === "/dashboard?tab=add" || currentPath.includes("tab=add");
+                } else if (isViewTab) {
+                  isActive = currentPath.includes("tab=view");
+                } else {
+                  isActive = currentPath === to;
+                }
+
+                const subItems = [
+                  { label: "All Questions", classVal: "all" },
+                  { label: "Class 9", classVal: "Class 9" },
+                  { label: "Class 10", classVal: "Class 10" },
+                  { label: "Class 11", classVal: "Class 11" },
+                  { label: "Class 12", classVal: "Class 12" },
+                ];
+
+                return (
+                  <div key={label} className="space-y-1">
+                    <Link
+                      to={isViewTab ? "/dashboard?tab=view&class=all" : to}
+                      className={`relative flex h-12 items-center gap-3 rounded-md px-4 text-sm font-semibold transition-all ${isActive
+                          ? "bg-primary-50 text-primary-700 dark:bg-primary-950/30 dark:text-primary-400"
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-850 dark:hover:text-slate-200"
+                        }`}
+                    >
+                      {isActive ? <span className="absolute left-0 h-9 w-1 rounded-r-full bg-primary-600" /> : null}
+                      <Icon className="h-5 w-5" />
+                      {label}
+                    </Link>
+
+                    {isViewTab && isActive && (
+                      <div className="pl-6 space-y-1 mt-1">
+                        {subItems.map((sub) => {
+                          const subUrl = `/dashboard?tab=view&class=${encodeURIComponent(sub.classVal)}`;
+                          const isSubActive = searchParams.get("class") === sub.classVal ||
+                            (!searchParams.get("class") && sub.classVal === "all");
+                          return (
+                            <Link
+                              key={sub.label}
+                              to={subUrl}
+                              className={`flex h-9 items-center gap-2 rounded-md px-4 text-xs font-semibold transition-all ${isSubActive
+                                  ? "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                                  : "text-slate-400 hover:bg-slate-50 hover:text-slate-650 dark:text-slate-500 dark:hover:bg-slate-850/50 dark:hover:text-slate-300"
+                                }`}
+                            >
+                              <span className={`h-1.5 w-1.5 rounded-full ${isSubActive ? "bg-primary-600 dark:bg-primary-400 animate-pulse" : "bg-slate-300 dark:bg-slate-700"}`} />
+                              {sub.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </nav>
+          )}
+        </div>
       </aside>
+
+      <Link
+        to="/dashboard"
+        className={`fixed bottom-0 left-0 z-40 transition-all duration-300 flex items-center justify-center cursor-pointer hover:opacity-90 ${
+          navHidden
+            ? "w-[64px] h-[80px] bg-transparent border-t-0 border-r-0"
+            : compactRail
+              ? "w-[64px] h-[80px] bg-white dark:bg-slate-900 border-t border-r border-slate-200 dark:border-slate-850/60"
+              : "w-[252px] h-[80px] bg-white dark:bg-slate-900 border-t border-r border-slate-200 dark:border-slate-850/60 px-7"
+        }`}
+      >
+        <Logo compact={navHidden || compactRail} />
+      </Link>
 
       <header
         className={`fixed right-0 top-0 z-20 flex h-[100px] items-center justify-between border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 px-7 transition-all duration-300 ${navHidden ? "left-0" : compactRail ? "left-0 lg:left-[64px]" : "left-0 lg:left-[252px]"

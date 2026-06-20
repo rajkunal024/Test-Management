@@ -14,6 +14,7 @@ import {
   AttemptPayload,
   User,
   AppNotification,
+  Organization,
 } from "../types";
 import { useAuthStore } from "../store/authStore";
 
@@ -338,5 +339,10 @@ export const uploadProfilePicture = async (formData: FormData): Promise<{ succes
     },
   });
   return data;
+};
+
+export const getMyOrganization = async (): Promise<Organization> => {
+  const { data } = await api.get<ApiEnvelope<Organization> | Organization>("/auth/organization");
+  return unwrap(data);
 };
 

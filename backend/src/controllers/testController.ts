@@ -176,7 +176,8 @@ export const createTest = async (request: IncomingMessage, response: ServerRespo
             message: `A new test '${newTest.name}' is now live! Attempt it before it ends.`,
             type: "test_live",
             test_id: newTest.id,
-            test_name: newTest.name
+            test_name: newTest.name,
+            organization_id: newTest.organization_id || student.organization_id
           });
         }
       } catch (err) {
@@ -184,8 +185,9 @@ export const createTest = async (request: IncomingMessage, response: ServerRespo
       }
     }
     json(response, 201, { success: true, data: newTest });
-  } catch (e) {
-    json(response, 400, { success: false, message: "Invalid JSON body" });
+  } catch (e: any) {
+    console.error("Error in createTest:", e);
+    json(response, 400, { success: false, message: e.message || "Invalid JSON body" });
   }
 };
 
@@ -297,7 +299,8 @@ export const updateTest = async (request: IncomingMessage, response: ServerRespo
               message: `A new test '${test.name}' is now live! Attempt it before it ends.`,
               type: "test_live",
               test_id: test.id,
-              test_name: test.name
+              test_name: test.name,
+              organization_id: test.organization_id || student.organization_id
             });
           }
         } catch (err) {
@@ -308,8 +311,9 @@ export const updateTest = async (request: IncomingMessage, response: ServerRespo
     } else {
       json(response, 404, { success: false, message: "Test not found" });
     }
-  } catch (e) {
-    json(response, 400, { success: false, message: "Invalid JSON body" });
+  } catch (e: any) {
+    console.error("Error in updateTest:", e);
+    json(response, 400, { success: false, message: e.message || "Invalid JSON body" });
   }
 };
 
@@ -654,7 +658,8 @@ export const bulkCreateTestFromCsv = async (request: IncomingMessage, response: 
             message: `A new test '${newTest.name}' is now live! Attempt it before it ends.`,
             type: "test_live",
             test_id: newTest.id,
-            test_name: newTest.name
+            test_name: newTest.name,
+            organization_id: newTest.organization_id || student.organization_id
           });
         }
       } catch (err) {

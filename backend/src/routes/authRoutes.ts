@@ -35,5 +35,20 @@ export const handleAuthRoutes = async (request: IncomingMessage, response: Serve
     await uploadProfilePicture(request, response);
     return;
   }
+  if (path === "/api/auth/organization" && method === "GET") {
+    const req = request as any;
+    const { OrganizationModel } = await import("../models/index.js");
+    const org = await OrganizationModel.findOne({ id: req.organization_id });
+    json(response, 200, {
+      success: true,
+      data: {
+        id: org?.id,
+        name: org?.name,
+        logo: org?.logo,
+        securityFeatures: org?.securityFeatures
+      }
+    });
+    return;
+  }
   json(response, 404, { success: false, message: "Auth route not found" });
 };

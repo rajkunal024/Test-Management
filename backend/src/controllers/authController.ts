@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from "node:http";
 import { json, readBody, readBodyBuffer } from "../middlewares/utils.js";
-import { AdminModel, TeacherModel, StudentModel } from "../models/index.js";
+import { AdminModel, TeacherModel, StudentModel, OrganizationModel } from "../models/index.js";
 import { hashPassword, verifyPassword, signToken } from "../utils/crypto.js";
 import { getUserFromRequest } from "../middlewares/auth.js";
 import bcrypt from "bcryptjs";
@@ -10,26 +10,29 @@ import { ImageKit } from "@imagekit/nodejs";
 export const signupAdmin = async (request: IncomingMessage, response: ServerResponse) => {
   try {
     const body = JSON.parse(await readBody(request));
-    const { userId, password, name, signupKey, email } = body;
+    const { userId, password, name, signupKey } = body;
 
     if (!userId || !password || !name || !signupKey) {
       json(response, 400, { success: false, message: "All fields are required" });
       return;
     }
 
-    const expectedKey = process.env.ADMIN_SIGNUP_KEY ?? "roar";
-    if (signupKey !== expectedKey) {
-      json(response, 400, { success: false, message: "Invalid Admin Registration Key" });
+    // Lookup organization by tenant code (signupKey)
+    const orgCodeUpper = signupKey.toUpperCase().trim();
+    const org = await OrganizationModel.findOne({ code: orgCodeUpper });
+    if (!org) {
+      json(response, 400, { success: false, message: "Invalid Tenant Code or Organization not found" });
       return;
     }
 
-    const namePrefix = name.toLowerCase().replace(/\s+/g, "");
-    const normalizedEmail = (email || (namePrefix.includes("@") ? namePrefix : `${namePrefix}@parikshya.admin.com`)).toLowerCase();
-    const existingAdmin = await AdminModel.findOne({
-      $or: [{ userId }, { email: normalizedEmail }]
-    });
+    const orgName = org.name.toLowerCase().replace(/\s+/g, "");
+    const userName = name.toLowerCase().replace(/\s+/g, "");
+    const generatedEmail = `${userName}@${orgName}.admin.com`;
+
+    // Check if an Admin with this generated email already exists
+    const existingAdmin = await AdminModel.findOne({ email: generatedEmail });
     if (existingAdmin) {
-      json(response, 400, { success: false, message: "Admin with this User ID or Email already exists" });
+      json(response, 400, { success: false, message: "Admin user already exists in this organization" });
       return;
     }
 
@@ -37,10 +40,12 @@ export const signupAdmin = async (request: IncomingMessage, response: ServerResp
       userId,
       password: hashPassword(password),
       name,
-      email: normalizedEmail,
-      role: "Admin"
+      email: generatedEmail,
+      role: "Admin",
+      organization_id: org.id
     });
     await newAdmin.save();
+
 
     json(response, 201, {
       success: true,
@@ -68,7 +73,13 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
         $or: [{ userId }, { email: userId }]
       });
       if (admin && verifyPassword(password, admin.password)) {
-        const token = signToken({ id: admin.id, userId: admin.userId, role: "Admin" }, secret);
+        // Validate organization status
+        const org = await OrganizationModel.findOne({ id: admin.organization_id });
+        if (!org || org.status !== "Active") {
+          json(response, 403, { success: false, message: "Organization account is deactivated. Please contact support." });
+          return;
+        }
+        const token = signToken({ id: admin.id, userId: admin.userId, role: "Admin", organization_id: admin.organization_id }, secret);
         json(
           response,
           200,
@@ -76,7 +87,18 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { id: admin.id, name: admin.name, userId: admin.userId, role: "Admin", email: admin.email, requiresPasswordChange: admin.requiresPasswordChange, profilePicture: admin.profilePicture }
+              user: { 
+                id: admin.id, 
+                name: admin.name, 
+                userId: admin.userId, 
+                role: "Admin", 
+                email: admin.email, 
+                requiresPasswordChange: admin.requiresPasswordChange, 
+                profilePicture: admin.profilePicture, 
+                organization_id: admin.organization_id,
+                organizationName: org?.name,
+                organizationLogo: org?.logo
+              }
             }
           },
           {
@@ -92,7 +114,13 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
         $or: [{ userId }, { email: userId }]
       });
       if (teacher && verifyPassword(password, teacher.password)) {
-        const token = signToken({ id: teacher.id, userId: teacher.userId, role: "Teacher" }, secret);
+        // Validate organization status
+        const org = await OrganizationModel.findOne({ id: teacher.organization_id });
+        if (!org || org.status !== "Active") {
+          json(response, 403, { success: false, message: "Organization account is deactivated. Please contact support." });
+          return;
+        }
+        const token = signToken({ id: teacher.id, userId: teacher.userId, role: "Teacher", organization_id: teacher.organization_id }, secret);
         json(
           response,
           200,
@@ -100,7 +128,21 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { id: teacher.id, name: teacher.name, userId: teacher.userId, role: "Teacher", subject: teacher.subject, gender: teacher.gender, email: teacher.email, dob: teacher.dob, requiresPasswordChange: teacher.requiresPasswordChange, profilePicture: teacher.profilePicture }
+              user: { 
+                id: teacher.id, 
+                name: teacher.name, 
+                userId: teacher.userId, 
+                role: "Teacher", 
+                subject: teacher.subject, 
+                gender: teacher.gender, 
+                email: teacher.email, 
+                dob: teacher.dob, 
+                requiresPasswordChange: teacher.requiresPasswordChange, 
+                profilePicture: teacher.profilePicture, 
+                organization_id: teacher.organization_id,
+                organizationName: org?.name,
+                organizationLogo: org?.logo
+              }
             }
           },
           {
@@ -116,7 +158,13 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
         $or: [{ userId }, { email: userId }]
       });
       if (student && verifyPassword(password, student.password)) {
-        const token = signToken({ id: student.id, userId: student.userId, role: "Student" }, secret);
+        // Validate organization status
+        const org = await OrganizationModel.findOne({ id: student.organization_id });
+        if (!org || org.status !== "Active") {
+          json(response, 403, { success: false, message: "Organization account is deactivated. Please contact support." });
+          return;
+        }
+        const token = signToken({ id: student.id, userId: student.userId, role: "Student", organization_id: student.organization_id }, secret);
         json(
           response,
           200,
@@ -124,7 +172,22 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-            user: { id: student.id, name: student.name, userId: student.userId, role: "Student", email: student.email, dob: student.dob, class: student.class || "Class 10", gender: student.gender, requiresPasswordChange: student.requiresPasswordChange, profilePicture: student.profilePicture, joined_at: (student.toObject({ defaults: false } as any) as any).joined_at || student._id.getTimestamp() }
+              user: { 
+                id: student.id, 
+                name: student.name, 
+                userId: student.userId, 
+                role: "Student", 
+                email: student.email, 
+                dob: student.dob, 
+                class: student.class || "Class 10", 
+                gender: student.gender, 
+                requiresPasswordChange: student.requiresPasswordChange, 
+                profilePicture: student.profilePicture, 
+                joined_at: (student.toObject({ defaults: false } as any) as any).joined_at || student._id.getTimestamp(), 
+                organization_id: student.organization_id,
+                organizationName: org?.name,
+                organizationLogo: org?.logo
+              }
             }
           },
           {

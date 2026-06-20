@@ -378,9 +378,9 @@ export const LoginPage = () => {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                 />
-                <PasswordInput
-                  label="SIGNUP SECURITY KEY"
-                  placeholder="Enter registration key"
+                <Input
+                  label="ORGANIZATION TENANT CODE"
+                  placeholder="Enter Tenant Code (e.g. ABC)"
                   className="focus:border-amber-500 focus:ring-amber-100/50 focus:ring-3 focus:ring-amber-500/10"
                   value={adminKey}
                   onChange={(event) => setAdminKey(event.target.value)}

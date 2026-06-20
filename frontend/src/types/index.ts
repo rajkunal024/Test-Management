@@ -12,6 +12,8 @@ export interface User {
   requiresPasswordChange?: boolean;
   joined_at?: string;
   profilePicture?: string;
+  organizationName?: string;
+  organizationLogo?: string;
 }
 
 export interface LoginRequest {
@@ -193,4 +195,28 @@ export interface AppNotification {
   test_name: string;
   read: boolean;
   created_at: string;
+}
+
+export interface OrganizationFeatures {
+  cameraMonitoring?: boolean;
+  microphoneMonitoring?: boolean;
+  fullscreenMode?: boolean;
+  tabSwitchingDetection?: boolean;
+  screenSharingDetection?: boolean;
+  copyPasteDisabled?: boolean;
+  rightClickDisabled?: boolean;
+  developerToolsDetection?: boolean;
+  multipleMonitorDetection?: boolean;
+  faceDetection?: boolean;
+  browserLock?: boolean;
+  autoSave?: boolean;
+  screenRecordingDetection?: boolean;
+  printDisabled?: boolean;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  logo?: string;
+  securityFeatures?: Record<string, boolean> | OrganizationFeatures;
 }

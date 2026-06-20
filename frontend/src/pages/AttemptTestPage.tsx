@@ -19,7 +19,7 @@ import {
   Check,
 } from "lucide-react";
 import { useTest } from "../hooks/useTests";
-import { fetchBulkQuestions, submitAttempt, getAllAttempts, uploadStreamFrame, getPassageById } from "../services/api";
+import { fetchBulkQuestions, submitAttempt, getAllAttempts, uploadStreamFrame, getPassageById, getMyOrganization } from "../services/api";
 import { Button } from "../components/ui/Button";
 import { Spinner } from "../components/ui/Spinner";
 import { Badge } from "../components/ui/Badge";
@@ -92,6 +92,12 @@ export const AttemptTestPage = () => {
   const user = useAuthStore((state) => state.user);
   const { id = "" } = useParams();
   const navigate = useNavigate();
+
+  const { data: orgData } = useQuery({
+    queryKey: ["myOrganization"],
+    queryFn: getMyOrganization,
+    enabled: Boolean(user?.userId),
+  });
 
   // Pre-Test Environment Check States
   const [envChecked, setEnvChecked] = useState(false);
@@ -174,6 +180,7 @@ export const AttemptTestPage = () => {
   const hiddenVideoRef = useRef<HTMLVideoElement | null>(null);
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const proctorCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const navigatorSidebarRef = useRef<HTMLElement | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -258,44 +265,66 @@ export const AttemptTestPage = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  useEffect(() => {
-    if (!envChecked) return;
-    let activeStream: MediaStream | null = null;
+  const proctorStartedRef = useRef(false);
 
-    const startProctoring = async () => {
+  const startProctoring = async () => {
+    if (orgData && orgData.securityFeatures?.cameraMonitoring === false) {
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error("MediaDevices or getUserMedia is not supported in this context.");
+      setStreamError(true);
+      return;
+    }
+    try {
+      let stream: MediaStream;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           video: { width: 320, height: 240 },
           audio: true,
         });
-        activeStream = stream;
-        setCameraStream(stream);
-        setHasVideo(stream.getVideoTracks().length > 0);
-        setHasAudio(stream.getAudioTracks().length > 0);
-        setStreamError(false);
-
-        if (hiddenVideoRef.current) {
-          hiddenVideoRef.current.srcObject = stream;
-          hiddenVideoRef.current.play().catch((e) => console.error("Hidden video play error:", e));
-        }
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch((e) => console.error("Video play error:", e));
-        }
       } catch (err) {
-        console.error("Proctoring connection error:", err);
-        setStreamError(true);
+        console.warn("Failed to get video and audio, retrying with video only...", err);
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 320, height: 240 },
+          audio: false,
+        });
       }
-    };
+      cameraStreamRef.current = stream;
+      setCameraStream(stream);
+      setHasVideo(stream.getVideoTracks().length > 0);
+      setHasAudio(stream.getAudioTracks().length > 0);
+      setStreamError(false);
 
-    startProctoring();
+      if (hiddenVideoRef.current) {
+        hiddenVideoRef.current.srcObject = stream;
+        hiddenVideoRef.current.play().catch((e) => console.error("Hidden video play error:", e));
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch((e) => console.error("Video play error:", e));
+      }
+    } catch (err) {
+      console.error("Proctoring connection error:", err);
+      setStreamError(true);
+    }
+  };
+
+  useEffect(() => {
+    if (orgData === undefined) return;
+    if (proctorStartedRef.current) return;
+
+    if (orgData?.securityFeatures?.cameraMonitoring !== false) {
+      proctorStartedRef.current = true;
+      startProctoring();
+    }
 
     return () => {
-      if (activeStream) {
-        activeStream.getTracks().forEach((track) => track.stop());
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [envChecked]);
+  }, [orgData]);
 
   useEffect(() => {
     if (cameraStream) {
@@ -308,7 +337,7 @@ export const AttemptTestPage = () => {
         videoRef.current.play().catch((e) => console.error("Video play error:", e));
       }
     }
-  }, [cameraStream, showProctorFeed]);
+  }, [cameraStream, showProctorFeed, envChecked]);
 
   useEffect(() => {
     if (screenStream && screenVideoRef.current && screenVideoRef.current.srcObject !== screenStream) {
@@ -319,7 +348,17 @@ export const AttemptTestPage = () => {
 
   // Periodic stream frame upload with WebSockets and HTTP fallback
   useEffect(() => {
-    if (!envChecked || !cameraStream || !user) return;
+    if (!envChecked || !user) return;
+
+    const isCameraEnabled = orgData?.securityFeatures?.cameraMonitoring !== false;
+    const isScreenEnabled = orgData?.securityFeatures?.screenSharingDetection !== false;
+
+    // If neither is enabled, we don't upload frames
+    if (!isCameraEnabled && !isScreenEnabled) return;
+
+    // If a feature is enabled, wait until its stream is ready
+    if (isCameraEnabled && !cameraStream) return;
+    if (isScreenEnabled && !screenStream) return;
 
     let ws: WebSocket | null = null;
     let fallbackInterval: NodeJS.Timeout | null = null;
@@ -486,7 +525,7 @@ export const AttemptTestPage = () => {
         clearInterval(fallbackInterval);
       }
     };
-  }, [cameraStream, screenStream, id, user, hasVideo, hasAudio, envChecked]);
+  }, [cameraStream, screenStream, id, user, hasVideo, hasAudio, envChecked, orgData]);
 
   // AI Proctoring Canvas Overlay Loop
   useEffect(() => {
@@ -612,10 +651,17 @@ export const AttemptTestPage = () => {
       e.preventDefault();
     };
 
-    document.addEventListener("copy", preventAction);
-    document.addEventListener("cut", preventAction);
-    document.addEventListener("paste", preventAction);
-    document.addEventListener("contextmenu", preventAction);
+    const isCopyPasteDisabled = orgData?.securityFeatures?.copyPasteDisabled !== false;
+    const isRightClickDisabled = orgData?.securityFeatures?.rightClickDisabled !== false;
+
+    if (isCopyPasteDisabled) {
+      document.addEventListener("copy", preventAction);
+      document.addEventListener("cut", preventAction);
+      document.addEventListener("paste", preventAction);
+    }
+    if (isRightClickDisabled) {
+      document.addEventListener("contextmenu", preventAction);
+    }
 
     return () => {
       document.removeEventListener("copy", preventAction);
@@ -623,7 +669,7 @@ export const AttemptTestPage = () => {
       document.removeEventListener("paste", preventAction);
       document.removeEventListener("contextmenu", preventAction);
     };
-  }, []);
+  }, [orgData]);
 
   // Monitor tab switching / window blurring (visibility changes and window focus/blur)
   const tabSwitchesRef = useRef(0);
@@ -633,6 +679,8 @@ export const AttemptTestPage = () => {
 
   useEffect(() => {
     if (!envChecked) return;
+    if (orgData?.securityFeatures?.tabSwitchingDetection === false) return;
+
     const handleTabAway = () => {
       if (!isTabOutRef.current) {
         isTabOutRef.current = true;
@@ -673,7 +721,7 @@ export const AttemptTestPage = () => {
       window.removeEventListener("blur", handleWindowBlur);
       window.removeEventListener("focus", handleWindowFocus);
     };
-  }, [envChecked]);
+  }, [envChecked, orgData]);
 
   useEffect(() => {
     if (warningMessage) {
@@ -695,6 +743,7 @@ export const AttemptTestPage = () => {
     queryFn: getAllAttempts,
     enabled: Boolean(user?.userId),
   });
+
 
   useEffect(() => {
     if (user && attempts.some(a => a.test_id === id && a.user_id === user.userId)) {
@@ -1212,8 +1261,15 @@ export const AttemptTestPage = () => {
   }  const checks = [
     { name: "Internet Connection", passed: isOnline, label: isOnline ? "Connected to Internet" : "No Internet Connection" },
     { name: "Screen Resolution", passed: isScreenSizeOk, label: isScreenSizeOk ? "Desktop/Tablet OK" : "Screen Width too small (<768px)" },
-    { name: "Fullscreen Mode", passed: isFullscreen, label: isFullscreen ? "Fullscreen Enabled" : "Fullscreen Required" },
-    { name: "Screen Sharing", passed: Boolean(screenStream), label: screenStream ? "Screen Sharing Authorized" : "Screen Sharing Required" },
+    ...(orgData?.securityFeatures?.fullscreenMode !== false
+      ? [{ name: "Fullscreen Mode", passed: isFullscreen, label: isFullscreen ? "Fullscreen Enabled" : "Fullscreen Required" }]
+      : []),
+    ...(orgData?.securityFeatures?.screenSharingDetection !== false
+      ? [{ name: "Screen Sharing", passed: Boolean(screenStream), label: screenStream ? "Screen Sharing Authorized" : "Screen Sharing Required" }]
+      : []),
+    ...(orgData?.securityFeatures?.cameraMonitoring !== false
+      ? [{ name: "Camera Verification", passed: Boolean(cameraStream) && !streamError, label: cameraStream && !streamError ? "Camera Active" : "Camera Access Required" }]
+      : []),
     { name: "Resources Loaded", passed: resourcesLoaded, label: resourcesLoaded ? "Questions & Assets Preloaded" : "Preloading exam assets..." },
     { name: "Instructions Accepted", passed: acknowledged, label: acknowledged ? "Rules Acknowledged" : "Instructions Not Accepted" },
   ];
@@ -1330,53 +1386,83 @@ export const AttemptTestPage = () => {
                   </span>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isFullscreen ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
-                      {isFullscreen ? "✓" : "⚠"}
-                    </span>
-                    <div>
-                      <span className="text-xs font-bold text-slate-700 block">Fullscreen Mode</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">
-                        {isFullscreen ? "Secure assessment view enabled" : "Fullscreen mode is required to start the exam"}
+                {orgData?.securityFeatures?.fullscreenMode !== false && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isFullscreen ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                        {isFullscreen ? "✓" : "⚠"}
                       </span>
+                      <div>
+                        <span className="text-xs font-bold text-slate-700 block">Fullscreen Mode</span>
+                        <span className="text-[10px] text-slate-400 font-semibold">
+                          {isFullscreen ? "Secure assessment view enabled" : "Fullscreen mode is required to start the exam"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isFullscreen ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                        {isFullscreen ? "Enabled" : "Required"}
+                      </span>
+                      {!isFullscreen && (
+                        <Button onClick={enterFullscreen} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 py-0 px-3 font-semibold">
+                          Enter Fullscreen
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isFullscreen ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
-                      {isFullscreen ? "Enabled" : "Required"}
-                    </span>
-                    {!isFullscreen && (
-                      <Button onClick={enterFullscreen} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 py-0 px-3 font-semibold">
-                        Enter Fullscreen
-                      </Button>
-                    )}
-                  </div>
-                </div>
+                )}
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${screenStream ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
-                      {screenStream ? "✓" : "⚠"}
-                    </span>
-                    <div>
-                      <span className="text-xs font-bold text-slate-700 block">Screen Sharing Authorization</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">
-                        {screenStream ? "Active screen capture relayed to proctors" : "Screen sharing is required to start the exam"}
+                {orgData?.securityFeatures?.screenSharingDetection !== false && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${screenStream ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                        {screenStream ? "✓" : "⚠"}
                       </span>
+                      <div>
+                        <span className="text-xs font-bold text-slate-700 block">Screen Sharing Authorization</span>
+                        <span className="text-[10px] text-slate-400 font-semibold">
+                          {screenStream ? "Active screen capture relayed to proctors" : "Screen sharing is required to start the exam"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${screenStream ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                        {screenStream ? "Authorized" : "Required"}
+                      </span>
+                      {!screenStream && (
+                        <Button onClick={handleAuthorizeScreenSharing} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 py-0 px-3 font-semibold">
+                          Authorize Screen Sharing
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${screenStream ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
-                      {screenStream ? "Authorized" : "Required"}
-                    </span>
-                    {!screenStream && (
-                      <Button onClick={handleAuthorizeScreenSharing} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 py-0 px-3 font-semibold">
-                        Authorize Screen Sharing
-                      </Button>
-                    )}
+                )}
+
+                {orgData?.securityFeatures?.cameraMonitoring !== false && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${cameraStream && !streamError ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                        {cameraStream && !streamError ? "✓" : "⚠"}
+                      </span>
+                      <div>
+                        <span className="text-xs font-bold text-slate-700 block">Camera Verification</span>
+                        <span className="text-[10px] text-slate-400 font-semibold">
+                          {cameraStream && !streamError ? "Camera feed verified and active" : "Camera permission and stream are required to start the exam"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${cameraStream && !streamError ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                        {cameraStream && !streamError ? "Active" : "Required"}
+                      </span>
+                      {(!cameraStream || streamError) && (
+                        <Button onClick={startProctoring} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 py-0 px-3 font-semibold">
+                          Enable Camera
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
                   <div className="flex items-center gap-3">
@@ -1466,15 +1552,16 @@ export const AttemptTestPage = () => {
               </ul>
 
               <div className="border-t border-slate-700 pt-4 mt-6">
-                <label className="flex items-start gap-3 cursor-pointer group">
+                <label className={`flex items-start gap-3 group ${(orgData?.securityFeatures?.cameraMonitoring !== false && (!cameraStream || streamError)) ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
                   <input
                     type="checkbox"
                     checked={acknowledged}
                     onChange={(e) => setAcknowledged(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-700 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-800"
+                    disabled={orgData?.securityFeatures?.cameraMonitoring !== false && (!cameraStream || streamError)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-700 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <span className="text-xs text-slate-300 group-hover:text-white transition duration-150 leading-relaxed font-semibold">
-                    I have read and understood all exam instructions.
+                    I have read and understood all exam instructions. {orgData?.securityFeatures?.cameraMonitoring !== false && (!cameraStream || streamError) && <span className="text-indigo-400 font-bold block mt-1">(Please enable and verify camera access first)</span>}
                   </span>
                 </label>
               </div>
@@ -1510,6 +1597,24 @@ export const AttemptTestPage = () => {
             </section>
           </div>
         </main>
+
+        {/* Hidden video element to keep the camera stream alive during setup */}
+        <video
+          ref={hiddenVideoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{
+            position: "fixed",
+            width: "4px",
+            height: "4px",
+            opacity: 0.01,
+            pointerEvents: "none",
+            bottom: "10px",
+            right: "10px",
+            zIndex: -9999
+          }}
+        />
       </div>
     );
   }
@@ -1587,47 +1692,49 @@ export const AttemptTestPage = () => {
             </button>
 
             {showProctorFeed && (
-              <div className="absolute right-0 mt-3 w-[560px] max-w-[90vw] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-2xl z-50 flex flex-col md:flex-row gap-5">
+              <div className={`absolute right-0 mt-3 ${orgData?.securityFeatures?.cameraMonitoring !== false ? "w-[560px]" : "w-[320px]"} max-w-[90vw] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-2xl z-50 flex flex-col ${orgData?.securityFeatures?.cameraMonitoring !== false ? "md:flex-row" : ""} gap-5`}>
                 {/* Left: Video feed */}
-                <div className="w-full md:w-1/2 flex flex-col">
-                  <h5 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
-                    Live Camera Monitor
-                  </h5>
-                  <div className="relative aspect-video w-full rounded-xl bg-slate-950 overflow-hidden shadow-inner border border-slate-200 dark:border-slate-800 flex items-center justify-center">
-                    {streamError ? (
-                      <div className="text-center p-3 text-rose-500">
-                        <AlertTriangle className="h-7 w-7 mx-auto mb-1 text-rose-500" />
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-rose-500">Device Blocked</p>
-                      </div>
-                    ) : !cameraStream ? (
-                      <div className="text-center text-slate-400">
-                        <Spinner />
-                        <p className="text-[9px] font-bold mt-1.5">Connecting Camera...</p>
-                      </div>
-                    ) : (
-                      <div className="relative w-full h-full">
-                        <video
-                          ref={videoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          className="w-full h-full object-cover scale-x-[-1]"
-                        />
-                        <canvas
-                          ref={proctorCanvasRef}
-                          className="absolute inset-0 w-full h-full pointer-events-none"
-                        />
-                      </div>
-                    )}
+                {orgData?.securityFeatures?.cameraMonitoring !== false && (
+                  <div className="w-full md:w-1/2 flex flex-col">
+                    <h5 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+                      Live Camera Monitor
+                    </h5>
+                    <div className="relative aspect-video w-full rounded-xl bg-slate-950 overflow-hidden shadow-inner border border-slate-200 dark:border-slate-800 flex items-center justify-center">
+                      {streamError ? (
+                        <div className="text-center p-3 text-rose-500">
+                          <AlertTriangle className="h-7 w-7 mx-auto mb-1 text-rose-500" />
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-rose-500">Device Blocked</p>
+                        </div>
+                      ) : !cameraStream ? (
+                        <div className="text-center text-slate-400">
+                          <Spinner />
+                          <p className="text-[9px] font-bold mt-1.5">Connecting Camera...</p>
+                        </div>
+                      ) : (
+                        <div className="relative w-full h-full">
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="w-full h-full object-cover scale-x-[-1]"
+                          />
+                          <canvas
+                            ref={proctorCanvasRef}
+                            className="absolute inset-0 w-full h-full pointer-events-none"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-2 text-[9px] text-slate-500 dark:text-slate-450 leading-relaxed font-semibold">
+                      Live device monitoring is active. Do not block the camera lens or exit fullscreen view.
+                    </div>
                   </div>
-                  <div className="mt-2 text-[9px] text-slate-500 dark:text-slate-450 leading-relaxed font-semibold">
-                    Live device monitoring is active. Do not block the camera lens or exit fullscreen view.
-                  </div>
-                </div>
+                )}
 
                 {/* Right: Messages list */}
-                <div className="w-full md:w-1/2 flex flex-col border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800 pt-4 md:pt-0 md:pl-5">
+                <div className={`w-full ${orgData?.securityFeatures?.cameraMonitoring !== false ? "md:w-1/2 border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800 pt-4 md:pt-0 md:pl-5" : "pt-0"} flex flex-col`}>
                   <h5 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
                     Proctor Support Chat
                   </h5>
@@ -2095,7 +2202,7 @@ export const AttemptTestPage = () => {
 
       {/* Fullscreen Violation Modal */}
       <Modal
-        open={fullscreenWarningOpen}
+        open={orgData?.securityFeatures?.fullscreenMode !== false && fullscreenWarningOpen}
         title="Fullscreen Warning"
         onClose={() => {}} // Cannot close unless they re-enter fullscreen
         footer={
@@ -2189,7 +2296,7 @@ export const AttemptTestPage = () => {
       </Modal>
 
       {/* Screen share violation overlay */}
-      {isScreenStoppedMidTest && (
+      {orgData?.securityFeatures?.screenSharingDetection !== false && isScreenStoppedMidTest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6">
           <div className="text-center max-w-md rounded-2xl border-2 border-rose-500 bg-white dark:bg-slate-900 p-8 shadow-2xl space-y-6">
             <AlertTriangle className="h-16 w-16 text-rose-500 mx-auto animate-bounce" />

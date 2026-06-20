@@ -39,7 +39,8 @@ export const startUpcomingNotificationJob = () => {
                 message: `Upcoming test '${test.name}' will start in 5 minutes.`,
                 type: "test_upcoming",
                 test_id: test.id,
-                test_name: test.name
+                test_name: test.name,
+                organization_id: test.organization_id || student.organization_id
               });
             }
           }
@@ -68,7 +69,8 @@ export const startUpcomingNotificationJob = () => {
                 message: `Upcoming test '${test.name}' starts in 2 minutes. Get ready!`,
                 type: "test_live",
                 test_id: test.id,
-                test_name: test.name
+                test_name: test.name,
+                organization_id: test.organization_id || student.organization_id
               });
             }
           }

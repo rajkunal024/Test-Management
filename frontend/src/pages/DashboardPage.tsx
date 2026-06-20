@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Pencil, Plus, Search, Trash2, Users, UserPlus, Sparkles, BookOpen, ClipboardList, GraduationCap, FileSpreadsheet, ChevronLeft } from "lucide-react";
+import { Pencil, Plus, Search, Trash2, Users, UserPlus, Sparkles, BookOpen, ClipboardList, GraduationCap, FileSpreadsheet, ChevronLeft, ShieldCheck, Check } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -9,12 +9,29 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Modal } from "../components/ui/Modal";
 import { Spinner } from "../components/ui/Spinner";
-import { deleteTest, getErrorMessage, getAdminUsers, registerUser, getSubjects, createSubject, bulkRegisterUsers } from "../services/api";
+import { deleteTest, getErrorMessage, getAdminUsers, registerUser, getSubjects, createSubject, bulkRegisterUsers, getMyOrganization } from "../services/api";
 import { useTests } from "../hooks/useTests";
 import { Test } from "../types";
 import { useAuthStore } from "../store/authStore";
 import { StudentDashboard } from "./StudentDashboard";
 import { TeacherDashboard } from "./TeacherDashboard";
+
+const FEATURE_LABELS: Record<string, string> = {
+  cameraMonitoring: "Camera Monitoring",
+  microphoneMonitoring: "Microphone Monitoring",
+  fullscreenMode: "Strict Fullscreen Mode",
+  tabSwitchingDetection: "Tab Switching Detection",
+  screenSharingDetection: "Screen Sharing Interception",
+  copyPasteDisabled: "Disable Copy-Paste",
+  rightClickDisabled: "Disable Right Click",
+  developerToolsDetection: "Developer Tools Detection",
+  multipleMonitorDetection: "Multiple Monitor Detection",
+  faceDetection: "Face Detection",
+  browserLock: "Browser Lock",
+  autoSave: "Auto-Save Progress",
+  screenRecordingDetection: "Screen Recording Detection",
+  printDisabled: "Disable Printing",
+};
 
 export const DashboardPage = () => {
   const user = useAuthStore((state) => state.user);
@@ -28,11 +45,16 @@ export const DashboardPage = () => {
   }
 
   const { data: tests = [], isLoading, error } = useTests();
+  const { data: orgData } = useQuery({
+    queryKey: ["myOrganization"],
+    queryFn: getMyOrganization,
+    enabled: user?.role === "Admin",
+  });
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState<Test | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"tests" | "users">("tests");
+  const [activeTab, setActiveTab] = useState<"tests" | "users" | "features">("tests");
 
   // Admin User Directory states
   const [userSearch, setUserSearch] = useState("");
@@ -509,6 +531,15 @@ export const DashboardPage = () => {
             >
               User Accounts
             </button>
+            <button
+              onClick={() => setActiveTab("features")}
+              className={`py-2 px-6 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === "features"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-800/50"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
+                }`}
+            >
+              Organization Features
+            </button>
           </div>
           
           <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium bg-slate-50 dark:bg-slate-900/30 px-3.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800/50">
@@ -517,7 +548,7 @@ export const DashboardPage = () => {
           </div>
         </div>
 
-        {activeTab === "tests" ? (
+        {activeTab === "tests" && (
           <>
             <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
@@ -714,7 +745,9 @@ export const DashboardPage = () => {
               </table>
             </section>
           </>
-        ) : (
+        )}
+
+        {activeTab === "users" && (
           <>
             <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
@@ -894,6 +927,111 @@ export const DashboardPage = () => {
               </table>
             </section>
           </>
+        )}
+
+        {/* Organization Features View */}
+        {activeTab === "features" && (
+          <div className="space-y-6 animate-fade-in text-slate-700 dark:text-slate-300">
+            <div className="mb-6">
+              <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                <ShieldCheck className="h-6 w-6 text-indigo-500 animate-pulse" />
+                Organization Settings & Security Policies
+              </h2>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                View your organization profile and active security features configured by the Parikshya Administrator.
+              </p>
+            </div>
+
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+              {/* Profile Card */}
+              <div className="lg:col-span-1 p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-6 flex flex-col items-center text-center">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-extrabold text-3xl shadow-md overflow-hidden shrink-0">
+                  {orgData?.logo ? (
+                    <img src={orgData.logo} alt={orgData.name} className="w-full h-full object-contain p-2" />
+                  ) : (
+                    (orgData?.name || "O").slice(0, 2).toUpperCase()
+                  )}
+                </div>
+
+                <div className="space-y-1 w-full">
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white truncate">
+                    {orgData?.name || "Loading..."}
+                  </h3>
+                  <span className="inline-block px-3 py-1 rounded bg-indigo-500/10 text-indigo-600 dark:text-[#818CF8] text-xs font-mono font-bold uppercase border border-indigo-500/10">
+                    ID: {orgData?.id || "N/A"}
+                  </span>
+                </div>
+
+                <div className="w-full border-t border-slate-100 dark:border-slate-800/80 pt-4 space-y-3.5 text-left text-xs text-slate-650 dark:text-slate-400 font-medium">
+                  <div>
+                    <span className="block text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">
+                      Organization Name
+                    </span>
+                    <span className="text-slate-850 dark:text-slate-200 font-bold">{orgData?.name || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">
+                      Contact Email
+                    </span>
+                    <span className="text-slate-850 dark:text-slate-200 font-bold">admin@examportal.com</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">
+                      Status
+                    </span>
+                    <Badge tone="green" className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                      Active
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Features Card */}
+              <div className="lg:col-span-2 p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-4 pb-2 border-b border-slate-150 dark:border-slate-800">
+                  Enforced Proctoring & Security Policy
+                </h3>
+                <p className="text-xs text-slate-550 dark:text-slate-400 mb-6 leading-relaxed">
+                  The following proctoring rules and browser restrictions are active for all examinations in this workspace. These values are read-only and governed by platform security configurations.
+                </p>
+
+                <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2">
+                  {orgData?.securityFeatures ? (
+                    Object.entries(orgData.securityFeatures).map(([key, enabled]) => {
+                      const label = FEATURE_LABELS[key] || key;
+                      return (
+                        <div
+                          key={key}
+                          className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
+                            enabled
+                              ? "bg-emerald-500/5 dark:bg-emerald-950/10 border-emerald-200/50 dark:border-emerald-900/20 text-slate-700 dark:text-slate-300 font-bold"
+                              : "bg-slate-50/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-850/65 text-slate-450 dark:text-slate-555 opacity-70"
+                          }`}
+                        >
+                          <span className="text-xs font-bold font-title">{label}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {enabled ? (
+                              <Badge tone="green" className="px-2 py-0.5 rounded font-bold text-[10px] uppercase">
+                                Active
+                              </Badge>
+                            ) : (
+                              <Badge tone="slate" className="px-2 py-0.5 rounded font-bold text-[10px] uppercase">
+                                Inactive
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="col-span-2 text-center py-8 text-slate-400 dark:text-slate-500 text-xs">
+                      Loading security features...
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Delete Test Modal */}

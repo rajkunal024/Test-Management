@@ -42,6 +42,7 @@ import {
   getAllPassages,
   createPassage,
   updatePassage,
+  getMyOrganization,
 } from "../services/api";
 import { useSubTopics, useTopics } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
@@ -73,6 +74,11 @@ export const TeacherDashboard = () => {
   const queryClient = useQueryClient();
 
   // Queries
+  const { data: orgData } = useQuery({
+    queryKey: ["myOrganization"],
+    queryFn: getMyOrganization,
+    enabled: Boolean(user?.userId),
+  });
   const { data: subjects = [] } = useQuery({ queryKey: ["subjects"], queryFn: getSubjects });
   const { data: allQuestions = [], isLoading: isLoadingQuestions } = useQuery({
     queryKey: ["questions"],
@@ -2678,30 +2684,54 @@ export const TeacherDashboard = () => {
                         onClick={() => setSelectedMonitorStudent(stream.user_id)}
                         className="cursor-pointer overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900 shadow-sm relative aspect-video flex flex-col justify-end text-white hover:ring-2 hover:ring-indigo-500 hover:scale-[1.02] transition duration-200"
                       >
-                        {/* Stream Image / Fallback (WEBCAM ONLY) */}
-                        {stream.frame ? (
-                          <img
-                            src={stream.frame}
-                            alt={`${stream.username}'s webcam`}
-                            className="w-full h-full object-cover absolute inset-0"
-                          />
+                        {/* Stream Image / Fallback (WEBCAM OR SCREEN OR DEFAULT) */}
+                        {orgData?.securityFeatures?.cameraMonitoring !== false ? (
+                          stream.frame ? (
+                            <img
+                              src={stream.frame}
+                              alt={`${stream.username}'s webcam`}
+                              className="w-full h-full object-cover absolute inset-0"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 dark:bg-slate-950 text-slate-400">
+                              <span className="text-4xl font-extrabold mb-1">👤</span>
+                              <span className="text-xs font-semibold uppercase tracking-wider">Camera Inactive</span>
+                            </div>
+                          )
+                        ) : orgData?.securityFeatures?.screenSharingDetection !== false ? (
+                          stream.screenFrame ? (
+                            <img
+                              src={stream.screenFrame}
+                              alt={`${stream.username}'s screen`}
+                              className="w-full h-full object-contain absolute inset-0"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 dark:bg-slate-950 text-slate-400">
+                              <span className="text-4xl font-extrabold mb-1">🖥️</span>
+                              <span className="text-xs font-semibold uppercase tracking-wider">Screen Inactive</span>
+                            </div>
+                          )
                         ) : (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 dark:bg-slate-950 text-slate-400">
                             <span className="text-4xl font-extrabold mb-1">👤</span>
-                            <span className="text-xs font-semibold uppercase tracking-wider">Camera Inactive</span>
+                            <span className="text-xs font-semibold uppercase tracking-wider">Monitoring Off</span>
                           </div>
                         )}
 
                         {/* Top corner indicators */}
                         <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${stream.hasVideo ? "bg-emerald-500/90 text-white" : "bg-red-500/90 text-white"
-                            }`}>
-                            Video: {stream.hasVideo ? "ON" : "OFF"}
-                          </span>
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${stream.hasAudio ? "bg-emerald-500/90 text-white animate-pulse" : "bg-red-500/90 text-white"
-                            }`}>
-                            Mic: {stream.hasAudio ? "ON" : "OFF"}
-                          </span>
+                          {orgData?.securityFeatures?.cameraMonitoring !== false && (
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${stream.hasVideo ? "bg-emerald-500/90 text-white" : "bg-red-500/90 text-white"
+                              }`}>
+                              Video: {stream.hasVideo ? "ON" : "OFF"}
+                            </span>
+                          )}
+                          {orgData?.securityFeatures?.microphoneMonitoring !== false && (
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${stream.hasAudio ? "bg-emerald-500/90 text-white animate-pulse" : "bg-red-500/90 text-white"
+                              }`}>
+                              Mic: {stream.hasAudio ? "ON" : "OFF"}
+                            </span>
+                          )}
                         </div>
 
                         {/* Bottom Info Overlay */}
@@ -2751,64 +2781,72 @@ export const TeacherDashboard = () => {
                 <p className="text-xs text-slate-400 font-mono mt-0.5">{selectedMonitorStudent}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold uppercase ${selectedStudentStream?.hasVideo ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" : "bg-red-100 text-red-700 dark:bg-red-950/20 dark:text-red-400"}`}>
-                  Webcam: {selectedStudentStream?.hasVideo ? "Active" : "Off"}
-                </span>
-                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold uppercase ${selectedStudentStream?.hasAudio ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" : "bg-red-100 text-red-700 dark:bg-red-950/20 dark:text-red-400"}`}>
-                  Mic: {selectedStudentStream?.hasAudio ? "Active" : "Off"}
-                </span>
+                {orgData?.securityFeatures?.cameraMonitoring !== false && (
+                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold uppercase ${selectedStudentStream?.hasVideo ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" : "bg-red-100 text-red-700 dark:bg-red-950/20 dark:text-red-400"}`}>
+                    Webcam: {selectedStudentStream?.hasVideo ? "Active" : "Off"}
+                  </span>
+                )}
+                {orgData?.securityFeatures?.microphoneMonitoring !== false && (
+                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold uppercase ${selectedStudentStream?.hasAudio ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" : "bg-red-100 text-red-700 dark:bg-red-950/20 dark:text-red-400"}`}>
+                    Mic: {selectedStudentStream?.hasAudio ? "Active" : "Off"}
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className={`grid gap-6 ${orgData?.securityFeatures?.cameraMonitoring !== false && orgData?.securityFeatures?.screenSharingDetection !== false ? "md:grid-cols-2" : "grid-cols-1"}`}>
               {/* Live Camera Card */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm flex flex-col">
-                <div className="bg-slate-50 dark:bg-slate-950 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Live Camera Feed</h4>
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              {orgData?.securityFeatures?.cameraMonitoring !== false && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm flex flex-col">
+                  <div className="bg-slate-50 dark:bg-slate-950 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Live Camera Feed</h4>
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  </div>
+                  <div className="aspect-video w-full bg-slate-950 relative flex items-center justify-center">
+                    {selectedStudentStream?.frame ? (
+                      <img
+                        src={selectedStudentStream.frame}
+                        alt={`${selectedStudentStream.username}'s webcam`}
+                        className="w-full h-full object-cover scale-x-[-1]"
+                      />
+                    ) : (
+                      <div className="text-center text-slate-500 flex flex-col items-center justify-center p-6">
+                        <span className="text-3xl mb-1">👤</span>
+                        <p className="text-xs font-bold uppercase tracking-wider">Camera Off / Inactive</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="aspect-video w-full bg-slate-950 relative flex items-center justify-center">
-                  {selectedStudentStream?.frame ? (
-                    <img
-                      src={selectedStudentStream.frame}
-                      alt={`${selectedStudentStream.username}'s webcam`}
-                      className="w-full h-full object-cover scale-x-[-1]"
-                    />
-                  ) : (
-                    <div className="text-center text-slate-500 flex flex-col items-center justify-center p-6">
-                      <span className="text-3xl mb-1">👤</span>
-                      <p className="text-xs font-bold uppercase tracking-wider">Camera Off / Inactive</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              )}
 
               {/* Live Screen Feed Card */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm flex flex-col">
-                <div className="bg-slate-50 dark:bg-slate-950 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Live Screen Feed</h4>
-                  {selectedStudentStream?.screenFrame ? (
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  ) : (
-                    <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                  )}
+              {orgData?.securityFeatures?.screenSharingDetection !== false && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm flex flex-col">
+                  <div className="bg-slate-50 dark:bg-slate-950 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Live Screen Feed</h4>
+                    {selectedStudentStream?.screenFrame ? (
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    ) : (
+                      <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                    )}
+                  </div>
+                  <div className="aspect-video w-full bg-slate-950 relative flex items-center justify-center">
+                    {selectedStudentStream?.screenFrame ? (
+                      <img
+                        src={selectedStudentStream.screenFrame}
+                        alt={`${selectedStudentStream.username}'s screen`}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="text-center text-slate-500 flex flex-col items-center justify-center p-6">
+                        <span className="text-3xl mb-1">🖥️</span>
+                        <p className="text-xs font-bold uppercase tracking-wider">Screen Sharing Inactive</p>
+                        <p className="text-[10px] text-slate-600 mt-1">Student has not authorized screen share or it stopped</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="aspect-video w-full bg-slate-950 relative flex items-center justify-center">
-                  {selectedStudentStream?.screenFrame ? (
-                    <img
-                      src={selectedStudentStream.screenFrame}
-                      alt={`${selectedStudentStream.username}'s screen`}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <div className="text-center text-slate-500 flex flex-col items-center justify-center p-6">
-                      <span className="text-3xl mb-1">🖥️</span>
-                      <p className="text-xs font-bold uppercase tracking-wider">Screen Sharing Inactive</p>
-                      <p className="text-[10px] text-slate-600 mt-1">Student has not authorized screen share or it stopped</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              )}
             </div>
             
             <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">

@@ -2,11 +2,13 @@
 
 A high-performance, workspace-driven web application featuring a native **Node.js HTTP backend** (built completely from scratch with zero external framework dependencies like Express) and a modern, glassmorphic **React SPA frontend**. Designed for real-time exam administration, multi-role workspace management, automated proctoring with live teacher monitoring, and automatic result sharing.
 
+The system also includes the **Parikshya Admin Portal** (built using React + Vite), a central dashboard for platform-wide administration, tenant onboarding, telemetry logs, and global exam security policy configuration.
+
 ---
 
 ## 🏗️ Folder Structure
 
-The project is structured as an NPM workspaces monorepo containing distinct frontend and backend directories. Below is the directory tree:
+The project is structured as an NPM workspaces monorepo containing distinct backend and frontend applications, alongside a dedicated administration portal. Below is the directory tree:
 
 ```text
 Test-Management/
@@ -49,58 +51,71 @@ Test-Management/
 │       │   └── autoShareService.ts       # Auto-share polling daemon (30s checker interval)
 │       └── utils/
 │           └── crypto.ts                 # PBKDF2 cryptography helpers for passwords
-└── frontend/
-    ├── package.json          # Frontend package specifications
+├── frontend/
+│   ├── package.json          # Frontend package specifications
+│   ├── vite.config.ts        # Vite configuration script
+│   ├── tailwind.config.js    # TailwindCSS styling configuration
+│   ├── postcss.config.js     # PostCSS configurations
+│   ├── tsconfig.json         # TypeScript compiler configurations
+│   └── src/
+│       ├── main.tsx          # React application mounting file
+│       ├── App.tsx           # React Router and query client configuration
+│       ├── index.css         # Global Tailwind CSS imports & custom styles
+│       ├── assets/           # Dynamic icons and image assets
+│       ├── components/
+│       │   ├── layout/
+│       │   │   ├── AppShell.tsx          # Navigation wrapper, header, and notification drawer
+│       │   │   ├── Logo.tsx              # Brand visual identity logo image
+│       │   │   ├── PageWrapper.tsx       # Standard page layout spacing block
+│       │   │   └── ProtectedRoute.tsx    # Role-based route guard component
+│       │   └── ui/
+│       │       ├── Badge.tsx             # Interactive UI status badges
+│       │       ├── Button.tsx            # Styled utility button components
+│       │       ├── Input.tsx             # Accessible inputs wrapper
+│       │       ├── Modal.tsx             # Overlay dialog boxes
+│       │       ├── Select.tsx            # Dropdown options selectors
+│       │       ├── Spinner.tsx           # Asynchronous loading animations
+│       │       └── Toast.tsx             # Dismissible alert banner notifications
+│       ├── pages/
+│       │   ├── LandingPage.tsx           # Premium portal gateway selector
+│       │   ├── LoginPage.tsx             # Customized login portals for each role
+│       │   ├── DashboardPage.tsx         # Universal redirect page based on user role
+│       │   ├── StudentDashboard.tsx      # Student profile view, notifications, and scheduled exams
+│       │   ├── TeacherDashboard.tsx      # Teacher workspace (Question bank, live monitoring panel)
+│       │   ├── AdminStudentsPage.tsx     # Student Directory (Quick stats, filter & search, table view)
+│       │   ├── AdminStudentProfilePage.tsx # Student Demographic Profile (passport layout, performance aggregates)
+│       │   ├── AdminStudentPerformancePage.tsx # Student Detailed Exam stats list (gauges, rankings, durations)
+│       │   ├── CreateEditTestPage.tsx    # Test compiler (Subjects, Checkboxes, scoring grid)
+│       │   ├── AddQuestionsPage.tsx      # Manual forms & CSV batch imports
+│       │   ├── PreviewPublishPage.tsx    # Final checklist review and publication control
+│       │   ├── AttemptTestPage.tsx       # Strict exam workspace with proctoring stream & tab monitoring
+│       │   ├── MonitorTestPage.tsx       # Real-time administrator panel for tab violations and status
+│       │   └── TestResultPage.tsx        # Personalized feedback view displaying correct and selected choices
+│       ├── hooks/
+│       │   ├── useAuth.ts                # Client Authentication lifecycle hook
+│       │   └── useTests.ts               # Test cache and retrieval hooks
+│       ├── services/
+│       │   └── api.ts                    # Customized Axios client instance with CORS credentials
+│       ├── store/
+│       │   ├── authStore.ts              # Zustand login-session storage
+│       │   └── testStore.ts              # Zustand question and test planner storage
+│       ├── types/
+│       │   └── index.ts                  # Type definitions for schemas and payloads
+│       └── utils/
+│           └── validators.ts             # Client input form schema validations (Zod definitions)
+└── parikshya-admin-portal/   # Super Admin Portal (platform-wide telemetry and multi-tenant control)
+    ├── package.json          # Admin portal package specifications
     ├── vite.config.ts        # Vite configuration script
     ├── tailwind.config.js    # TailwindCSS styling configuration
-    ├── postcss.config.js     # PostCSS configurations
-    ├── tsconfig.json         # TypeScript compiler configurations
+    ├── index.html            # Entry point
     └── src/
-        ├── main.tsx          # React application mounting file
-        ├── App.tsx           # React Router and query client configuration
-        ├── index.css         # Global Tailwind CSS imports & custom styles
-        ├── assets/           # Dynamic icons and image assets
-        ├── components/
-        │   ├── layout/
-        │   │   ├── AppShell.tsx          # Navigation wrapper, header, and notification drawer
-        │   │   ├── Logo.tsx              # Brand visual identity logo image
-        │   │   ├── PageWrapper.tsx       # Standard page layout spacing block
-        │   │   └── ProtectedRoute.tsx    # Role-based route guard component
-        │   └── ui/
-        │       ├── Badge.tsx             # Interactive UI status badges
-        │       ├── Button.tsx            # Styled utility button components
-        │       ├── Input.tsx             # Accessible inputs wrapper
-        │       ├── Modal.tsx             # Overlay dialog boxes
-        │       ├── Select.tsx            # Dropdown options selectors
-        │       ├── Spinner.tsx           # Asynchronous loading animations
-        │       └── Toast.tsx             # Dismissible alert banner notifications
-        ├── pages/
-        │   ├── LandingPage.tsx           # Premium portal gateway selector
-        │   ├── LoginPage.tsx             # Customized login portals for each role
-        │   ├── DashboardPage.tsx         # Universal redirect page based on user role
-        │   ├── StudentDashboard.tsx      # Student profile view, notifications, and scheduled exams
-        │   ├── TeacherDashboard.tsx      # Teacher workspace (Question bank, live monitoring panel)
-        │   ├── AdminStudentsPage.tsx     # Student Directory (Quick stats, filter & search, table view)
-        │   ├── AdminStudentProfilePage.tsx # Student Demographic Profile (passport layout, performance aggregates)
-        │   ├── AdminStudentPerformancePage.tsx # Student Detailed Exam stats list (gauges, rankings, durations)
-        │   ├── CreateEditTestPage.tsx    # Test compiler (Subjects, Checkboxes, scoring grid)
-        │   ├── AddQuestionsPage.tsx      # Manual forms & CSV batch imports
-        │   ├── PreviewPublishPage.tsx    # Final checklist review and publication control
-        │   ├── AttemptTestPage.tsx       # Strict exam workspace with proctoring stream & tab monitoring
-        │   ├── MonitorTestPage.tsx       # Real-time administrator panel for tab violations and status
-        │   └── TestResultPage.tsx        # Personalized feedback view displaying correct and selected choices
-        ├── hooks/
-        │   ├── useAuth.ts                # Client Authentication lifecycle hook
-        │   └── useTests.ts               # Test cache and retrieval hooks
-        ├── services/
-        │   └── api.ts                    # Customized Axios client instance with CORS credentials
-        ├── store/
-        │   ├── authStore.ts              # Zustand login-session storage
-        │   └── testStore.ts              # Zustand question and test planner storage
-        ├── types/
-        │   └── index.ts                  # Type definitions for schemas and payloads
-        └── utils/
-            └── validators.ts             # Client input form schema validations (Zod definitions)
+        ├── App.tsx           # React Router and main admin client configuration
+        ├── components/       # UI layout and protected route components
+        └── pages/
+            ├── LoginPage.tsx             # Login view for the platform admin
+            ├── DashboardPage.tsx         # Platform-level telemetry and metrics charts
+            ├── OrganizationsPage.tsx     # Tenant manager (register new organizations, configure states)
+            └── OrganizationDetailsPage.tsx # Tenant visual inspector (Volumes, Security Policy overrides, User Dossiers)
 ```
 
 ---
@@ -128,7 +143,7 @@ To install the backend dependencies manually, run these commands:
 
 ---
 
-### Frontend
+### Main Frontend (Org Admin, Teachers & Students)
 * **UI Library:** React 18 (Single Page App).
 * **Bundler & Dev Server:** Vite.
 * **Styling Framework:** TailwindCSS + PostCSS + Autoprefixer.
@@ -154,17 +169,39 @@ To install the frontend dependencies manually, run these commands:
 
 ---
 
+### Parikshya Admin Portal (Super Admin Dashboard)
+* **UI Library:** React 18 (Single Page App).
+* **Bundler & Dev Server:** Vite (configured to run on port `4200` by default).
+* **Styling Framework:** TailwindCSS + PostCSS + Autoprefixer.
+* **Network Requests:** Axios.
+* **Icons:** Lucide React.
+
+#### 📦 Install Admin Portal Dependencies
+To install the admin portal dependencies, run these commands from the `parikshya-admin-portal/` folder:
+```bash
+cd parikshya-admin-portal
+npm install
+```
+
+---
+
 ## ⚙️ Environment Configuration
 
-You must define separate `.env` files for both frontend and backend directories. Create them under their respective folders (both files are ignored by git).
+You must define separate `.env` files for the frontend, backend, and admin portal directories. Create them under their respective folders (all `.env` files are ignored by git).
 
-### 1. Frontend Configuration
+### 1. Main Frontend Configuration
 Create a file at `frontend/.env`:
 ```env
 VITE_API_BASE_URL=http://127.0.0.1:4000/api
 ```
 
-### 2. Backend Configuration
+### 2. Parikshya Admin Portal Configuration
+Create a file at `parikshya-admin-portal/.env`:
+```env
+VITE_API_BASE_URL=http://127.0.0.1:4000/api/parikshya-admin
+```
+
+### 3. Backend Configuration
 Create a file at `backend/.env`:
 ```env
 PORT=4000
@@ -178,45 +215,50 @@ JWT_SECRET=your_jwt_signing_key_secret_string
 
 ## 🚀 How to Run the Project
 
-You can run the frontend and backend services either together (using NPM workspaces) or as separate processes. 
-
+You can run the frontend, backend, and admin portal services either together (using NPM workspaces and multiple terminals) or as separate processes. 
 ### Prerequisite Checklist
 1. Make sure Node.js (v18 or higher) is installed on your local computer.
 2. Confirm your MongoDB database service is up and running.
 
----
-
 ### 📦 Install Dependencies
-Because the project is configured as an NPM workspaces monorepo, you only need to run the install command once at the **root directory**. This installs all dependencies for both the frontend and backend:
-```bash
-npm install
-```
+Because the project uses NPM workspaces for the backend and main frontend, you can install their dependencies at the root directory. The admin portal needs its own installation step.
+* **Backend & Main Frontend dependencies:**
+  ```bash
+  npm install
+  ```
+* **Admin Portal dependencies:**
+  ```bash
+  cd parikshya-admin-portal
+  npm install
+  ```
 
 ---
 
-### Option A: Unified Execution (Concurrently)
-This starts both the backend (port 4000) and frontend (port 5173) dev servers concurrently using root-level scripts:
+### 🚀 Running the Services
+
+#### Option A: Run services individually
+For local development, start the dev servers for each app in separate terminals:
+* **Backend (on http://127.0.0.1:4000/):**
+  ```bash
+  cd backend
+  npm run dev
+  ```
+* **Main Frontend (on http://127.0.0.1:5173/):**
+  ```bash
+  cd frontend
+  npm run dev
+  ```
+* **Admin Portal (on http://127.0.0.1:4200/):**
+  ```bash
+  cd parikshya-admin-portal
+  npm run dev
+  ```
+
+#### Option B: Unified Execution (Backend + Main Frontend)
+To run the main student/teacher frontend and backend together concurrently:
 ```bash
 npm run dev
 ```
-* **Production Build & Run:**
-  ```bash
-  npm run build
-  npm start
-  ```
-
----
-
-### Option B: Targeted Workspace Execution
-If you prefer running or debugging backend or frontend separately, you can trigger their dev environments individually:
-* **Run Backend Only:**
-  ```bash
-  npm run dev:backend
-  ```
-* **Run Frontend Only:**
-  ```bash
-  npm run dev:frontend
-  ```
 
 ---
 

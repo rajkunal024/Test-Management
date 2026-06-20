@@ -10,7 +10,9 @@ export const handleRequest = async (request: IncomingMessage, response: ServerRe
     const allowedOrigins = [
       process.env.FRONTEND_ORIGIN,
       "http://127.0.0.1:5173",
-      "http://localhost:5173"
+      "http://localhost:5173",
+      "http://127.0.0.1:4200",
+      "http://localhost:4200"
     ].filter(Boolean);
     const corsOrigin = (origin && allowedOrigins.includes(origin)) ? origin : frontendOrigin;
 

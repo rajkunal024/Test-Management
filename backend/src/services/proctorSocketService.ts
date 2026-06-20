@@ -91,7 +91,8 @@ export const setupProctorWebSocketServer = (wss: WebSocketServer) => {
                           message: msg,
                           type: "student_attempt_started",
                           test_id: testObj.id,
-                          test_name: testObj.name
+                          test_name: testObj.name,
+                          organization_id: testObj.organization_id || t.organization_id
                         });
                       }
                     }
