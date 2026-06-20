@@ -18,7 +18,10 @@ const escapeRegex = (string: string) => {
   return string.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 };
 
-const isTeacherAuthorizedForSubject = async (teacherSubject: string, topicId?: string, subjectId?: string) => {
+const isTeacherAuthorizedForSubject = async (teacherSubject: string, topicId?: string, subjectId?: string, subjectName?: string) => {
+  if (subjectName && subjectName.trim().toLowerCase() !== teacherSubject.toLowerCase()) {
+    return false;
+  }
   if (topicId && topicId !== "new") {
     const topic = await TopicModel.findOne({ id: topicId });
     if (topic) {
@@ -26,6 +29,7 @@ const isTeacherAuthorizedForSubject = async (teacherSubject: string, topicId?: s
       if (subject && subject.name.toLowerCase() === teacherSubject.toLowerCase()) {
         return true;
       }
+      return false;
     }
   }
   if (subjectId) {
@@ -33,8 +37,9 @@ const isTeacherAuthorizedForSubject = async (teacherSubject: string, topicId?: s
     if (subject && subject.name.toLowerCase() === teacherSubject.toLowerCase()) {
       return true;
     }
+    return false;
   }
-  return false;
+  return true;
 };
 
 const resolveTopicAndSubTopic = async (payload: any) => {
@@ -145,7 +150,8 @@ export const createQuestion = async (request: IncomingMessage, response: ServerR
       const authorized = await isTeacherAuthorizedForSubject(
         teacher.subject,
         rawPayload.topic_id,
-        rawPayload.subject_id
+        rawPayload.subject_id,
+        rawPayload.subject
       );
 
       if (!authorized) {
@@ -200,7 +206,8 @@ export const updateQuestion = async (request: IncomingMessage, response: ServerR
       const authorized = await isTeacherAuthorizedForSubject(
         teacher.subject,
         targetTopic,
-        targetSubject
+        targetSubject,
+        rawPayload.subject
       );
 
       if (!authorized) {

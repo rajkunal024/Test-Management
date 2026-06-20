@@ -384,7 +384,14 @@ export const TeacherDashboard = () => {
   }, [subjects, user?.subject]);
 
   // Hooks for topics/sub-topics based on teacher subject
-  const { data: topics = [] } = useTopics(teacherSubject.id);
+  const { data: rawTopics = [] } = useTopics(teacherSubject.id);
+  const topics = useMemo(() => {
+    const isComputerTeacher = teacherSubject.name.toLowerCase().includes("computer");
+    if (isComputerTeacher) {
+      return rawTopics.filter(t => !["physics", "biology", "chemistry"].includes(t.name.toLowerCase().trim()));
+    }
+    return rawTopics;
+  }, [rawTopics, teacherSubject.name]);
   const selectedTopicIds = useMemo(() => topics.map(t => t.id), [topics]);
   const { data: subTopics = [] } = useSubTopics(selectedTopicIds);
 
@@ -584,7 +591,11 @@ export const TeacherDashboard = () => {
       }
       window.setTimeout(() => setToast(""), 1800);
     },
-    onError: (err) => setFormError(getErrorMessage(err)),
+    onError: (err) => {
+      const errMsg = getErrorMessage(err);
+      setFormError(errMsg);
+      alert(errMsg);
+    },
   });
 
   const updateMutation = useMutation({
@@ -598,7 +609,11 @@ export const TeacherDashboard = () => {
       setEditingIndex(null);
       window.setTimeout(() => setToast(""), 1800);
     },
-    onError: (err) => setFormError(getErrorMessage(err)),
+    onError: (err) => {
+      const errMsg = getErrorMessage(err);
+      setFormError(errMsg);
+      alert(errMsg);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -866,6 +881,13 @@ export const TeacherDashboard = () => {
       for (const row of rows) {
         if (!row.question || !row.option1 || !row.option2) continue;
 
+        const rowSubject = (row.subject || "").trim();
+        if (rowSubject && rowSubject.toLowerCase() !== teacherSubject.name.toLowerCase()) {
+          alert(`Error: You are a ${teacherSubject.name} teacher and cannot upload/register questions for ${rowSubject}.`);
+          setIsImporting(false);
+          return;
+        }
+
         const topicNameClean = (row.topic || "").trim();
         const subTopicNameClean = (row.sub_topic || "").trim();
 
@@ -916,6 +938,7 @@ export const TeacherDashboard = () => {
           topic_name: topic_name || undefined,
           sub_topic_name: sub_topic_name || undefined,
           subject_id: teacherSubject.id,
+          subject: rowSubject || undefined,
           type: "mcq",
           test_id: "",
         };
@@ -936,8 +959,9 @@ export const TeacherDashboard = () => {
       } else {
         alert("Could not import any questions. Please verify your CSV header columns.");
       }
-    } catch (e) {
-      alert("Error parsing CSV format. Please ensure it follows correct headers.");
+    } catch (e: any) {
+      const errMsg = getErrorMessage(e);
+      alert(errMsg);
       console.error(e);
     } finally {
       setIsImporting(false);
@@ -1319,6 +1343,17 @@ export const TeacherDashboard = () => {
                       diffLower === "medium" ? "border-l-amber-500 bg-gradient-to-br from-amber-500/5 to-transparent dark:from-amber-950/5" :
                       (diffLower === "hard" || diffLower === "difficult" ? "border-l-rose-500 bg-gradient-to-br from-rose-500/5 to-transparent dark:from-rose-950/5" : "border-l-slate-500");
                     
+                    const correctOptionsList = q.correct_option
+                      ? q.correct_option.split(",").map(o => o.trim()).filter(Boolean)
+                      : ["option1"];
+                    const correctValues = correctOptionsList.map(optKey => {
+                      if (optKey === "option1") return q.option1;
+                      if (optKey === "option2") return q.option2;
+                      if (optKey === "option3") return q.option3;
+                      if (optKey === "option4") return q.option4;
+                      return "";
+                    }).filter(Boolean).join(", ") || q.option1;
+
                     return (
                       <div 
                         key={q.id || idx} 
@@ -1332,7 +1367,7 @@ export const TeacherDashboard = () => {
                           </div>
                         </div>
                         <div className="text-xs text-slate-400 dark:text-slate-500 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0 font-medium">
-                          Option 1: <span className="text-slate-700 dark:text-slate-350 font-bold">{q.option1}</span>
+                          Correct Answer: <span className="text-slate-700 dark:text-slate-350 font-bold">{correctValues}</span>
                         </div>
                       </div>
                     );
@@ -2008,24 +2043,33 @@ export const TeacherDashboard = () => {
                     <div>
                       <span className="mb-2 block text-xs font-bold text-slate-600">CSV Preview ({parsedPreviewQuestions.length} Questions):</span>
                       <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-2">
-                        {parsedPreviewQuestions.map((q, idx) => (
-                          <div key={idx} className="rounded border border-slate-100 bg-white p-3 text-xs shadow-sm">
-                            <div className="font-bold text-slate-800">Q{idx + 1}: {q.question}</div>
-                            <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[11px] text-slate-500">
-                              <div>Option 1: {q.option1 || "-"}</div>
-                              <div>Option 2: {q.option2 || "-"}</div>
-                              <div>Option 3: {q.option3 || "-"}</div>
-                              <div>Option 4: {q.option4 || "-"}</div>
+                        {parsedPreviewQuestions.map((q, idx) => {
+                          const diff = (q.difficulty || "").toLowerCase().trim();
+                          const boxColor =
+                            diff === "easy" ? "border-l-4 border-l-emerald-500 bg-emerald-50/25 dark:bg-emerald-950/10 border-slate-200" :
+                            diff === "medium" ? "border-l-4 border-l-amber-500 bg-amber-50/25 dark:bg-amber-950/10 border-slate-200" :
+                            (diff === "hard" || diff === "difficult" ? "border-l-4 border-l-rose-500 bg-rose-50/25 dark:bg-rose-950/10 border-slate-200" : "border-slate-100 bg-white");
+                          
+                          return (
+                            <div key={idx} className={`rounded border p-3 text-xs shadow-sm ${boxColor}`}>
+                              <div className="font-bold text-slate-800">Q{idx + 1}: {q.question}</div>
+                              <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[11px] text-slate-500">
+                                <div>Option 1: {q.option1 || "-"}</div>
+                                <div>Option 2: {q.option2 || "-"}</div>
+                                <div>Option 3: {q.option3 || "-"}</div>
+                                <div>Option 4: {q.option4 || "-"}</div>
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                                <span className="font-semibold text-emerald-600">Correct: {q.correct_option || "-"}</span>
+                                <span className="text-slate-400">Class: {q.class || "Class 10"}</span>
+                                <span className="text-slate-400">Difficulty: {q.difficulty || "-"}</span>
+                                <span className="text-slate-400">Topic: {q.topic || "-"}</span>
+                                <span className="text-slate-400">Sub-topic: {q.sub_topic || "-"}</span>
+                                {q.subject && <span className="text-slate-400">Subject: {q.subject}</span>}
+                              </div>
                             </div>
-                            <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
-                              <span className="font-semibold text-emerald-600">Correct: {q.correct_option || "-"}</span>
-                              <span className="text-slate-400">Class: {q.class || "Class 10"}</span>
-                              <span className="text-slate-400">Difficulty: {q.difficulty || "-"}</span>
-                              <span className="text-slate-400">Topic: {q.topic || "-"}</span>
-                              <span className="text-slate-400">Sub-topic: {q.sub_topic || "-"}</span>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -2036,7 +2080,7 @@ export const TeacherDashboard = () => {
                       <HelpCircle className="h-3.5 w-3.5 shrink-0" /> Expected CSV Headers:
                     </h4>
                     <p className="font-mono bg-white/70 p-1.5 rounded mb-1.5 text-[9px] overflow-x-auto whitespace-nowrap">
-                      question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic
+                      question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic,subject
                     </p>
                     <span>* Correct option should match A, B, C, D or option1, option2, option3, option4.</span>
                     <br />

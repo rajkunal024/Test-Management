@@ -113,6 +113,7 @@ export interface Question {
   topic_name?: string;
   sub_topic_name?: string;
   subject_id?: string;
+  subject?: string;
   class?: string;
   created_by?: string;
 }
