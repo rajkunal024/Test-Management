@@ -56,6 +56,8 @@ export const OrganizationsPage: React.FC = () => {
   const [countryCode, setCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [brandingBannerText, setBrandingBannerText] = useState("Welcome to Parikshya Online Testing Portal");
+  const [brandingColor, setBrandingColor] = useState("#4B52DC");
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -119,6 +121,8 @@ export const OrganizationsPage: React.FC = () => {
     setCountryCode("+91");
     setPhone("");
     setAddress("");
+    setBrandingBannerText("Welcome to Parikshya Online Testing Portal");
+    setBrandingColor("#4B52DC");
     setWizardError(null);
     setIsWizardOpen(false);
   };
@@ -152,6 +156,8 @@ export const OrganizationsPage: React.FC = () => {
         phone: phone.trim() ? `${countryCode} ${phone.trim()}` : "",
         address,
         status: "Active",
+        brandingBannerText,
+        brandingColor
       };
 
       const response = await api.post("/organizations", payload);
@@ -500,6 +506,70 @@ export const OrganizationsPage: React.FC = () => {
                   onChange={(e) => setAddress(e.target.value)}
                   className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold resize-none"
                 />
+              </div>
+
+              {/* Custom Branding Whitelabeling */}
+              <div className="text-[10px] font-bold text-[#4B52DC] uppercase tracking-wider mb-2 pt-2 border-t border-[#161B26]/30">
+                Custom Portal Whitelabel Branding
+              </div>
+
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  placeholder="Welcome Banner Text (e.g. Welcome to Delhi Public School)"
+                  value={brandingBannerText}
+                  onChange={(e) => setBrandingBannerText(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
+                />
+              </div>
+
+              <div className="rounded-2xl bg-[#0F1422] border border-[#161B26] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Primary Brand Color
+                  </label>
+                  <p className="text-[9px] text-slate-500 mt-0.5">Used for buttons, highlights, and borders in the tenant portal.</p>
+                </div>
+                <div className="flex items-center gap-3.5">
+                  <div className="flex gap-2">
+                    {[
+                      { hex: "#4B52DC", name: "Classic Indigo" },
+                      { hex: "#10B981", name: "Emerald Green" },
+                      { hex: "#F59E0B", name: "Amber Orange" },
+                      { hex: "#EF4444", name: "Crimson Red" },
+                      { hex: "#8B5CF6", name: "Violet Purple" },
+                      { hex: "#06B6D4", name: "Cyan Teal" }
+                    ].map((preset) => (
+                      <button
+                        key={preset.hex}
+                        type="button"
+                        onClick={() => setBrandingColor(preset.hex)}
+                        title={preset.name}
+                        className={`w-6 h-6 rounded-full border transition-all cursor-pointer hover:scale-110 active:scale-95 ${
+                          brandingColor === preset.hex
+                            ? "border-white ring-2 ring-indigo-500"
+                            : "border-transparent"
+                        }`}
+                        style={{ backgroundColor: preset.hex }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={brandingColor}
+                      onChange={(e) => setBrandingColor(e.target.value)}
+                      className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                    />
+                    <input
+                      type="text"
+                      maxLength={7}
+                      value={brandingColor}
+                      onChange={(e) => setBrandingColor(e.target.value)}
+                      className="w-20 px-2 py-1 rounded bg-[#0B0E14] border border-[#161B26] text-white text-[11px] font-mono text-center uppercase"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-[#161B26]/60">

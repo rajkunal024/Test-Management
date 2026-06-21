@@ -43,6 +43,8 @@ import {
   createPassage,
   updatePassage,
   getMyOrganization,
+  generateAIQuestionsApi,
+  AIGeneratedQuestion,
 } from "../services/api";
 import { useSubTopics, useTopics } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
@@ -123,7 +125,18 @@ export const TeacherDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "add";
   const selectedClass = searchParams.get("class") || "all";
-  const [addSubTab, setAddSubTab] = useState<"manual" | "csv" | null>(null);
+  const [addSubTab, setAddSubTab] = useState<"manual" | "csv" | "ai" | null>(null);
+
+  // AI MCQ Generator States
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiDifficulty, setAiDifficulty] = useState("Medium");
+  const [aiClass, setAiClass] = useState("Class 10");
+  const [aiCount, setAiCount] = useState(5);
+  const [generatedQuestions, setGeneratedQuestions] = useState<AIGeneratedQuestion[]>([]);
+  const [selectedGenIds, setSelectedGenIds] = useState<string[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [savingGen, setSavingGen] = useState(false);
+  const [aiError, setAiError] = useState("");
 
   // Live Test Monitoring States
   const [selectedTestIdForMonitoring, setSelectedTestIdForMonitoring] = useState<string | null>(null);
@@ -580,6 +593,8 @@ export const TeacherDashboard = () => {
     mutationFn: createQuestion,
     onSuccess: async (data, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["questions"] });
+      await queryClient.invalidateQueries({ queryKey: ["topics"] });
+      await queryClient.invalidateQueries({ queryKey: ["subTopics"] });
       setToast("Question created successfully");
       if (variables.type === "passage_sub_question" && variables.passage_id) {
         reset({
@@ -608,6 +623,8 @@ export const TeacherDashboard = () => {
     mutationFn: ({ id, payload }: { id: string; payload: Question }) => updateQuestion(id, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["questions"] });
+      await queryClient.invalidateQueries({ queryKey: ["topics"] });
+      await queryClient.invalidateQueries({ queryKey: ["subTopics"] });
       setToast("Question updated successfully");
       setModalOpen(false);
       reset(emptyQuestion);
@@ -626,6 +643,8 @@ export const TeacherDashboard = () => {
     mutationFn: deleteQuestion,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["questions"] });
+      await queryClient.invalidateQueries({ queryKey: ["topics"] });
+      await queryClient.invalidateQueries({ queryKey: ["subTopics"] });
       setToast("Question deleted successfully");
       window.setTimeout(() => setToast(""), 1800);
     },
@@ -957,6 +976,8 @@ export const TeacherDashboard = () => {
 
       if (createdCount > 0) {
         await queryClient.invalidateQueries({ queryKey: ["questions"] });
+        await queryClient.invalidateQueries({ queryKey: ["topics"] });
+        await queryClient.invalidateQueries({ queryKey: ["subTopics"] });
         setCsvText("");
         setCsvModalOpen(false);
         setAddSubTab(null);
@@ -1136,6 +1157,8 @@ export const TeacherDashboard = () => {
 
         await Promise.all(createPromises);
         await queryClient.invalidateQueries({ queryKey: ["questions"] });
+        await queryClient.invalidateQueries({ queryKey: ["topics"] });
+        await queryClient.invalidateQueries({ queryKey: ["subTopics"] });
         setToast("Passage and questions created successfully");
         setModalOpen(false);
         setAddSubTab(null);
@@ -1176,6 +1199,98 @@ export const TeacherDashboard = () => {
     }
   };
 
+  const updateGenQuestionField = (index: number, field: keyof AIGeneratedQuestion, value: string) => {
+    setGeneratedQuestions((prev) =>
+      prev.map((q, idx) => (idx === index ? { ...q, [field]: value } : q))
+    );
+  };
+
+  const toggleGenQuestionSelect = (id: string) => {
+    setSelectedGenIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllGen = () => {
+    if (selectedGenIds.length === generatedQuestions.length) {
+      setSelectedGenIds([]);
+    } else {
+      setSelectedGenIds(generatedQuestions.map((q) => q.id));
+    }
+  };
+
+  const handleGenerateAIQuestions = async () => {
+    if (!aiTopic.trim()) {
+      setAiError("Topic prompt is required");
+      return;
+    }
+    setAiError("");
+    setGenerating(true);
+    try {
+      const data = await generateAIQuestionsApi({
+        topic: aiTopic,
+        difficulty: aiDifficulty,
+        class: aiClass,
+        count: aiCount,
+      });
+      setGeneratedQuestions(data);
+      setSelectedGenIds(data.map((q) => q.id));
+    } catch (err) {
+      console.error("AI generation failed:", err);
+      setAiError(getErrorMessage(err));
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSaveAIQuestions = async () => {
+    setAiError("");
+    setSavingGen(true);
+    try {
+      const selectedQs = generatedQuestions.filter((q) => selectedGenIds.includes(q.id));
+      if (selectedQs.length === 0) {
+        setAiError("Please select at least one question to save");
+        setSavingGen(false);
+        return;
+      }
+
+      const savePromises = selectedQs.map((q) => {
+        const payload: Question = {
+          question: q.question,
+          option1: q.option1,
+          option2: q.option2,
+          option3: q.option3,
+          option4: q.option4,
+          correct_option: q.correct_option as CorrectOption,
+          difficulty: q.difficulty.toLowerCase(),
+          class: q.class,
+          subject_id: teacherSubject.id,
+          type: "mcq",
+          test_id: "",
+          new_topic_name: aiTopic.trim() || "AI Generated",
+        };
+        return createQuestion(payload);
+      });
+
+      await Promise.all(savePromises);
+      await queryClient.invalidateQueries({ queryKey: ["questions"] });
+      await queryClient.invalidateQueries({ queryKey: ["topics"] });
+      await queryClient.invalidateQueries({ queryKey: ["subTopics"] });
+
+      setToast(`Successfully saved ${selectedQs.length} questions to the pool`);
+      setAddSubTab(null);
+      setGeneratedQuestions([]);
+      setSelectedGenIds([]);
+      setAiTopic("");
+      window.setTimeout(() => setToast(""), 1800);
+    } catch (err) {
+      console.error("Error saving AI questions:", err);
+      setAiError(getErrorMessage(err));
+    } finally {
+      setSavingGen(false);
+    }
+  };
+
   return (
     <AppShell>
       <PageWrapper>
@@ -1190,7 +1305,7 @@ export const TeacherDashboard = () => {
                     Parikshya Teacher Portal
                   </div>
                   <h1 className="text-3xl font-black tracking-tight">
-                    {teacherSubject.name} Question Bank Hub
+                    {orgData?.brandingBannerText || `${teacherSubject.name} Question Bank Hub`}
                   </h1>
                   <p className="mt-2 text-sm text-teal-50 max-w-xl">
                     Create and manage your question pool for <strong>{teacherSubject.name}</strong>. Monitor class distribution, perform bulk spreadsheet uploads, or add single questions manually.
@@ -1395,13 +1510,23 @@ export const TeacherDashboard = () => {
                     Parikshya Teacher Portal
                   </div>
                   <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                    {teacherSubject.name} Question Bank
+                    {orgData?.brandingBannerText || `${teacherSubject.name} Question Bank`}
                   </h1>
                   <p className="mt-2 text-xs text-emerald-700 bg-white/90 rounded-md px-2.5 py-1 inline-block font-semibold">
                     Logged in as: {user?.name || "Teacher"} ({teacherSubject.name} Expert)
                   </p>
                 </div>
-                <div className="flex gap-2.5">
+                 <div className="flex gap-2.5">
+                  <Button
+                    onClick={() => setAddSubTab("ai")}
+                    className={`h-10 text-xs font-bold flex items-center gap-1.5 shadow-sm transition ${addSubTab === "ai"
+                      ? "bg-white text-emerald-700 hover:bg-teal-50 border-transparent"
+                      : "bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-500/25"
+                      }`}
+                    icon={<Sparkles className={`h-3.5 w-3.5 ${addSubTab === "ai" ? "text-emerald-700" : "text-white"}`} />}
+                  >
+                    AI MCQ Generator
+                  </Button>
                   <Button
                     onClick={() => setAddSubTab("csv")}
                     className={`h-10 text-xs font-bold flex items-center gap-1.5 shadow-sm transition ${addSubTab === "csv"
@@ -2000,6 +2125,302 @@ export const TeacherDashboard = () => {
                     </div>
                   </div>
                 </form>
+              </div>
+            )}
+
+            {/* AI Generator Form */}
+            {addSubTab === "ai" && (
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 md:p-8 shadow-md relative overflow-hidden">
+                  {/* Visual Accent top border */}
+                  <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-teal-400 via-emerald-400 to-indigo-500" />
+                  
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+                    <div>
+                      <h2 className="text-lg font-extrabold text-slate-850 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse" />
+                        AI-Powered MCQ Question Generator
+                      </h2>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 font-medium">
+                        Simulate realistic and context-relevant questions matching your subject (<strong>{teacherSubject.name}</strong>).
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddSubTab(null);
+                        setGeneratedQuestions([]);
+                        setSelectedGenIds([]);
+                      }}
+                      className="h-8 px-3 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 transition uppercase cursor-pointer"
+                    >
+                      Close Form ×
+                    </button>
+                  </div>
+
+                  {aiError && (
+                    <div className="mb-5 p-3.5 rounded-2xl bg-red-500/10 dark:bg-red-950/20 border border-red-500/20 dark:border-red-900/40 text-red-700 dark:text-red-300 text-xs flex items-start gap-2.5">
+                      <HelpCircle className="w-4.5 h-4.5 text-red-500 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">{aiError}</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8">
+                    {/* Left Panel: Inputs */}
+                    <div className="space-y-5">
+                      <div className="space-y-2">
+                        <label className="block">
+                          <span className="mb-2 block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                            Topic or Prompt*
+                          </span>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={aiTopic}
+                              onChange={(e) => setAiTopic(e.target.value)}
+                              placeholder="e.g. Photosynthesis light reactions, algebra linear equations, circular motion"
+                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold text-slate-905 dark:text-white"
+                            />
+                            <Sparkles className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400 pointer-events-none" />
+                          </div>
+                        </label>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <label className="block">
+                            <span className="mb-2 block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                              Class / Grade
+                            </span>
+                            <select
+                              value={aiClass}
+                              onChange={(e) => setAiClass(e.target.value)}
+                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-705 dark:text-slate-200 outline-none transition focus:border-indigo-500 cursor-pointer font-semibold"
+                            >
+                              <option value="Class 9">Class 9</option>
+                              <option value="Class 10">Class 10</option>
+                              <option value="Class 11">Class 11</option>
+                              <option value="Class 12">Class 12</option>
+                            </select>
+                          </label>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block">
+                            <span className="mb-2 block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                              Difficulty Level
+                            </span>
+                            <select
+                              value={aiDifficulty}
+                              onChange={(e) => setAiDifficulty(e.target.value)}
+                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-705 dark:text-slate-200 outline-none transition focus:border-indigo-500 cursor-pointer font-semibold"
+                            >
+                              <option value="Easy">Easy</option>
+                              <option value="Medium">Medium</option>
+                              <option value="Hard">Hard</option>
+                            </select>
+                          </label>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block">
+                            <span className="mb-2 block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                              Question Count
+                            </span>
+                            <select
+                              value={aiCount}
+                              onChange={(e) => setAiCount(Number(e.target.value))}
+                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-705 dark:text-slate-200 outline-none transition focus:border-indigo-500 cursor-pointer font-semibold"
+                            >
+                              <option value={2}>2 Questions</option>
+                              <option value={3}>3 Questions</option>
+                              <option value={5}>5 Questions</option>
+                              <option value={10}>10 Questions</option>
+                            </select>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="pt-2">
+                        <Button
+                          type="button"
+                          onClick={handleGenerateAIQuestions}
+                          disabled={generating || !aiTopic.trim()}
+                          className="h-11 w-full bg-gradient-to-r from-indigo-600 to-purple-650 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold rounded-xl shadow-lg shadow-indigo-500/10 active:scale-[0.98] transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 border-0 cursor-pointer"
+                        >
+                          {generating ? (
+                            <>
+                              <Spinner className="w-4 h-4 text-white" />
+                              <span>Generating Questions...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 text-white animate-pulse" />
+                              <span>Generate MCQs</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Right Panel: Informational Tips */}
+                    <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-indigo-900 dark:text-indigo-400 text-xs flex flex-col justify-between space-y-4">
+                      <div>
+                        <h4 className="font-extrabold uppercase tracking-widest text-[#4B52DC] dark:text-[#818CF8] mb-2 flex items-center gap-1.5 font-title">
+                          <Sparkles className="w-3.5 h-3.5 shrink-0" /> AI Generator Guidelines
+                        </h4>
+                        <ul className="space-y-2.5 list-disc pl-4 text-slate-650 dark:text-slate-400 leading-relaxed font-semibold">
+                          <li>Specify a precise topic keyword (e.g. <i>photosynthesis calvin cycle</i> instead of just <i>biology</i>).</li>
+                          <li>The generator will simulate highly realistic multiple-choice questions matching CBSE/ICSE curriculum requirements.</li>
+                          <li>Predefined detailed questions are instantly provided for common topics like <b>Photosynthesis</b> or <b>Algebra Linear Equations</b>.</li>
+                          <li>For custom topics, the generator fallback engine dynamically spins up context-relevant options.</li>
+                        </ul>
+                      </div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                        Powered by Parikshya AI Agent Interface. All generated questions can be edited inline before committing to the pool.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Generated Preview List */}
+                {generatedQuestions.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 md:p-8 shadow-md relative overflow-hidden space-y-6">
+                    {/* Visual Accent top border */}
+                    <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-emerald-400 via-teal-400 to-indigo-500" />
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                      <div>
+                        <h3 className="text-base font-extrabold text-slate-850 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                          Generated MCQ Previews
+                        </h3>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 font-medium">
+                          Select which questions to add, and make any inline modifications.
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 self-end sm:self-auto">
+                        <button
+                          type="button"
+                          onClick={toggleSelectAllGen}
+                          className="px-3.5 py-2 text-xs font-bold border border-slate-200/80 dark:border-slate-700/60 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition text-slate-650 dark:text-slate-350 cursor-pointer"
+                        >
+                          {selectedGenIds.length === generatedQuestions.length ? "Deselect All" : "Select All"}
+                        </button>
+
+                        <Button
+                          onClick={handleSaveAIQuestions}
+                          disabled={savingGen || selectedGenIds.length === 0}
+                          className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-750 text-white text-xs font-bold rounded-xl shadow-md h-9.5 px-4"
+                        >
+                          {savingGen ? "Adding to Pool..." : `Import Selected (${selectedGenIds.length})`}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                      {generatedQuestions.map((q, idx) => {
+                        const isSelected = selectedGenIds.includes(q.id);
+                        return (
+                          <div
+                            key={q.id}
+                            className={`p-5 rounded-2xl border transition-all duration-355 flex gap-4 ${
+                              isSelected
+                                ? "border-indigo-500/35 bg-indigo-500/[0.015] dark:border-indigo-500/25 dark:bg-indigo-950/5 shadow-sm"
+                                : "border-slate-200/70 bg-slate-50/20 dark:border-slate-850 dark:bg-slate-950/20 opacity-70"
+                            }`}
+                          >
+                            {/* Checkbox */}
+                            <div className="pt-1.5">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleGenQuestionSelect(q.id)}
+                                className="w-4 h-4 text-indigo-650 bg-gray-100 border-gray-350 rounded focus:ring-indigo-500 cursor-pointer"
+                              />
+                            </div>
+
+                            <div className="flex-1 space-y-4">
+                              {/* Card Header Info */}
+                              <div className="flex items-center justify-between gap-4 flex-wrap">
+                                <span className="text-xs font-bold text-slate-500">MCQ Question #{idx + 1}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-850 border border-slate-200/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 text-[10px] font-bold">
+                                    {q.class}
+                                  </span>
+                                  <span className="px-2.5 py-0.5 rounded-full bg-indigo-50/75 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/30 text-indigo-650 dark:text-indigo-400 text-[10px] font-bold">
+                                    {q.difficulty}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Question Input */}
+                              <div className="space-y-1">
+                                <span className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Question Prompt</span>
+                                <textarea
+                                  value={q.question}
+                                  onChange={(e) => updateGenQuestionField(idx, "question", e.target.value)}
+                                  rows={2}
+                                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/10 font-semibold resize-none"
+                                />
+                              </div>
+
+                              {/* 4 Options Grid */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {(["option1", "option2", "option3", "option4"] as const).map((optKey, oIdx) => (
+                                  <div key={optKey} className="space-y-1">
+                                    <span className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Option {oIdx + 1}</span>
+                                    <input
+                                      type="text"
+                                      value={q[optKey]}
+                                      onChange={(e) => updateGenQuestionField(idx, optKey, e.target.value)}
+                                      className="h-10 w-full px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white outline-none placeholder:text-slate-350 focus:border-indigo-500 font-semibold"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Correct Answer Dropdown */}
+                              <div className="space-y-1 max-w-xs">
+                                <span className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Correct Answer Option</span>
+                                <select
+                                  value={q.correct_option}
+                                  onChange={(e) => updateGenQuestionField(idx, "correct_option", e.target.value)}
+                                  className="h-9 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3.5 text-xs text-slate-705 dark:text-slate-250 outline-none focus:border-indigo-500 cursor-pointer font-bold"
+                                >
+                                  <option value="option1">Option 1 ({q.option1 ? q.option1.substring(0, 30) : "Empty"}...)</option>
+                                  <option value="option2">Option 2 ({q.option2 ? q.option2.substring(0, 30) : "Empty"}...)</option>
+                                  <option value="option3">Option 3 ({q.option3 ? q.option3.substring(0, 30) : "Empty"}...)</option>
+                                  <option value="option4">Option 4 ({q.option4 ? q.option4.substring(0, 30) : "Empty"}...)</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setGeneratedQuestions([]);
+                          setSelectedGenIds([]);
+                        }}
+                      >
+                        Reset Preview
+                      </Button>
+                      
+                      <Button
+                        onClick={handleSaveAIQuestions}
+                        disabled={savingGen || selectedGenIds.length === 0}
+                        className="bg-gradient-to-r from-emerald-500 to-teal-650 hover:from-emerald-600 hover:to-teal-750 text-white text-xs font-bold rounded-xl shadow-md h-9.5 px-6 border-0 cursor-pointer"
+                      >
+                        {savingGen ? "Saving Questions..." : `Import Selected (${selectedGenIds.length})`}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

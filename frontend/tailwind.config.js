@@ -6,11 +6,11 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8"
+          50: "var(--primary-50, #eff6ff)",
+          100: "var(--primary-100, #dbeafe)",
+          500: "var(--primary-500, #3b82f6)",
+          600: "var(--primary-600, #2563eb)",
+          700: "var(--primary-700, #1d4ed8)"
         }
       },
       fontFamily: {

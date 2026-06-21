@@ -55,6 +55,8 @@ interface Organization {
   status: "Active" | "Inactive";
   createdAt: string;
   securityFeatures: SecurityFeatures;
+  brandingBannerText?: string;
+  brandingColor?: string;
   adminName: string;
   adminEmail: string;
 }
@@ -137,6 +139,8 @@ export const OrganizationDetailsPage: React.FC = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [editAdminName, setEditAdminName] = useState("");
   const [editAdminEmail, setEditAdminEmail] = useState("");
+  const [editBrandingBannerText, setEditBrandingBannerText] = useState("");
+  const [editBrandingColor, setEditBrandingColor] = useState("");
 
   // Security features state
   const [secFeatures, setSecFeatures] = useState<SecurityFeatures | null>(null);
@@ -201,6 +205,8 @@ export const OrganizationDetailsPage: React.FC = () => {
         setEditLogo(oData.logo || "");
         setEditAdminName(oData.adminName || "");
         setEditAdminEmail(oData.adminEmail || "");
+        setEditBrandingBannerText(oData.brandingBannerText || "Welcome to Parikshya Online Testing Portal");
+        setEditBrandingColor(oData.brandingColor || "#4B52DC");
       }
     } catch (err: any) {
       console.error("Error fetching org details:", err);
@@ -267,6 +273,8 @@ export const OrganizationDetailsPage: React.FC = () => {
         logo: editLogo,
         adminName: editAdminName,
         adminEmail: editAdminEmail,
+        brandingBannerText: editBrandingBannerText,
+        brandingColor: editBrandingColor,
       };
 
       const response = await api.put(`/organizations/${org.id}`, payload);
@@ -542,6 +550,23 @@ export const OrganizationDetailsPage: React.FC = () => {
                   </span>
                   <div className="font-semibold text-slate-905 dark:text-white whitespace-pre-line leading-relaxed">
                     {org.address || "No address provided."}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">
+                    Branding Color
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full border border-slate-200" style={{ backgroundColor: org.brandingColor || "#4B52DC" }} />
+                    <span className="font-mono font-semibold text-slate-900 dark:text-white uppercase">{org.brandingColor || "#4B52DC"}</span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">
+                    Welcome Banner Text
+                  </span>
+                  <div className="font-semibold text-slate-900 dark:text-white italic">
+                    "{org.brandingBannerText || "Welcome to Parikshya Online Testing Portal"}"
                   </div>
                 </div>
               </div>
@@ -963,6 +988,74 @@ export const OrganizationDetailsPage: React.FC = () => {
                   />
                 </div>
                 <MapPin className="w-4.5 h-4.5 text-slate-400 dark:text-slate-500 shrink-0" />
+              </div>
+
+              {/* Branding Customizations */}
+              <div className="font-title text-[11px] font-bold text-[#4B52DC] dark:text-[#818CF8] uppercase tracking-widest pt-2">
+                Custom Portal Whitelabel Branding
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 dark:bg-[#070A10] border border-slate-200/80 dark:border-[#161D2A] px-4.5 py-2.5 focus-within:border-[#4B52DC]/80 dark:focus-within:border-indigo-500/80 transition-all flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <label className="block font-title text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                    Welcome Banner Text
+                  </label>
+                  <input
+                    type="text"
+                    value={editBrandingBannerText}
+                    onChange={(e) => setEditBrandingBannerText(e.target.value)}
+                    className="w-full bg-transparent text-slate-900 dark:text-white placeholder-slate-550 outline-none font-title text-sm font-bold mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 dark:bg-[#070A10] border border-slate-200/80 dark:border-[#161D2A] px-4.5 py-2.5 focus-within:border-[#4B52DC]/80 dark:focus-within:border-indigo-500/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <label className="block font-title text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                    Primary Brand Color
+                  </label>
+                  <p className="text-[9px] text-slate-500 dark:text-slate-450 mt-0.5">Primary UI brand highlights color.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1.5">
+                    {[
+                      { hex: "#4B52DC", name: "Classic Indigo" },
+                      { hex: "#10B981", name: "Emerald Green" },
+                      { hex: "#F59E0B", name: "Amber Orange" },
+                      { hex: "#EF4444", name: "Crimson Red" },
+                      { hex: "#8B5CF6", name: "Violet Purple" },
+                      { hex: "#06B6D4", name: "Cyan Teal" }
+                    ].map((preset) => (
+                      <button
+                        key={preset.hex}
+                        type="button"
+                        onClick={() => setEditBrandingColor(preset.hex)}
+                        title={preset.name}
+                        className={`w-5.5 h-5.5 rounded-full border transition-all cursor-pointer hover:scale-110 active:scale-95 ${
+                          editBrandingColor === preset.hex
+                            ? "border-slate-800 dark:border-white ring-1 ring-indigo-500"
+                            : "border-transparent"
+                        }`}
+                        style={{ backgroundColor: preset.hex }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={editBrandingColor || "#4B52DC"}
+                      onChange={(e) => setEditBrandingColor(e.target.value)}
+                      className="w-7 h-7 rounded cursor-pointer bg-transparent border-0"
+                    />
+                    <input
+                      type="text"
+                      maxLength={7}
+                      value={editBrandingColor}
+                      onChange={(e) => setEditBrandingColor(e.target.value)}
+                      className="w-18 px-1.5 py-0.5 rounded bg-white dark:bg-[#070A10] border border-slate-205 dark:border-[#161D2A] text-slate-905 dark:text-white text-[10px] font-mono text-center uppercase"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Primary Organization Admin Heading */}

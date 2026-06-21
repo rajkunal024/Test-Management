@@ -45,7 +45,9 @@ export const handleAuthRoutes = async (request: IncomingMessage, response: Serve
         id: org?.id,
         name: org?.name,
         logo: org?.logo,
-        securityFeatures: org?.securityFeatures
+        securityFeatures: org?.securityFeatures,
+        brandingBannerText: org?.get("brandingBannerText"),
+        brandingColor: org?.get("brandingColor")
       }
     });
     return;

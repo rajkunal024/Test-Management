@@ -22,7 +22,7 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Spinner } from "../components/ui/Spinner";
-import { getAllAttempts } from "../services/api";
+import { getAllAttempts, getMyOrganization } from "../services/api";
 import { useTests } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
 
@@ -93,6 +93,11 @@ export const StudentDashboard = () => {
   const { data: attempts = [], isLoading: isLoadingAttempts } = useQuery({
     queryKey: ["attempts"],
     queryFn: getAllAttempts,
+  });
+  const { data: orgData } = useQuery({
+    queryKey: ["myOrganization"],
+    queryFn: getMyOrganization,
+    enabled: Boolean(user),
   });
 
   const [search, setSearch] = useState("");
@@ -326,7 +331,7 @@ export const StudentDashboard = () => {
                 Parikshya Student Workspace
               </div>
               <h1 className="text-3xl font-black tracking-tight md:text-4xl bg-gradient-to-r from-white via-indigo-100 to-indigo-200 bg-clip-text text-transparent">
-                Welcome back, {user?.name || "Student"}!
+                {orgData?.brandingBannerText || `Welcome back, ${user?.name || "Student"}!`}
               </h1>
               <p className="mt-3 text-sm text-slate-400 max-w-xl leading-relaxed font-medium">
                 Elevate your exam preparation. Monitor scheduled slots, attempt mock tests under live security, and trace detailed analytics.

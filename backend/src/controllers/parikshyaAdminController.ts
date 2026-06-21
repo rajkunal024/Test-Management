@@ -185,7 +185,9 @@ export const listOrganizations = async (request: IncomingMessage, response: Serv
           admins
         },
         adminName: mainAdmin ? mainAdmin.name : "N/A",
-        adminEmail: mainAdmin ? mainAdmin.email : "N/A"
+        adminEmail: mainAdmin ? mainAdmin.email : "N/A",
+        brandingBannerText: org.get("brandingBannerText"),
+        brandingColor: org.get("brandingColor")
       });
     }
 
@@ -206,7 +208,9 @@ export const createOrganization = async (request: IncomingMessage, response: Ser
       contactEmail,
       phone,
       address,
-      status
+      status,
+      brandingBannerText,
+      brandingColor
     } = body;
 
     if (!name || !code || !contactEmail) {
@@ -236,6 +240,8 @@ export const createOrganization = async (request: IncomingMessage, response: Ser
       phone: phone || "",
       address: address || "",
       status: status || "Active",
+      brandingBannerText: brandingBannerText || "Welcome to Parikshya Online Testing Portal",
+      brandingColor: brandingColor || "#4B52DC",
     });
 
     await newOrg.save();
@@ -293,7 +299,9 @@ export const getOrganizationDetails = async (request: IncomingMessage, response:
           createdAt: org.createdAt,
           securityFeatures: org.get("securityFeatures"),
           adminName: mainAdmin ? mainAdmin.name : "N/A",
-          adminEmail: mainAdmin ? mainAdmin.email : "N/A"
+          adminEmail: mainAdmin ? mainAdmin.email : "N/A",
+          brandingBannerText: org.get("brandingBannerText"),
+          brandingColor: org.get("brandingColor")
         },
         stats: {
           students,
@@ -542,7 +550,9 @@ export const updateOrganization = async (request: IncomingMessage, response: Ser
       address,
       logo,
       adminName,
-      adminEmail
+      adminEmail,
+      brandingBannerText,
+      brandingColor
     } = body;
 
     const org = await OrganizationModel.findOne({ id: orgId });
@@ -556,6 +566,8 @@ export const updateOrganization = async (request: IncomingMessage, response: Ser
     if (contactEmail) org.contactEmail = contactEmail.toLowerCase().trim();
     if (phone !== undefined) org.phone = phone;
     if (address !== undefined) org.address = address;
+    if (brandingBannerText !== undefined) org.set("brandingBannerText", brandingBannerText);
+    if (brandingColor !== undefined) org.set("brandingColor", brandingColor);
 
     await org.save();
 

@@ -417,7 +417,7 @@ export const DashboardPage = () => {
                 <span>Parikshya Administrative Control Center</span>
               </div>
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-150 to-slate-400 bg-clip-text text-transparent">
-                Control Hub & System Overview
+                {orgData?.brandingBannerText || "Control Hub & System Overview"}
               </h1>
               <p className="mt-3 text-sm md:text-base text-slate-400 max-w-xl leading-relaxed">
                 Supervise active subjects, create test slots, register incoming student and teacher profiles, and track live session states across the platform.

@@ -1,4 +1,4 @@
-import { ReactNode, useState, useMemo, useRef } from "react";
+import { ReactNode, useState, useMemo, useRef, useEffect } from "react";
 import { NavLink, useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -80,6 +80,23 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
 
   const orgLogo = orgData?.logo || user?.organizationLogo;
   const orgName = orgData?.name || user?.organizationName;
+
+  useEffect(() => {
+    if (orgData?.brandingColor) {
+      const color = orgData.brandingColor;
+      document.documentElement.style.setProperty("--primary-50", `${color}15`);
+      document.documentElement.style.setProperty("--primary-100", `${color}30`);
+      document.documentElement.style.setProperty("--primary-500", color);
+      document.documentElement.style.setProperty("--primary-600", color);
+      document.documentElement.style.setProperty("--primary-700", color);
+    } else {
+      document.documentElement.style.removeProperty("--primary-50");
+      document.documentElement.style.removeProperty("--primary-100");
+      document.documentElement.style.removeProperty("--primary-500");
+      document.documentElement.style.removeProperty("--primary-600");
+      document.documentElement.style.removeProperty("--primary-700");
+    }
+  }, [orgData]);
 
   const toggleNav = () => {
     setNavHidden((prev) => {
@@ -464,9 +481,8 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
         </div>
       </aside>
 
-      <Link
-        to="/dashboard"
-        className={`fixed bottom-0 left-0 z-40 transition-all duration-300 flex items-center justify-center cursor-pointer hover:opacity-90 ${
+      <div
+        className={`fixed bottom-0 left-0 z-40 transition-all duration-300 flex items-center justify-center ${
           navHidden
             ? "w-[64px] h-[80px] bg-transparent border-t-0 border-r-0"
             : compactRail
@@ -475,7 +491,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
         }`}
       >
         <Logo compact={navHidden || compactRail} />
-      </Link>
+      </div>
 
       <header
         className={`fixed right-0 top-0 z-20 flex h-[100px] items-center justify-between border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 px-7 transition-all duration-300 ${navHidden ? "left-0" : compactRail ? "left-0 lg:left-[64px]" : "left-0 lg:left-[252px]"

@@ -1,5 +1,5 @@
 import { IncomingMessage, ServerResponse } from "node:http";
-import { getQuestions, createQuestion, updateQuestion, deleteQuestion, bulkQuestions, fetchBulkQuestions, uploadQuestionImage } from "../controllers/questionController.js";
+import { getQuestions, createQuestion, updateQuestion, deleteQuestion, bulkQuestions, fetchBulkQuestions, uploadQuestionImage, generateAIQuestions } from "../controllers/questionController.js";
 import { json } from "../middlewares/utils.js";
 
 export const handleQuestionsRoutes = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
@@ -9,6 +9,10 @@ export const handleQuestionsRoutes = async (request: IncomingMessage, response: 
   }
   if (path === "/api/questions/upload-image" && method === "POST") {
     await uploadQuestionImage(request, response);
+    return;
+  }
+  if (path === "/api/questions/generate-ai" && method === "POST") {
+    await generateAIQuestions(request, response);
     return;
   }
   if (path === "/api/questions" && method === "POST") {

@@ -346,3 +346,25 @@ export const getMyOrganization = async (): Promise<Organization> => {
   return unwrap(data);
 };
 
+export interface AIGeneratedQuestion {
+  id: string;
+  question: string;
+  option1: string;
+  option2: string;
+  option3: string;
+  option4: string;
+  correct_option: string;
+  difficulty: string;
+  class: string;
+}
+
+export const generateAIQuestionsApi = async (payload: {
+  topic: string;
+  difficulty: string;
+  class: string;
+  count: number;
+}): Promise<AIGeneratedQuestion[]> => {
+  const { data } = await api.post<ApiEnvelope<AIGeneratedQuestion[]> | AIGeneratedQuestion[]>("/questions/generate-ai", payload);
+  return unwrap(data);
+};
+

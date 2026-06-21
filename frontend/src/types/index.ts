@@ -219,4 +219,6 @@ export interface Organization {
   name: string;
   logo?: string;
   securityFeatures?: Record<string, boolean> | OrganizationFeatures;
+  brandingBannerText?: string;
+  brandingColor?: string;
 }

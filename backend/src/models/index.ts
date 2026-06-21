@@ -62,6 +62,8 @@ export const OrganizationSchema = new Schema({
       printDisabled: true
     }
   },
+  brandingBannerText: { type: String, default: "Welcome to Parikshya Online Testing Portal" },
+  brandingColor: { type: String, default: "#4B52DC" },
   createdAt: { type: Date, default: Date.now }
 });
 export const OrganizationModel = mongoose.model("Organization", OrganizationSchema);
