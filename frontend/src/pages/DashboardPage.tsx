@@ -406,10 +406,10 @@ export const DashboardPage = () => {
           <div className="absolute top-0 right-0 -mr-20 -mt-20 h-80 w-80 rounded-full bg-indigo-500/30 blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-80 w-80 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
           <div className="absolute top-1/2 left-1/3 -ml-20 h-60 w-60 rounded-full bg-pink-500/15 blur-3xl pointer-events-none" />
-          
+
           {/* Grid pattern overlay */}
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-25 pointer-events-none" />
-          
+
           <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
             <div>
               <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-400">
@@ -541,7 +541,7 @@ export const DashboardPage = () => {
               Organization Features
             </button>
           </div>
-          
+
           <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium bg-slate-50 dark:bg-slate-900/30 px-3.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800/50">
             <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
             <span>Active Control Mode</span>
@@ -574,7 +574,7 @@ export const DashboardPage = () => {
                   Register Subject
                 </Button>
                 <Link to="/tests/create">
-                  <Button 
+                  <Button
                     className="rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/10 text-white border-none font-bold transition-all hover:scale-[1.02] active:scale-[0.98] text-xs"
                     icon={<Plus className="h-4 w-4" />}
                   >
@@ -587,11 +587,11 @@ export const DashboardPage = () => {
             <div className="mb-6 grid gap-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/60 bg-white dark:bg-slate-900 p-4 md:grid-cols-[1fr_220px] shadow-sm">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <Input 
-                  className="pl-10 h-12 rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-950 focus:border-indigo-500 focus:ring-indigo-500/20 text-sm" 
-                  placeholder="Search by test name..." 
-                  value={search} 
-                  onChange={(event) => setSearch(event.target.value)} 
+                <Input
+                  className="pl-10 h-12 rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-950 focus:border-indigo-500 focus:ring-indigo-500/20 text-sm"
+                  placeholder="Search by test name..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
                 />
               </div>
               <select
@@ -639,108 +639,108 @@ export const DashboardPage = () => {
                     </tr>
                   ) : (
                     filteredTests.map((test) => {
-                    const statusVal = getTestStatus(test);
-                    const statusBorder = {
-                      live: "border-l-4 border-l-emerald-500 hover:bg-emerald-500/[0.02] dark:hover:bg-emerald-500/[0.01]",
-                      upcoming: "border-l-4 border-l-amber-500 hover:bg-amber-500/[0.02] dark:hover:bg-amber-500/[0.01]",
-                      completed: "border-l-4 border-l-blue-500 hover:bg-blue-500/[0.02] dark:hover:bg-blue-500/[0.01]",
-                      draft: "border-l-4 border-l-slate-400 hover:bg-slate-500/[0.02] dark:hover:bg-slate-500/[0.01]",
-                    }[statusVal];
+                      const statusVal = getTestStatus(test);
+                      const statusBorder = {
+                        live: "border-l-4 border-l-emerald-500 hover:bg-emerald-500/[0.02] dark:hover:bg-emerald-500/[0.01]",
+                        upcoming: "border-l-4 border-l-amber-500 hover:bg-amber-500/[0.02] dark:hover:bg-amber-500/[0.01]",
+                        completed: "border-l-4 border-l-blue-500 hover:bg-blue-500/[0.02] dark:hover:bg-blue-500/[0.01]",
+                        draft: "border-l-4 border-l-slate-400 hover:bg-slate-500/[0.02] dark:hover:bg-slate-500/[0.01]",
+                      }[statusVal];
 
-                    return (
-                      <tr key={test.id} className={`transition-all duration-150 ${statusBorder}`}>
-                        <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">{test.name}</td>
-                        <td className="px-6 py-4">
-                          <span className="font-semibold text-slate-600 dark:text-slate-400 text-xs bg-slate-100/60 dark:bg-slate-800/50 border border-slate-200/40 dark:border-slate-700/40 rounded-md px-2.5 py-1">
-                            {Array.isArray(test.subject) ? test.subject.join(", ") : test.subject}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          {(() => {
-                            const statusVal = getTestStatus(test);
-                            if (statusVal === "completed") {
+                      return (
+                        <tr key={test.id} className={`transition-all duration-150 ${statusBorder}`}>
+                          <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">{test.name}</td>
+                          <td className="px-6 py-4">
+                            <span className="font-semibold text-slate-600 dark:text-slate-400 text-xs bg-slate-100/60 dark:bg-slate-800/50 border border-slate-200/40 dark:border-slate-700/40 rounded-md px-2.5 py-1">
+                              {Array.isArray(test.subject) ? test.subject.join(", ") : test.subject}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            {(() => {
+                              const statusVal = getTestStatus(test);
+                              if (statusVal === "completed") {
+                                return (
+                                  <Badge tone="blue" className="px-2.5 py-1 rounded-md font-bold text-xs uppercase tracking-wider">
+                                    Completed
+                                  </Badge>
+                                );
+                              }
+                              if (statusVal === "live") {
+                                return (
+                                  <Badge tone="green" className="px-2.5 py-1 rounded-md font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 w-max">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Live
+                                  </Badge>
+                                );
+                              }
+                              if (statusVal === "upcoming") {
+                                return (
+                                  <Badge tone="yellow" className="px-2.5 py-1 rounded-md font-bold text-xs uppercase tracking-wider">
+                                    Upcoming
+                                  </Badge>
+                                );
+                              }
                               return (
-                                <Badge tone="blue" className="px-2.5 py-1 rounded-md font-bold text-xs uppercase tracking-wider">
-                                  Completed
+                                <Badge tone="slate" className="px-2.5 py-1 rounded-md font-bold text-xs uppercase tracking-wider">
+                                  Draft
                                 </Badge>
                               );
-                            }
-                            if (statusVal === "live") {
-                              return (
-                                <Badge tone="green" className="px-2.5 py-1 rounded-md font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 w-max">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                  Live
-                                </Badge>
-                              );
-                            }
-                            if (statusVal === "upcoming") {
-                              return (
-                                <Badge tone="yellow" className="px-2.5 py-1 rounded-md font-bold text-xs uppercase tracking-wider">
-                                  Upcoming
-                                </Badge>
-                              );
-                            }
-                            return (
-                              <Badge tone="slate" className="px-2.5 py-1 rounded-md font-bold text-xs uppercase tracking-wider">
-                                Draft
-                              </Badge>
-                            );
-                          })()}
-                        </td>
-                        <td className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400">{new Date(test.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-2">
-                            <Link to={`/tests/${test.id}/preview`}>
-                              <Button variant="secondary" className="h-9 px-3 rounded-xl border-slate-200 hover:border-slate-350 dark:border-slate-800 dark:hover:border-slate-700 font-bold text-xs bg-white dark:bg-slate-900 transition-colors">
-                                View
-                              </Button>
-                            </Link>
- 
-                            {isTestStarted(test) ? (
-                              <Button variant="secondary" className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-800 font-bold text-xs opacity-50 cursor-not-allowed" icon={<Pencil className="h-3.5 w-3.5" />} disabled>
-                                Edit
-                              </Button>
-                            ) : (
-                              <Link to={`/tests/${test.id}/edit`}>
-                                <Button variant="secondary" className="h-9 px-3 rounded-xl border-slate-200 hover:border-slate-350 dark:border-slate-800 dark:hover:border-slate-700 font-bold text-xs bg-white dark:bg-slate-900 transition-colors" icon={<Pencil className="h-3.5 w-3.5" />}>
+                            })()}
+                          </td>
+                          <td className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400">{new Date(test.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-2">
+                              <Link to={`/tests/${test.id}/preview`}>
+                                <Button variant="secondary" className="h-9 px-3 rounded-xl border-slate-200 hover:border-slate-350 dark:border-slate-800 dark:hover:border-slate-700 font-bold text-xs bg-white dark:bg-slate-900 transition-colors">
+                                  View
+                                </Button>
+                              </Link>
+
+                              {isTestStarted(test) ? (
+                                <Button variant="secondary" className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-800 font-bold text-xs opacity-50 cursor-not-allowed" icon={<Pencil className="h-3.5 w-3.5" />} disabled>
                                   Edit
                                 </Button>
-                              </Link>
-                            )}
- 
-                            {isTestStarted(test) ? (
-                              <Button variant="secondary" className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-800 font-bold text-xs opacity-50 cursor-not-allowed" disabled>
-                                Questions
-                              </Button>
-                            ) : (
-                              <Link to={`/tests/${test.id}/questions`}>
-                                <Button variant="secondary" className="h-9 px-3 rounded-xl border-slate-200 hover:border-slate-350 dark:border-slate-800 dark:hover:border-slate-700 font-bold text-xs bg-white dark:bg-slate-900 transition-colors">
+                              ) : (
+                                <Link to={`/tests/${test.id}/edit`}>
+                                  <Button variant="secondary" className="h-9 px-3 rounded-xl border-slate-200 hover:border-slate-350 dark:border-slate-800 dark:hover:border-slate-700 font-bold text-xs bg-white dark:bg-slate-900 transition-colors" icon={<Pencil className="h-3.5 w-3.5" />}>
+                                    Edit
+                                  </Button>
+                                </Link>
+                              )}
+
+                              {isTestStarted(test) ? (
+                                <Button variant="secondary" className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-800 font-bold text-xs opacity-50 cursor-not-allowed" disabled>
                                   Questions
                                 </Button>
+                              ) : (
+                                <Link to={`/tests/${test.id}/questions`}>
+                                  <Button variant="secondary" className="h-9 px-3 rounded-xl border-slate-200 hover:border-slate-350 dark:border-slate-800 dark:hover:border-slate-700 font-bold text-xs bg-white dark:bg-slate-900 transition-colors">
+                                    Questions
+                                  </Button>
+                                </Link>
+                              )}
+
+                              <Link to={`/tests/${test.id}/monitor`}>
+                                <Button variant="secondary" className="h-9 px-3.5 rounded-xl font-bold text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-100 dark:border-indigo-900/30 hover:bg-indigo-100/40 dark:hover:bg-indigo-950/50">
+                                  Monitor
+                                </Button>
                               </Link>
-                            )}
- 
-                            <Link to={`/tests/${test.id}/monitor`}>
-                              <Button variant="secondary" className="h-9 px-3.5 rounded-xl font-bold text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-100 dark:border-indigo-900/30 hover:bg-indigo-100/40 dark:hover:bg-indigo-950/50">
-                                Monitor
-                              </Button>
-                            </Link>
- 
-                            {isTestStarted(test) ? (
-                              <Button variant="ghost" className="h-9 px-3 rounded-xl font-bold text-xs text-slate-400 dark:text-slate-500 opacity-50 cursor-not-allowed" icon={<Trash2 className="h-3.5 w-3.5" />} disabled>
-                                Delete
-                              </Button>
-                            ) : (
-                              <Button variant="ghost" className="h-9 px-3 rounded-xl font-bold text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-500/10" onClick={() => setDeleteTarget(test)} icon={<Trash2 className="h-3.5 w-3.5" />}>
-                                Delete
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
+
+                              {isTestStarted(test) ? (
+                                <Button variant="ghost" className="h-9 px-3 rounded-xl font-bold text-xs text-slate-400 dark:text-slate-500 opacity-50 cursor-not-allowed" icon={<Trash2 className="h-3.5 w-3.5" />} disabled>
+                                  Delete
+                                </Button>
+                              ) : (
+                                <Button variant="ghost" className="h-9 px-3 rounded-xl font-bold text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-500/10" onClick={() => setDeleteTarget(test)} icon={<Trash2 className="h-3.5 w-3.5" />}>
+                                  Delete
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </section>
@@ -879,7 +879,7 @@ export const DashboardPage = () => {
                         Teacher: "border-l-4 border-l-emerald-500 hover:bg-emerald-500/[0.02] dark:hover:bg-emerald-500/[0.01]",
                         Student: "border-l-4 border-l-indigo-500 hover:bg-indigo-500/[0.02] dark:hover:bg-indigo-500/[0.01]",
                       }[usr.role as "Teacher" | "Student"] || "border-l-4 border-l-slate-400 hover:bg-slate-500/[0.02] dark:hover:bg-slate-500/[0.01]";
-                      
+
                       return (
                         <tr key={usr.id || usr.email} className={`transition-all duration-150 ${roleBorder}`}>
                           <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3">
@@ -1002,11 +1002,10 @@ export const DashboardPage = () => {
                       return (
                         <div
                           key={key}
-                          className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
-                            enabled
+                          className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${enabled
                               ? "bg-emerald-500/5 dark:bg-emerald-950/10 border-emerald-200/50 dark:border-emerald-900/20 text-slate-700 dark:text-slate-300 font-bold"
                               : "bg-slate-50/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-850/65 text-slate-450 dark:text-slate-555 opacity-70"
-                          }`}
+                            }`}
                         >
                           <span className="text-xs font-bold font-title">{label}</span>
                           <div className="flex items-center gap-1.5 shrink-0">

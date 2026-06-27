@@ -385,7 +385,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
   return (
     <div className="min-h-screen bg-white text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
       <aside
-        className={`fixed inset-y-0 left-0 z-30 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 transition-all duration-300 flex flex-col justify-between ${navHidden
+        className={`fixed top-[100px] bottom-0 left-0 z-30 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 transition-all duration-300 flex flex-col justify-between ${navHidden
             ? "w-0 -translate-x-full border-r-0 opacity-0 pointer-events-none"
             : compactRail
               ? "w-[64px] lg:block hidden"
@@ -393,17 +393,6 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
           }`}
       >
         <div className="flex flex-col flex-1 pb-20">
-          <div className={`${compactRail ? "px-0 justify-center" : "px-7"} flex h-[100px] items-center border-b border-slate-100 dark:border-slate-800/80`}>
-            {orgLogo ? (
-              <Link to="/dashboard" className="cursor-pointer hover:opacity-85 transition flex items-center justify-center w-full max-h-[80px]" title={orgName || "Home"}>
-                <img src={orgLogo} alt={orgName || "Home"} className="max-h-[60px] max-w-[85%] object-contain" />
-              </Link>
-            ) : (
-              <Link to="/dashboard" className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition focus:outline-none cursor-pointer" title="Home">
-                <Home className="h-5.5 w-5.5" />
-              </Link>
-            )}
-          </div>
           {compactRail ? (
             <nav className="flex flex-col items-center gap-6 py-8">
               {railIcons.map((Icon, index) => (
@@ -494,18 +483,41 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
       </div>
 
       <header
-        className={`fixed right-0 top-0 z-20 flex h-[100px] items-center justify-between border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 px-7 transition-all duration-300 ${navHidden ? "left-0" : compactRail ? "left-0 lg:left-[64px]" : "left-0 lg:left-[252px]"
-          }`}
+        className="fixed left-0 right-0 top-0 z-40 flex h-[100px] items-center justify-between border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 px-7"
       >
-        {/* Toggle Button for Navigation Panel */}
-        <button
-          onClick={toggleNav}
-          className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-200 text-slate-700 transition focus:outline-none cursor-pointer"
-          title={navHidden ? "Show Navigation" : "Hide Navigation"}
-          id="nav-visibility-toggle"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-4">
+          {/* Toggle Button for Navigation Panel */}
+          <button
+            onClick={toggleNav}
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-200 text-slate-700 transition focus:outline-none cursor-pointer shrink-0"
+            title={navHidden ? "Show Navigation" : "Hide Navigation"}
+            id="nav-visibility-toggle"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          {orgLogo ? (
+            <Link
+              to="/dashboard"
+              className="cursor-pointer hover:opacity-85 transition flex items-center justify-center max-h-[80px] animate-fade-in"
+              title={orgName || "Home"}
+            >
+              <img
+                src={orgLogo}
+                alt={orgName || "Home"}
+                className="max-h-[60px] max-w-[150px] object-contain"
+              />
+            </Link>
+          ) : (
+            <Link
+              to="/dashboard"
+              className="flex items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition focus:outline-none cursor-pointer shrink-0 h-12 w-12 animate-fade-in"
+              title="Home"
+            >
+              <Home className="h-5.5 w-5.5" />
+            </Link>
+          )}
+        </div>
 
         <div className="flex items-center gap-4 animate-fade-in">
           {/* Light/Dark Mode Toggle Switch */}
