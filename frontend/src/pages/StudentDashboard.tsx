@@ -15,6 +15,13 @@ import {
   TrendingUp,
   ChevronLeft,
   ChevronRight,
+  Timer,
+  Lock,
+  UserCheck,
+  Variable,
+  Signal,
+  Compass,
+  FileText,
 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -314,6 +321,19 @@ export const StudentDashboard = () => {
     return new Date(dateStr).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
   };
 
+  const formatHrsMinsSecs = (ms: number) => {
+    if (ms <= 0) return "00:00";
+    const totalSecs = Math.floor(ms / 1000);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    if (hrs > 0) {
+      return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+    }
+    return `${pad(mins)}:${pad(secs)}`;
+  };
+
   return (
     <AppShell>
       <PageWrapper>
@@ -504,78 +524,223 @@ export const StudentDashboard = () => {
                   const isUpcoming = currentTime < startTime;
                   const isEnded = currentTime > endTime;
                   const isSlotActive = !isUpcoming && !isEnded;
+                  const lateLimit = Number(test.lateEntryTime ?? 0);
+                  const hasLocalAnswers = localStorage.getItem(`attempt_answers_${test.id}_${user?.userId}`) !== null;
+                  const isLateToStart = !attempt && !hasLocalAnswers && currentTime > (startTime + lateLimit * 60 * 1000);
                   // Start test button is enabled starting 1 minute before start time
-                  const canEnterPrep = test.questions && test.questions.length > 0 && currentTime >= (startTime - 60000) && !isEnded;
+                  const canEnterPrep = test.questions && test.questions.length > 0 && currentTime >= (startTime - 60000) && !isEnded && !isLateToStart;
 
                   const subjectsName = Array.isArray(test.subject) ? test.subject.join(", ") : test.subject;
                   const theme = getSubjectTheme(subjectsName);
 
+                  // Helpers for custom styled pills with Lucide icons
+                  const getSubjectBadge = (subj: string) => {
+                    const s = (subj || "").toLowerCase();
+                    if (s.includes("math")) {
+                      return {
+                        bg: "bg-purple-50 dark:bg-purple-955/20 border-purple-100 dark:border-purple-900/30 text-purple-700 dark:text-purple-300",
+                        icon: <Variable className="h-3.5 w-3.5" />
+                      };
+                    }
+                    if (s.includes("phys") || s.includes("sci")) {
+                      return {
+                        bg: "bg-amber-50 dark:bg-amber-955/20 border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-300",
+                        icon: <TrendingUp className="h-3.5 w-3.5" />
+                      };
+                    }
+                    return {
+                      bg: "bg-blue-50 dark:bg-blue-955/20 border-blue-100 dark:border-blue-900/30 text-blue-700 dark:text-blue-300",
+                      icon: <BookOpen className="h-3.5 w-3.5" />
+                    };
+                  };
+
+                  const getDifficultyBadge = (diff: string) => {
+                    return {
+                      bg: "bg-amber-50 dark:bg-amber-955/20 border-amber-105 dark:border-amber-900/30 text-amber-700 dark:text-amber-300",
+                      icon: <Signal className="h-3.5 w-3.5" />
+                    };
+                  };
+
+                  const getTypeBadge = (t: string) => {
+                    return {
+                      bg: "bg-blue-50 dark:bg-blue-955/20 border-blue-100 dark:border-blue-900/30 text-blue-700 dark:text-blue-300",
+                      icon: <Compass className="h-3.5 w-3.5" />
+                    };
+                  };
+
+                  const getSlotStatusBadge = () => {
+                    if (isUpcoming) {
+                      return (
+                        <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-blue-100 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 w-fit">
+                          <span className="h-2 w-2 rounded-full bg-blue-500" />
+                          Upcoming
+                        </div>
+                      );
+                    }
+                    if (isEnded) {
+                      return (
+                        <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-rose-100 dark:border-rose-900/30 bg-rose-50/50 dark:bg-rose-955/10 text-rose-750 dark:text-rose-305 w-fit">
+                          <span className="h-2 w-2 rounded-full bg-rose-500" />
+                          Ended
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 w-fit">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Slot Active
+                      </div>
+                    );
+                  };
+
+                  const sb = getSubjectBadge(subjectsName);
+                  const db = getDifficultyBadge(test.difficulty);
+                  const tb = getTypeBadge(test.type);
+
                   return (
                     <article
                       key={test.id}
-                      className={`relative flex flex-col justify-between rounded-2xl border border-slate-200/80 dark:border-slate-805 bg-gradient-to-br ${theme.gradient} bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 ${theme.borderHover} dark:hover:shadow-slate-950/80 transition-all duration-300 group overflow-hidden`}
+                      className="relative flex flex-col justify-between rounded-3xl border border-slate-200/80 dark:border-slate-805 bg-white dark:bg-slate-900 p-6 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group overflow-hidden"
                     >
-                      {/* Gradient glow behind the card */}
-                      <div className={`absolute top-0 left-0 w-32 h-32 ${theme.glow} rounded-full blur-3xl -ml-10 -mt-10 transition-colors pointer-events-none`} />
-                      
                       <div>
-                        <div className="mb-4.5 flex flex-wrap items-center gap-2 relative z-10">
-                          <Badge tone={theme.badgeTone} className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{subjectsName}</Badge>
-                          <Badge tone={difficultyColor} className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{test.difficulty}</Badge>
-                          <Badge tone="slate" className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{test.type.replace("_", " ")}</Badge>
-
-                          {/* Slot Status Badge */}
-                          {isUpcoming ? (
-                            <Badge tone="blue" className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">Upcoming</Badge>
-                          ) : isEnded ? (
-                            <Badge tone="red" className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">Ended</Badge>
-                          ) : (
-                            <Badge tone="green" className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md animate-pulse">Slot Active</Badge>
-                          )}
+                        {/* Badges row */}
+                        <div className="mb-4.5 flex flex-wrap items-center gap-2.5 relative z-10">
+                          <span className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold ${sb.bg}`}>
+                            {sb.icon}
+                            {subjectsName}
+                          </span>
+                          <span className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold capitalize ${db.bg}`}>
+                            {db.icon}
+                            {test.difficulty}
+                          </span>
+                          <span className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold capitalize ${tb.bg}`}>
+                            {tb.icon}
+                            {test.type.replace("_", " ")}
+                          </span>
                         </div>
 
-                        <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-2 tracking-tight line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" title={test.name}>
+                        {/* Slot Active Badge Row */}
+                        <div className="mb-4 relative z-10">
+                          {getSlotStatusBadge()}
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-2xl font-black text-slate-850 dark:text-slate-100 mb-2 tracking-tight line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" title={test.name}>
                           {test.name}
                         </h3>
 
                         {/* Time Slot Details */}
-                        <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-bold mb-4">
-                          <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                        <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-bold mb-5">
+                          <Calendar className="h-4 w-4 text-indigo-500" />
                           <span>Slot: {formatDateTime(test.start_time)} - {formatDateTime(test.end_time)}</span>
                         </div>
 
-                        <div className={`mb-5 grid grid-cols-3 gap-2 text-xs text-slate-500 dark:text-slate-400 border-y ${theme.borderLine} py-3.5 mt-4 bg-slate-50/50 dark:bg-slate-950/20 rounded-xl px-2.5`}>
-                          <div className="flex flex-col items-center">
-                            <span className="font-black text-slate-800 dark:text-slate-200 text-sm">{test.total_questions}</span>
-                            <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">Questions</span>
+                        {/* Statistics Grid */}
+                        <div className="mb-4 grid grid-cols-2 border border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/10 rounded-2xl p-4 relative z-10">
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="p-2.5 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 rounded-full mb-2">
+                              <FileText className="h-5 w-5" />
+                            </div>
+                            <span className="font-extrabold text-slate-850 dark:text-slate-200 text-2xl tracking-tight">{test.total_questions}</span>
+                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">QUESTIONS</span>
                           </div>
-                          <div className="flex flex-col items-center border-x border-slate-100 dark:border-slate-800/50">
-                            <span className="font-black text-slate-800 dark:text-slate-200 text-sm flex items-center gap-1">
-                              <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                              {test.total_time}m
-                            </span>
-                            <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">Duration</span>
+                          <div className="w-px h-16 bg-slate-100 dark:bg-slate-800/80 self-center absolute left-1/2 -translate-x-1/2" />
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="p-2.5 bg-blue-50 dark:bg-blue-955/40 text-blue-600 dark:text-blue-400 rounded-full mb-2">
+                              <Award className="h-5 w-5" />
+                            </div>
+                            <span className="font-extrabold text-slate-850 dark:text-slate-200 text-2xl tracking-tight">{test.total_marks}</span>
+                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">MARKS</span>
                           </div>
-                          <div className="flex flex-col items-center">
-                            <span className="font-black text-slate-800 dark:text-slate-200 text-sm">{test.total_marks}</span>
-                            <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">Marks</span>
+                        </div>
+
+                        {/* Duration and Late Entry Details */}
+                        <div className="mb-4 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4 space-y-3.5 bg-white/40 dark:bg-slate-900/10 relative z-10 text-xs">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-bold">
+                              <div className="p-1.5 bg-blue-50 dark:bg-blue-955/30 text-blue-600 dark:text-blue-400 rounded-lg">
+                                <Clock className="h-3.5 w-3.5" />
+                              </div>
+                              <span>Duration</span>
+                            </div>
+                            <span className="text-slate-850 dark:text-slate-200 font-extrabold">{test.total_time} Minutes</span>
+                          </div>
+                          <div className="h-px bg-slate-100 dark:bg-slate-800/60" />
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-bold">
+                              <div className="p-1.5 bg-purple-50 dark:bg-purple-955/30 text-purple-600 dark:text-purple-400 rounded-lg">
+                                <UserCheck className="h-3.5 w-3.5" />
+                              </div>
+                              <span>Late Entry</span>
+                            </div>
+                            <span className="text-slate-850 dark:text-slate-200 font-extrabold">{test.lateEntryTime ?? 0} Minutes</span>
                           </div>
                         </div>
                       </div>
 
+                      {/* Late Entry Countdown Timer */}
+                      {(() => {
+                        const limitMins = Number(test.lateEntryTime ?? 0);
+                        if (limitMins <= 0) return null;
+                        if (attempt || hasLocalAnswers) return null;
+
+                        const cutoffTime = startTime + limitMins * 60 * 1000;
+                        const hasEndedCutoff = currentTime >= cutoffTime;
+
+                        const themeColors = hasEndedCutoff
+                          ? {
+                              border: "border-rose-100 dark:border-rose-950/40",
+                              bg: "bg-rose-50/50 dark:bg-rose-955/5",
+                              iconBg: "bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400",
+                              label: "text-rose-500 dark:text-rose-400",
+                              val: "text-rose-600 dark:text-rose-405",
+                            }
+                          : {
+                              border: "border-amber-100 dark:border-amber-900/30",
+                              bg: "bg-amber-50/50 dark:bg-amber-955/5",
+                              iconBg: "bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
+                              label: "text-amber-600 dark:text-amber-400",
+                              val: "text-amber-700 dark:text-amber-300 animate-pulse",
+                            };
+
+                        return (
+                          <div className={`flex items-center gap-3.5 p-3.5 rounded-2xl border ${themeColors.border} ${themeColors.bg} mb-4 relative z-10 font-bold`}>
+                            <div className={`p-2.5 rounded-full shrink-0 ${themeColors.iconBg}`}>
+                              <Timer className="h-5 w-5 animate-pulse" />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className={`text-[10px] font-extrabold uppercase tracking-wider ${themeColors.label}`}>
+                                Late Entry Ends In
+                              </span>
+                              <span className={`text-base font-black tracking-tight tabular-nums ${themeColors.val}`}>
+                                {hasEndedCutoff ? 'Late Entry Closed' : formatHrsMinsSecs(cutoffTime - currentTime)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Footer Actions */}
                       <div className="flex items-center justify-between mt-2 pt-4 border-t border-slate-100 dark:border-slate-800/80 border-dashed gap-4 relative z-10">
                         <div>
                           {attempt ? (
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 px-4 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
                               <CheckCircle2 className="h-4 w-4 shrink-0" />
                               {test.results_shared
                                 ? `Score: ${attempt.score}/${test.total_marks}`
                                 : "Completed"}
                             </div>
                           ) : (
-                            <span className="text-xs text-slate-400 dark:text-slate-500 font-bold bg-slate-50 dark:bg-slate-950 px-2.5 py-1 rounded-md border border-slate-100 dark:border-slate-800/40">
-                              {isUpcoming ? "Starts soon" : isEnded ? "Time ended" : "Not attempted"}
-                            </span>
+                            <div className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl border ${
+                              hasLocalAnswers 
+                                ? "text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-955/20 border-amber-100 dark:border-amber-900/30 animate-pulse"
+                                : "text-slate-450 dark:text-slate-500 bg-white dark:bg-slate-900/30 border-slate-205 dark:border-slate-800"
+                            }`}>
+                              {!hasLocalAnswers && <Lock className="h-4 w-4 shrink-0 text-slate-400" />}
+                              <span>
+                                {hasLocalAnswers ? "In Progress" : isUpcoming ? "Starts soon" : isEnded ? "Time ended" : isLateToStart ? "Late Entry Closed" : "Not attempted"}
+                              </span>
+                            </div>
                           )}
                         </div>
 
@@ -583,26 +748,32 @@ export const StudentDashboard = () => {
                           {attempt ? (
                             test.results_shared ? (
                               <Link to={`/tests/${test.id}/result`}>
-                                <Button variant="secondary" className="h-9.5 text-xs font-bold px-4 rounded-xl border-slate-200 dark:border-slate-800 hover:border-indigo-500 hover:text-indigo-650 dark:hover:text-indigo-400 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300">
+                                <Button variant="secondary" className="h-11 text-xs font-extrabold px-5 rounded-xl border-slate-205 dark:border-slate-800 hover:border-indigo-500 hover:text-indigo-650 dark:hover:text-indigo-400 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300">
                                   View Scorecard
                                 </Button>
                               </Link>
                             ) : (
-                              <Button disabled variant="secondary" className="h-9.5 text-xs font-bold px-4 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900/40 cursor-not-allowed rounded-xl border-slate-200 dark:border-slate-800">
-                                Results Pending
+                              <Button disabled variant="secondary" className="h-11 text-xs font-bold px-5 text-slate-400 dark:text-slate-550 bg-slate-50 dark:bg-slate-900/40 cursor-not-allowed rounded-xl border-slate-205 dark:border-slate-800">
+                                Waiting for Results
                               </Button>
                             )
                           ) : (
                             canEnterPrep ? (
-                              <Link to={`/tests/${test.id}/attempt`}>
-                                <Button className="h-9.5 text-xs font-extrabold px-4 flex items-center gap-1.5 bg-gradient-to-r from-indigo-500 to-[#6c7df7] hover:scale-[1.05] active:scale-[0.98] transition-all shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/25 rounded-xl text-white border-none">
-                                  Start Exam
-                                  <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                                </Button>
-                              </Link>
+                              (() => {
+                                const hasLocalAnswers = localStorage.getItem(`attempt_answers_${test.id}_${user?.userId}`) !== null;
+                                return (
+                                  <Link to={`/tests/${test.id}/attempt`}>
+                                    <Button className="h-11 text-xs font-extrabold px-5 flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/25 rounded-xl text-white border-none">
+                                      {hasLocalAnswers ? "Resume Test" : "Start Test"}
+                                      <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                                    </Button>
+                                  </Link>
+                                );
+                              })()
                             ) : (
-                              <Button disabled className="h-9.5 text-xs font-bold px-4 bg-slate-50 dark:bg-slate-900 text-slate-350 dark:text-slate-650 border-slate-100 dark:border-slate-850 rounded-xl cursor-not-allowed">
-                                {isUpcoming ? "Upcoming" : isEnded ? "Closed" : "No Questions"}
+                              <Button disabled className="h-11 text-xs font-extrabold px-5 bg-indigo-600/90 dark:bg-indigo-700/80 text-white border-none rounded-xl cursor-not-allowed flex items-center gap-1.5 shadow-sm">
+                                <Lock className="h-4 w-4" />
+                                {isUpcoming ? "Starts In" : isEnded ? "Closed" : isLateToStart ? "Late Entry Closed" : "No Questions"}
                               </Button>
                             )
                           )}

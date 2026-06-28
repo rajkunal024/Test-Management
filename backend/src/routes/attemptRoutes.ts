@@ -1,5 +1,5 @@
 import { IncomingMessage, ServerResponse } from "node:http";
-import { getAttempts, createAttempt, saveStreamFrame, getActiveStreams } from "../controllers/attemptController.js";
+import { getAttempts, createAttempt, saveStreamFrame, getActiveStreams, saveDraft } from "../controllers/attemptController.js";
 import { json } from "../middlewares/utils.js";
 
 export const handleAttemptsRoutes = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
@@ -9,6 +9,10 @@ export const handleAttemptsRoutes = async (request: IncomingMessage, response: S
   }
   if (path === "/api/attempts" && method === "POST") {
     await createAttempt(request, response);
+    return;
+  }
+  if (path === "/api/attempts/save-draft" && method === "POST") {
+    await saveDraft(request, response);
     return;
   }
   if (path === "/api/attempts/stream-frame" && method === "POST") {

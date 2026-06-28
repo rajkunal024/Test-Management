@@ -276,6 +276,8 @@ export const bulkRegisterUsers = async (users: any[]): Promise<{ success: boolea
 export interface TestCsvPayload {
   name: string;
   total_time: number;
+  lateEntryTime?: number;
+  graceTime?: number;
   correct_marks: number;
   wrong_marks: number;
   unattempt_marks: number;

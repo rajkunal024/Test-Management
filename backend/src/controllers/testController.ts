@@ -382,7 +382,7 @@ export const bulkCreateTestFromCsv = async (request: IncomingMessage, response: 
   }
   try {
     const body = JSON.parse(await readBody(request));
-    const { name, total_time, correct_marks, wrong_marks, unattempt_marks, type, class: className, status, questions, total_questions, start_time, end_time } = body;
+    const { name, total_time, correct_marks, wrong_marks, unattempt_marks, type, class: className, status, questions, total_questions, start_time, end_time, lateEntryTime, graceTime } = body;
 
     if (!name || !total_time || !correct_marks || !questions || !Array.isArray(questions)) {
       json(response, 400, { success: false, message: "Missing required fields or invalid questions list" });
@@ -639,7 +639,9 @@ export const bulkCreateTestFromCsv = async (request: IncomingMessage, response: 
       created_at: new Date(),
       class: className || questions[0]?.class || "Class 10",
       start_time,
-      end_time
+      end_time,
+      lateEntryTime: Number(lateEntryTime || 0),
+      graceTime: Number(graceTime || 0)
     });
 
     await newTest.save();

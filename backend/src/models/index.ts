@@ -303,6 +303,7 @@ export const ResultSchema = new Schema({
   time_spent: { type: Number, required: true },
   tab_switches: { type: Number, default: 0 },
   submitted_at: { type: Date, default: Date.now },
+  status: { type: String, enum: ["draft", "submitted"], default: "submitted" },
   organization_id: { type: String, required: true },
   test_copy: [{
     id: { type: String },
@@ -342,6 +343,9 @@ export const TestSchema = new Schema({
   start_time: { type: String },
   end_time: { type: String },
   results_shared: { type: Boolean, default: false },
+  lateEntryTime: { type: Number, default: 0 },
+  graceTime: { type: Number, default: 0 },
+  tabSwitchLimit: { type: Number, default: 0 },
   class: { type: String },
   organization_id: { type: String, required: true },
   sections: {

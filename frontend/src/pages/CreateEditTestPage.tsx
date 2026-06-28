@@ -85,6 +85,9 @@ export const CreateEditTestPage = () => {
     total_time: 60,
     start_time: "",
     end_time: "",
+    lateEntryTime: 0,
+    graceTime: 0,
+    tabSwitchLimit: 0,
     schedulingType: "live_now" as "live_now" | "live_until",
     total_questions: 0
   });
@@ -129,6 +132,9 @@ export const CreateEditTestPage = () => {
       total_questions: "" as unknown as number,
       start_time: "",
       end_time: "",
+      lateEntryTime: 0,
+      graceTime: 0,
+      tabSwitchLimit: 0,
       sections: [],
     },
   });
@@ -305,6 +311,9 @@ export const CreateEditTestPage = () => {
         total_questions: existingTest.total_questions,
         start_time: existingTest.start_time ?? "",
         end_time: existingTest.end_time ?? "",
+        lateEntryTime: existingTest.lateEntryTime ?? 0,
+        graceTime: existingTest.graceTime ?? 0,
+        tabSwitchLimit: existingTest.tabSwitchLimit ?? 0,
         sections: existingTest.sections ?? [],
       });
 
@@ -1489,43 +1498,70 @@ export const CreateEditTestPage = () => {
                       <option value="live_until">Live Until</option>
                     </select>
                   </div>
-
                   {schedulingType === "live_now" ? (
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      <Input
-                        label="Duration (Min)"
-                        placeholder="Ex: 60"
-                        type="number"
-                        error={errors.total_time?.message}
-                        {...register("total_time")}
-                        className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
-                      />
-                      <Input
-                        label="Start (Today)"
-                        type="time"
-                        value={startTimeTimePart}
-                        error={errors.start_time?.message}
-                        onChange={(e) => {
-                          const timeVal = e.target.value;
-                          if (timeVal) {
-                            const now = new Date();
-                            const pad = (n: number) => String(n).padStart(2, "0");
-                            const todayDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-                            setValue("start_time", `${todayDate}T${timeVal}`, { shouldValidate: true });
-                          } else {
-                            setValue("start_time", "");
-                          }
-                        }}
-                        className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
-                      />
-                      <Input
-                        label="End (Today)"
-                        type="time"
-                        value={endTimeTimePart}
-                        error={errors.end_time?.message}
-                        readOnly
-                        className="bg-slate-50 dark:bg-slate-950 cursor-not-allowed text-slate-400 rounded-xl border-slate-200 dark:border-slate-800"
-                      />
+                    <div className="space-y-4">
+                      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+                        <Input
+                          label="Duration (Min)"
+                          placeholder="Ex: 60"
+                          type="number"
+                          error={errors.total_time?.message}
+                          {...register("total_time")}
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                        />
+                        <Input
+                          label="Start (Today)"
+                          type="time"
+                          value={startTimeTimePart}
+                          error={errors.start_time?.message}
+                          onChange={(e) => {
+                            const timeVal = e.target.value;
+                            if (timeVal) {
+                              const now = new Date();
+                              const pad = (n: number) => String(n).padStart(2, "0");
+                              const todayDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+                              setValue("start_time", `${todayDate}T${timeVal}`, { shouldValidate: true });
+                            } else {
+                              setValue("start_time", "");
+                            }
+                          }}
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                        />
+                        <Input
+                          label="End (Today)"
+                          type="time"
+                          value={endTimeTimePart}
+                          error={errors.end_time?.message}
+                          readOnly
+                          className="bg-slate-50 dark:bg-slate-950 cursor-not-allowed text-slate-400 rounded-xl border-slate-200 dark:border-slate-800"
+                        />
+                      </div>
+                      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+                        <Input
+                          label="Late Entry (Minutes)"
+                          placeholder="Ex: 10 (0 for none)"
+                          type="number"
+                          error={errors.lateEntryTime?.message}
+                          {...register("lateEntryTime", { valueAsNumber: true })}
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                        />
+                        <Input
+                          label="Grace Time (Minutes)"
+                          placeholder="Ex: 5 (0 for none)"
+                          type="number"
+                          error={errors.graceTime?.message}
+                          {...register("graceTime", { valueAsNumber: true })}
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                        />
+                        <Input
+                          label="Tab Switching Allowed"
+                          placeholder="Ex: 5 (0 for unlimited)"
+                          type="number"
+                          error={errors.tabSwitchLimit?.message}
+                          {...register("tabSwitchLimit", { valueAsNumber: true })}
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                        />
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -1547,14 +1583,40 @@ export const CreateEditTestPage = () => {
                           className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
                         />
                       </div>
-                      <Input
-                        label="Duration (Minutes)"
-                        placeholder="Duration in minutes"
-                        type="number"
-                        error={errors.total_time?.message}
-                        {...register("total_time")}
-                        className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
-                      />
+                      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                        <Input
+                          label="Duration (Minutes)"
+                          placeholder="Duration in minutes"
+                          type="number"
+                          error={errors.total_time?.message}
+                          {...register("total_time")}
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                        />
+                        <Input
+                          label="Late Entry (Minutes)"
+                          placeholder="Ex: 10 (0 for none)"
+                          type="number"
+                          error={errors.lateEntryTime?.message}
+                          {...register("lateEntryTime", { valueAsNumber: true })}
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                        />
+                        <Input
+                          label="Grace Time (Minutes)"
+                          placeholder="Ex: 5 (0 for none)"
+                          type="number"
+                          error={errors.graceTime?.message}
+                          {...register("graceTime", { valueAsNumber: true })}
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                        />
+                        <Input
+                          label="Tab Switching Allowed"
+                          placeholder="Ex: 5 (0 for unlimited)"
+                          type="number"
+                          error={errors.tabSwitchLimit?.message}
+                          {...register("tabSwitchLimit", { valueAsNumber: true })}
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>

@@ -80,6 +80,9 @@ export interface Test {
   start_time?: string;
   end_time?: string;
   results_shared?: boolean;
+  lateEntryTime?: number;
+  graceTime?: number;
+  tabSwitchLimit?: number;
   class?: string;
   sections?: TestSection[];
 }
@@ -140,6 +143,9 @@ export interface TestPayload {
   start_time?: string;
   end_time?: string;
   results_shared?: boolean;
+  lateEntryTime?: number;
+  graceTime?: number;
+  tabSwitchLimit?: number;
   class?: string;
   sections?: TestSection[];
 }

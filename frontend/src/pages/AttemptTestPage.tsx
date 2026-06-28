@@ -17,6 +17,8 @@ import {
   MessageSquare,
   LayoutGrid,
   Check,
+  Sliders,
+  Eye,
 } from "lucide-react";
 import { useTest } from "../hooks/useTests";
 import { fetchBulkQuestions, submitAttempt, getAllAttempts, uploadStreamFrame, getPassageById, getMyOrganization } from "../services/api";
@@ -119,9 +121,21 @@ export const AttemptTestPage = () => {
   }, []);
 
   // Fullscreen and violation monitoring states and refs
-  const [fullscreenViolations, setFullscreenViolations] = useState(0);
+  const storageKeyFullscreenViolations = `attempt_fullscreen_violations_${id}_${user?.userId}`;
+  const [fullscreenViolations, setFullscreenViolations] = useState(() => {
+    const saved = localStorage.getItem(`attempt_fullscreen_violations_${id}_${user?.userId}`);
+    return saved ? Number(saved) : 0;
+  });
   const [fullscreenWarningOpen, setFullscreenWarningOpen] = useState(false);
-  const fullscreenViolationsRef = useRef(0);
+  const fullscreenViolationsRef = useRef(fullscreenViolations);
+  const autoSubmitRef = useRef<() => void>();
+
+  useEffect(() => {
+    if (user?.userId && id) {
+      localStorage.setItem(storageKeyFullscreenViolations, String(fullscreenViolations));
+      fullscreenViolationsRef.current = fullscreenViolations;
+    }
+  }, [fullscreenViolations, storageKeyFullscreenViolations, user?.userId, id]);
 
   const enterFullscreen = () => {
     const docEl = document.documentElement;
@@ -672,10 +686,21 @@ export const AttemptTestPage = () => {
   }, [orgData]);
 
   // Monitor tab switching / window blurring (visibility changes and window focus/blur)
-  const tabSwitchesRef = useRef(0);
+  const storageKeyTabSwitches = `attempt_tab_switches_${id}_${user?.userId}`;
+  const [tabSwitches, setTabSwitches] = useState(() => {
+    const saved = localStorage.getItem(storageKeyTabSwitches);
+    return saved ? Number(saved) : 0;
+  });
+  const tabSwitchesRef = useRef(tabSwitches);
   const isTabOutRef = useRef(false);
-  const [tabSwitches, setTabSwitches] = useState(0);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.userId && id) {
+      localStorage.setItem(storageKeyTabSwitches, String(tabSwitches));
+      tabSwitchesRef.current = tabSwitches;
+    }
+  }, [tabSwitches, storageKeyTabSwitches, user?.userId, id]);
 
   useEffect(() => {
     if (!envChecked) return;
@@ -686,6 +711,12 @@ export const AttemptTestPage = () => {
         isTabOutRef.current = true;
         tabSwitchesRef.current += 1;
         setTabSwitches(tabSwitchesRef.current);
+
+        const limit = Number(test?.tabSwitchLimit ?? 0);
+        if (limit > 0 && tabSwitchesRef.current >= limit) {
+          alert(`Maximum tab switches limit (${limit}) reached. Your test has been automatically submitted.`);
+          autoSubmitRef.current?.();
+        }
       }
     };
 
@@ -865,10 +896,101 @@ export const AttemptTestPage = () => {
   }, [imageUrls, questions]);
 
   // State
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [marked, setMarked] = useState<Record<string, boolean>>({});
-  const [visited, setVisited] = useState<Record<string, boolean>>({ "0": true });
+  const storageKeyAnswers = `attempt_answers_${id}_${user?.userId}`;
+  const storageKeyCurrentIdx = `attempt_current_idx_${id}_${user?.userId}`;
+  const storageKeyMarked = `attempt_marked_${id}_${user?.userId}`;
+  const storageKeyVisited = `attempt_visited_${id}_${user?.userId}`;
+  const storageKeyTimeSpent = `attempt_time_spent_${id}_${user?.userId}`;
+
+  const [currentIdx, setCurrentIdx] = useState(() => {
+    const saved = localStorage.getItem(storageKeyCurrentIdx);
+    return saved ? Number(saved) : 0;
+  });
+  const [answers, setAnswers] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem(storageKeyAnswers);
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [marked, setMarked] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem(storageKeyMarked);
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [visited, setVisited] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem(storageKeyVisited);
+    return saved ? JSON.parse(saved) : { "0": true };
+  });
+
+  useEffect(() => {
+    if (user?.userId && id) {
+      localStorage.setItem(storageKeyCurrentIdx, String(currentIdx));
+    }
+  }, [currentIdx, storageKeyCurrentIdx, user?.userId, id]);
+
+  useEffect(() => {
+    if (user?.userId && id) {
+      localStorage.setItem(storageKeyAnswers, JSON.stringify(answers));
+      answersRef.current = answers;
+    }
+  }, [answers, storageKeyAnswers, user?.userId, id]);
+
+  useEffect(() => {
+    if (user?.userId && id) {
+      localStorage.setItem(storageKeyMarked, JSON.stringify(marked));
+    }
+  }, [marked, storageKeyMarked, user?.userId, id]);
+
+  useEffect(() => {
+    if (user?.userId && id) {
+      localStorage.setItem(storageKeyVisited, JSON.stringify(visited));
+    }
+  }, [visited, storageKeyVisited, user?.userId, id]);
+
+  // Real-time backend draft synchronization
+  useEffect(() => {
+    if (!user?.userId || !id) return;
+    const saveDraftBackend = async () => {
+      try {
+        await fetch("/api/attempts/save-draft", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            test_id: id,
+            user_id: user.userId,
+            answers,
+            time_spent: timeSpentRef.current
+          })
+        });
+      } catch (err) {
+        console.error("Failed to auto-save draft to backend:", err);
+      }
+    };
+    saveDraftBackend();
+  }, [answers, user?.userId, id]);
+
+  // Periodic draft saving (every 30 seconds) to sync elapsed time
+  useEffect(() => {
+    if (!user?.userId || !id) return;
+    const interval = setInterval(async () => {
+      try {
+        await fetch("/api/attempts/save-draft", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            test_id: id,
+            user_id: user.userId,
+            answers: answersRef.current,
+            time_spent: timeSpentRef.current
+          })
+        });
+      } catch (err) {
+        console.error("Failed to auto-save periodic draft to backend:", err);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [user?.userId, id]);
 
   useEffect(() => {
     if (navigatorSidebarRef.current) {
@@ -914,7 +1036,86 @@ export const AttemptTestPage = () => {
 
   // Timer State
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const [timeSpent, setTimeSpent] = useState(0);
+  const [timeSpent, setTimeSpent] = useState(() => {
+    const saved = localStorage.getItem(`attempt_time_spent_${id}_${user?.userId}`);
+    return saved ? Number(saved) : 0;
+  });
+
+  // Cognitive Comfort states
+  const [themeMode, setThemeMode] = useState(() => localStorage.getItem("parikshya_exam_theme") || "default");
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem("parikshya_exam_font_size") || "medium");
+  const [lineHeight, setLineHeight] = useState(() => localStorage.getItem("parikshya_exam_line_height") || "normal");
+  const [tintFilter, setTintFilter] = useState(() => localStorage.getItem("parikshya_exam_tint") || "none");
+  const [readingRuler, setReadingRuler] = useState(() => localStorage.getItem("parikshya_exam_ruler") === "true");
+  const [showComfortSettings, setShowComfortSettings] = useState(false);
+  const [mouseY, setMouseY] = useState(0);
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!readingRuler) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      setMouseY(e.clientY);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [readingRuler]);
+
+  useEffect(() => {
+    if (!envChecked || !test) return;
+    const saved = localStorage.getItem(`attempt_answers_${id}_${user?.userId}`);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const solvedCount = Object.keys(parsed).length;
+      if (solvedCount > 0) {
+        setRestoreMessage(`✓ Session restored. Resumed from Question #${currentIdx + 1} (${solvedCount} answers loaded)`);
+        const timer = setTimeout(() => {
+          setRestoreMessage(null);
+        }, 5000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [envChecked, test]);
+
+  const getPassageStyle = () => {
+    let size = "14px";
+    let height = "1.625"; // normal
+    if (fontSize === "small") size = "12px";
+    if (fontSize === "large") size = "16px";
+    if (fontSize === "xlarge") size = "18px";
+    
+    if (lineHeight === "tight") height = "1.25";
+    if (lineHeight === "loose") height = "2";
+    
+    return { fontSize: size, lineHeight: height };
+  };
+
+  const getQuestionStyle = () => {
+    let size = "18px";
+    let height = "1.625";
+    if (fontSize === "small") size = "15px";
+    if (fontSize === "large") size = "21px";
+    if (fontSize === "xlarge") size = "24px";
+    
+    if (lineHeight === "tight") height = "1.25";
+    if (lineHeight === "loose") height = "2";
+    
+    return { fontSize: size, lineHeight: height };
+  };
+
+  const getOptionStyle = () => {
+    let size = "14px";
+    let height = "1.625";
+    if (fontSize === "small") size = "12px";
+    if (fontSize === "large") size = "16px";
+    if (fontSize === "xlarge") size = "18px";
+    
+    if (lineHeight === "tight") height = "1.25";
+    if (lineHeight === "loose") height = "2";
+    
+    return { fontSize: size, lineHeight: height };
+  };
 
   // Modals
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -955,8 +1156,10 @@ export const AttemptTestPage = () => {
         }
       }
 
+      const latePenaltySeconds = Math.max(0, lateSeconds - 600); // 10-minute start buffer (600 seconds)
+
       if (isSectional && test.sections && test.sections.length > 0) {
-        let tempLate = lateSeconds;
+        let tempLate = latePenaltySeconds;
         let startSecIdx = 0;
         let startSecTimeLeft = 0;
         let found = false;
@@ -993,7 +1196,7 @@ export const AttemptTestPage = () => {
         }
       } else {
         let durationSeconds = test.total_time * 60;
-        const remainingTime = Math.max(0, durationSeconds - lateSeconds);
+        const remainingTime = Math.max(0, durationSeconds - latePenaltySeconds);
         let finalTime = remainingTime;
         if (test.end_time) {
           const now = new Date().getTime();
@@ -1054,6 +1257,14 @@ export const AttemptTestPage = () => {
   const submitMutation = useMutation({
     mutationFn: submitAttempt,
     onSuccess: (data) => {
+      // Clean up localStorage attempt progress keys
+      localStorage.removeItem(`attempt_answers_${id}_${user?.userId}`);
+      localStorage.removeItem(`attempt_current_idx_${id}_${user?.userId}`);
+      localStorage.removeItem(`attempt_marked_${id}_${user?.userId}`);
+      localStorage.removeItem(`attempt_visited_${id}_${user?.userId}`);
+      localStorage.removeItem(`attempt_time_spent_${id}_${user?.userId}`);
+      localStorage.removeItem(`attempt_tab_switches_${id}_${user?.userId}`);
+      localStorage.removeItem(`attempt_fullscreen_violations_${id}_${user?.userId}`);
       navigate("/dashboard");
     },
     onError: (err) => {
@@ -1159,6 +1370,10 @@ export const AttemptTestPage = () => {
       tab_switches: tabSwitchesRef.current + fullscreenViolationsRef.current,
     });
   };
+
+  useEffect(() => {
+    autoSubmitRef.current = triggerAutoSubmit;
+  }, [triggerAutoSubmit]);
 
   // Formatting Timer (strictly min:sec)
   const formattedTimeLeft = useMemo(() => {
@@ -1631,7 +1846,302 @@ export const AttemptTestPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-955 flex flex-col select-none relative transition-colors duration-200">
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-955 flex flex-col select-none relative transition-colors duration-200 theme-${themeMode} ${
+      themeMode === "cyberpunk" ? "theme-cyberpunk font-mono" : 
+      themeMode === "minimalist" ? "theme-minimalist" : 
+      themeMode === "epaper" ? "theme-epaper" : 
+      themeMode === "terminal" ? "theme-terminal font-mono" : 
+      themeMode === "forest" ? "theme-forest" : 
+      themeMode === "midnight" ? "theme-midnight" : 
+      themeMode === "solarized" ? "theme-solarized" : ""
+    }`}>
+      <style>{`
+        /* E-Paper Theme overrides */
+        .theme-epaper {
+          background-color: #fbf0d9 !important;
+          color: #1a1a1a !important;
+          font-family: Georgia, Cambria, "Times New Roman", Times, serif !important;
+        }
+        .theme-epaper header {
+          background-color: #f5e6c4 !important;
+          border-bottom: 2px solid #e0cda9 !important;
+        }
+        .theme-epaper aside, .theme-epaper .question-card, .theme-epaper .sidebar-card, .theme-epaper .main-box {
+          background-color: #fdfbf7 !important;
+          border: 1px solid #d3c2a0 !important;
+          color: #1a1a1a !important;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+        }
+        .theme-epaper h1, .theme-epaper h2, .theme-epaper h3, .theme-epaper h4, .theme-epaper h5, .theme-epaper p, .theme-epaper span, .theme-epaper text {
+          color: #2b2b2b !important;
+        }
+        .theme-epaper button {
+          border-color: #d3c2a0 !important;
+          color: #2b2b2b !important;
+        }
+        .theme-epaper .text-slate-650, .theme-epaper .text-slate-350 {
+          color: #2c2c2c !important;
+        }
+
+        /* Cyberpunk Theme overrides */
+        .theme-cyberpunk {
+          background-color: #03001e !important;
+          background-image: linear-gradient(180deg, #03001e 0%, #12002b 100%) !important;
+          color: #39ff14 !important; /* toxic green */
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+        }
+        .theme-cyberpunk header {
+          background-color: #0d001f !important;
+          border-bottom: 2px solid #06b6d4 !important; /* neon cyan */
+          box-shadow: 0 0 10px rgba(6, 182, 212, 0.4) !important;
+        }
+        .theme-cyberpunk .question-card, .theme-cyberpunk .sidebar-card, .theme-cyberpunk .main-box {
+          background-color: rgba(13, 0, 31, 0.8) !important;
+          border: 2px solid #06b6d4 !important;
+          color: #39ff14 !important;
+          box-shadow: 0 0 15px rgba(6, 182, 212, 0.25) !important;
+        }
+        .theme-cyberpunk h1, .theme-cyberpunk h2, .theme-cyberpunk h3, .theme-cyberpunk h4, .theme-cyberpunk h5, .theme-cyberpunk p, .theme-cyberpunk span, .theme-cyberpunk text {
+          color: #00ffff !important; /* neon cyan */
+          text-shadow: 0 0 5px rgba(0, 255, 255, 0.5) !important;
+        }
+        .theme-cyberpunk .text-slate-650, .theme-cyberpunk .text-slate-350 {
+          color: #39ff14 !important;
+        }
+        .theme-cyberpunk button {
+          border-color: #ff007f !important; /* neon pink */
+          color: #ff007f !important;
+          box-shadow: 0 0 5px rgba(255, 0, 127, 0.3) !important;
+        }
+        .theme-cyberpunk button:hover {
+          background-color: #ff007f !important;
+          color: black !important;
+        }
+        .theme-cyberpunk .active-choice {
+          border-color: #39ff14 !important;
+          box-shadow: 0 0 10px rgba(57, 255, 20, 0.5) !important;
+          background-color: rgba(57, 255, 20, 0.1) !important;
+          color: #39ff14 !important;
+        }
+        .theme-cyberpunk .choice-card {
+          border: 1px solid #ff007f !important;
+          background-color: rgba(255, 0, 127, 0.05) !important;
+          color: #ff007f !important;
+        }
+
+        /* Minimalist Dark Theme overrides */
+        .theme-minimalist {
+          background-color: #07090e !important;
+          color: #f1f5f9 !important;
+        }
+        .theme-minimalist header {
+          background-color: #090d16 !important;
+          border-bottom: 1px solid #1e293b !important;
+        }
+        .theme-minimalist .question-card, .theme-minimalist .sidebar-card, .theme-minimalist .main-box {
+          background-color: #0f172a !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        .theme-minimalist h1, .theme-minimalist h2, .theme-minimalist h3, .theme-minimalist h4, .theme-minimalist h5, .theme-minimalist p, .theme-minimalist span, .theme-minimalist text {
+          color: #f8fafc !important;
+        }
+        .theme-minimalist button {
+          border-color: #334155 !important;
+          color: #94a3b8 !important;
+        }
+        .theme-minimalist .text-slate-650, .theme-minimalist .text-slate-350 {
+          color: #cbd5e1 !important;
+        }
+
+        /* Terminal Theme overrides */
+        .theme-terminal {
+          background-color: #050505 !important;
+          color: #ffb000 !important; /* amber neon */
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+        }
+        .theme-terminal header {
+          background-color: #000000 !important;
+          border-bottom: 2px solid #ffb000 !important;
+          box-shadow: 0 0 10px rgba(255, 176, 0, 0.4) !important;
+        }
+        .theme-terminal .question-card, .theme-terminal .sidebar-card, .theme-terminal .main-box {
+          background-color: #0a0a0a !important;
+          border: 1px solid #ffb000 !important;
+          color: #ffb000 !important;
+          box-shadow: inset 0 0 10px rgba(255, 176, 0, 0.1), 0 0 10px rgba(255, 176, 0, 0.15) !important;
+        }
+        .theme-terminal h1, .theme-terminal h2, .theme-terminal h3, .theme-terminal h4, .theme-terminal h5, .theme-terminal p, .theme-terminal span, .theme-terminal text {
+          color: #ffb000 !important;
+          text-shadow: 0 0 3px rgba(255, 176, 0, 0.6) !important;
+        }
+        .theme-terminal .text-slate-650, .theme-terminal .text-slate-350 {
+          color: #ffb000 !important;
+        }
+        .theme-terminal button {
+          border-color: #ffb000 !important;
+          color: #ffb000 !important;
+        }
+        .theme-terminal button:hover {
+          background-color: #ffb000 !important;
+          color: black !important;
+        }
+        .theme-terminal .active-choice {
+          border-color: #ffb000 !important;
+          background-color: rgba(255, 176, 0, 0.2) !important;
+          box-shadow: 0 0 8px rgba(255, 176, 0, 0.4) !important;
+        }
+        .theme-terminal .choice-card {
+          border: 1px solid rgba(255, 176, 0, 0.6) !important;
+          background-color: rgba(255, 176, 0, 0.03) !important;
+          color: #ffb000 !important;
+        }
+
+        /* Forest Theme overrides */
+        .theme-forest {
+          background-color: #eef1ec !important;
+          color: #2d4a22 !important;
+          font-family: ui-sans-serif, system-ui, sans-serif !important;
+        }
+        .theme-forest header {
+          background-color: #dae2d5 !important;
+          border-bottom: 2px solid #a3b899 !important;
+        }
+        .theme-forest .question-card, .theme-forest .sidebar-card, .theme-forest .main-box {
+          background-color: #f7f9f5 !important;
+          border: 1px solid #cbd5c5 !important;
+          color: #2d4a22 !important;
+          box-shadow: 0 4px 6px -1px rgba(45, 74, 34, 0.05) !important;
+        }
+        .theme-forest h1, .theme-forest h2, .theme-forest h3, .theme-forest h4, .theme-forest h5, .theme-forest p, .theme-forest span, .theme-forest text {
+          color: #213c16 !important;
+        }
+        .theme-forest .text-slate-650, .theme-forest .text-slate-350 {
+          color: #2d4a22 !important;
+        }
+        .theme-forest button {
+          border-color: #a3b899 !important;
+          color: #2d4a22 !important;
+        }
+        .theme-forest button:hover {
+          background-color: #a3b899 !important;
+          color: white !important;
+        }
+        .theme-forest .active-choice {
+          border-color: #4b6f44 !important;
+          background-color: rgba(75, 111, 68, 0.1) !important;
+          color: #2d4a22 !important;
+        }
+        .theme-forest .choice-card {
+          border: 1px solid #cbd5c5 !important;
+          background-color: rgba(203, 213, 197, 0.2) !important;
+        }
+
+        /* Midnight Navy Theme overrides */
+        .theme-midnight {
+          background-color: #0b0f19 !important;
+          background-image: linear-gradient(180deg, #0b0f19 0%, #111827 100%) !important;
+          color: #e2e8f0 !important;
+          font-family: ui-sans-serif, system-ui, sans-serif !important;
+        }
+        .theme-midnight header {
+          background-color: #0f172a !important;
+          border-bottom: 2px solid #3b82f6 !important;
+          box-shadow: 0 0 10px rgba(59, 130, 246, 0.25) !important;
+        }
+        .theme-midnight .question-card, .theme-midnight .sidebar-card, .theme-midnight .main-box {
+          background-color: #1e293b !important;
+          border: 1px solid #334155 !important;
+          color: #f1f5f9 !important;
+          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2) !important;
+        }
+        .theme-midnight h1, .theme-midnight h2, .theme-midnight h3, .theme-midnight h4, .theme-midnight h5, .theme-midnight p, .theme-midnight span, .theme-midnight text {
+          color: #f8fafc !important;
+        }
+        .theme-midnight .text-slate-650, .theme-midnight .text-slate-350 {
+          color: #e2e8f0 !important;
+        }
+        .theme-midnight button {
+          border-color: #475569 !important;
+          color: #cbd5e1 !important;
+        }
+        .theme-midnight button:hover {
+          background-color: #3b82f6 !important;
+          color: white !important;
+          border-color: #3b82f6 !important;
+        }
+        .theme-midnight .active-choice {
+          border-color: #3b82f6 !important;
+          background-color: rgba(59, 130, 246, 0.15) !important;
+          color: #ffffff !important;
+        }
+        .theme-midnight .choice-card {
+          border: 1px solid #334155 !important;
+          background-color: rgba(30, 41, 59, 0.5) !important;
+        }
+
+        /* Solarized Light Theme overrides */
+        .theme-solarized {
+          background-color: #fdf6e3 !important;
+          color: #586e75 !important;
+          font-family: Georgia, serif !important;
+        }
+        .theme-solarized header {
+          background-color: #eee8d5 !important;
+          border-bottom: 2px solid #93a1a1 !important;
+        }
+        .theme-solarized aside, .theme-solarized .question-card, .theme-solarized .sidebar-card, .theme-solarized .main-box {
+          background-color: #fdf6e3 !important;
+          border: 1px solid #d3c7a8 !important;
+          color: #586e75 !important;
+          box-shadow: none !important;
+        }
+        .theme-solarized h1, .theme-solarized h2, .theme-solarized h3, .theme-solarized h4, .theme-solarized h5, .theme-solarized p, .theme-solarized span, .theme-solarized text {
+          color: #073642 !important;
+        }
+        .theme-solarized .text-slate-650, .theme-solarized .text-slate-350 {
+          color: #586e75 !important;
+        }
+        .theme-solarized button {
+          border-color: #93a1a1 !important;
+          color: #586e75 !important;
+        }
+        .theme-solarized button:hover {
+          background-color: #eee8d5 !important;
+          color: #073642 !important;
+        }
+        .theme-solarized .active-choice {
+          border-color: #268bd2 !important;
+          background-color: rgba(38, 139, 210, 0.1) !important;
+          color: #073642 !important;
+        }
+        .theme-solarized .choice-card {
+          border: 1px solid #d3c7a8 !important;
+          background-color: #fcf8ec !important;
+        }
+      `}</style>
+
+      {tintFilter !== "none" && (
+        <div 
+          className={`fixed inset-0 pointer-events-none z-50 transition-colors duration-300 ${
+            tintFilter === "amber"
+              ? "bg-amber-500/[0.07]"
+              : tintFilter === "mint"
+                ? "bg-emerald-500/[0.05]"
+                : tintFilter === "blue"
+                  ? "bg-blue-500/[0.05]"
+                  : ""
+          }`}
+        />
+      )}
+
+      {readingRuler && (
+        <div 
+          className="fixed left-0 right-0 h-10 bg-indigo-500/10 dark:bg-indigo-400/15 border-y-2 border-indigo-500/25 pointer-events-none z-50 transition-all duration-75 ease-out shadow-[0_0_15px_rgba(99,102,241,0.15)]"
+          style={{ top: `${mouseY - 20}px` }}
+        />
+      )}
+
       {!isOnline && (
         <div className="fixed top-0 inset-x-0 z-50 bg-rose-600 text-white px-4 py-2 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-md animate-pulse">
           <AlertTriangle className="h-4 w-4" />
@@ -1833,6 +2343,209 @@ export const AttemptTestPage = () => {
             )}
           </div>
 
+          {/* Comfort Settings Trigger */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowComfortSettings(!showComfortSettings);
+                setShowInstructions(false);
+              }}
+              className={`flex items-center justify-center h-10 w-10 rounded-xl border transition shrink-0 ${
+                showComfortSettings
+                  ? "bg-indigo-50 border-indigo-200 text-indigo-650 dark:bg-indigo-955/40 dark:border-indigo-900/50 dark:text-indigo-400"
+                  : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900"
+              }`}
+              title="Cognitive Comfort & Accessibility Settings"
+            >
+              <Sliders className="h-4 w-4" />
+            </button>
+
+            {showComfortSettings && (
+              <div className="absolute right-0 mt-3 w-80 rounded-2xl bg-white dark:bg-slate-950 text-slate-850 dark:text-slate-100 p-5 shadow-2xl border border-slate-200 dark:border-slate-800 z-50 animate-fade-in font-sans">
+                <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                  <h4 className="text-xs font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5 font-sans">
+                    <Eye className="h-4 w-4 text-indigo-500" />
+                    Cognitive Comfort
+                  </h4>
+                  <button
+                    onClick={() => setShowComfortSettings(false)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold font-mono transition"
+                  >
+                    ✕
+                  </button>
+                </div>
+                
+                <div className="space-y-4 text-xs font-semibold">
+                  {/* Visual Themes */}
+                  <div>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2 font-bold font-sans">Visual Theme</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: "default", name: "Default" },
+                        { id: "cyberpunk", name: "Cyberpunk" },
+                        { id: "minimalist", name: "Minimal Dark" },
+                        { id: "epaper", name: "E-Paper" },
+                        { id: "terminal", name: "Retro CRT" },
+                        { id: "forest", name: "Forest Mint" },
+                        { id: "midnight", name: "Midnight Navy" },
+                        { id: "solarized", name: "Solarized Light" }
+                      ].map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            setThemeMode(t.id);
+                            localStorage.setItem("parikshya_exam_theme", t.id);
+                          }}
+                          className={`py-1.5 px-3 rounded-lg border text-left transition font-bold ${
+                            themeMode === t.id
+                              ? "bg-indigo-600 text-white border-indigo-650"
+                              : "border-slate-250 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-350"
+                          }`}
+                        >
+                          {t.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Font Size Modifier */}
+                  <div>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2 font-bold font-sans">Text Scale</span>
+                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-inner">
+                      {[
+                        { id: "small", label: "A-" },
+                        { id: "medium", label: "A" },
+                        { id: "large", label: "A+" },
+                        { id: "xlarge", label: "A++" }
+                      ].map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => {
+                            setFontSize(s.id);
+                            localStorage.setItem("parikshya_exam_font_size", s.id);
+                          }}
+                          className={`flex-1 py-1 rounded-lg text-center transition font-bold ${
+                            fontSize === s.id
+                              ? "bg-white dark:bg-slate-850 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                              : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Line Height Modifier */}
+                  <div>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2 font-bold font-sans">Line Spacing</span>
+                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-inner">
+                      {[
+                        { id: "tight", label: "Tight" },
+                        { id: "normal", label: "Normal" },
+                        { id: "loose", label: "Loose" }
+                      ].map((lh) => (
+                        <button
+                          key={lh.id}
+                          type="button"
+                          onClick={() => {
+                            setLineHeight(lh.id);
+                            localStorage.setItem("parikshya_exam_line_height", lh.id);
+                          }}
+                          className={`flex-1 py-1 rounded-lg text-center transition font-bold ${
+                            lineHeight === lh.id
+                              ? "bg-white dark:bg-slate-850 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                              : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                          }`}
+                        >
+                          {lh.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Screen Filters Tint */}
+                  <div>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2 font-bold font-sans">Eye Strain Filters</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: "none", name: "No Filter" },
+                        { id: "amber", name: "Warm Amber" },
+                        { id: "mint", name: "Soft Mint" },
+                        { id: "blue", name: "Cool Ice" }
+                      ].map((filter) => (
+                        <button
+                          key={filter.id}
+                          type="button"
+                          onClick={() => {
+                            setTintFilter(filter.id);
+                            localStorage.setItem("parikshya_exam_tint", filter.id);
+                          }}
+                          className={`py-1.5 px-3 rounded-lg border text-left transition font-bold ${
+                            tintFilter === filter.id
+                              ? "bg-indigo-600 text-white border-indigo-650"
+                              : "border-slate-250 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-300"
+                          }`}
+                        >
+                          {filter.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Reading Focus Ruler Toggle */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 font-sans">
+                    <div>
+                      <span className="text-[11px] block font-bold text-slate-700 dark:text-slate-300">Reading Focus Ruler</span>
+                      <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium block">Horizontal guideline follows cursor</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const newVal = !readingRuler;
+                        setReadingRuler(newVal);
+                        localStorage.setItem("parikshya_exam_ruler", String(newVal));
+                      }}
+                      type="button"
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        readingRuler ? "bg-indigo-600" : "bg-slate-200 dark:bg-slate-800"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          readingRuler ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Reset to Default Button */}
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 font-sans">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setThemeMode("default");
+                        setFontSize("medium");
+                        setLineHeight("normal");
+                        setTintFilter("none");
+                        setReadingRuler(false);
+                        localStorage.removeItem("parikshya_exam_theme");
+                        localStorage.removeItem("parikshya_exam_font_size");
+                        localStorage.removeItem("parikshya_exam_line_height");
+                        localStorage.removeItem("parikshya_exam_tint");
+                        localStorage.removeItem("parikshya_exam_ruler");
+                      }}
+                      className="w-full py-2 px-4 rounded-xl border border-rose-250 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600 dark:text-rose-455 text-center transition font-bold"
+                    >
+                      Reset to Default
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Theme switcher */}
           <button
             onClick={toggleTheme}
@@ -1875,7 +2588,7 @@ export const AttemptTestPage = () => {
 
         {/* Left Column: Question Card */}
         <main className="flex-1 flex flex-col min-w-0">
-          <article className="bg-white dark:bg-slate-900 rounded-xl lg:rounded-none border border-slate-200 dark:border-slate-800 lg:border-0 shadow-sm lg:shadow-none flex flex-col flex-1 p-6 lg:p-8 transition-colors duration-200">
+          <article className="bg-white dark:bg-slate-900 rounded-xl lg:rounded-none border border-slate-200 dark:border-slate-800 lg:border-0 shadow-sm lg:shadow-none flex flex-col flex-1 p-6 lg:p-8 transition-colors duration-200 question-card">
             {/* Question Header Info */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-6">
               <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">
@@ -1920,7 +2633,7 @@ export const AttemptTestPage = () => {
               <div className="flex flex-col min-w-0 lg:border-r lg:border-slate-100 lg:dark:border-slate-800/40 lg:pr-8">
                 {/* Conditionally Render Passage Box (Paragraph context) */}
                 {currentQuestion.passage_id && (
-                  <div className="bg-slate-50/50 dark:bg-slate-900/35 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm mb-6 transition-all duration-200">
+                  <div className="bg-slate-50/50 dark:bg-slate-900/35 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm mb-6 transition-all duration-200 main-box">
                     {loadingPassage === currentQuestion.passage_id || !passageCache[currentQuestion.passage_id] ? (
                       <div className="flex flex-col items-center justify-center py-6">
                         <Spinner />
@@ -1934,7 +2647,10 @@ export const AttemptTestPage = () => {
                             {passageCache[currentQuestion.passage_id].title}
                           </h3>
                         </div>
-                        <div className="text-sm text-slate-650 dark:text-slate-350 leading-relaxed whitespace-pre-wrap font-semibold max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar">
+                        <div 
+                          className="text-sm text-slate-650 dark:text-slate-350 leading-relaxed whitespace-pre-wrap font-semibold max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar"
+                          style={getPassageStyle()}
+                        >
                           {passageCache[currentQuestion.passage_id].content}
                         </div>
                       </>
@@ -1943,7 +2659,10 @@ export const AttemptTestPage = () => {
                 )}
 
                 <div className="flex-1 flex flex-col justify-start">
-                  <h2 className="text-base md:text-lg font-bold text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap mb-4">
+                  <h2 
+                    className="text-base md:text-lg font-bold text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap mb-4"
+                    style={getQuestionStyle()}
+                  >
                     {currentQuestion.question}
                   </h2>
 
@@ -1984,11 +2703,12 @@ export const AttemptTestPage = () => {
                       <button
                         key={optKey}
                         onClick={() => handleSelectOption(currentQuestion.id ?? "", optKey)}
-                        className={`flex items-center justify-between gap-4 w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 relative overflow-hidden ${
+                        className={`flex items-center justify-between gap-4 w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 relative overflow-hidden choice-card ${
                           isSelected
-                            ? isMSQ
-                              ? "border-fuchsia-500 dark:border-fuchsia-400 bg-gradient-to-r from-fuchsia-500/10 via-purple-500/5 to-transparent dark:from-fuchsia-950/20 dark:via-purple-950/10 dark:to-transparent text-fuchsia-950 dark:text-fuchsia-100 shadow-[0_4px_20px_rgba(217,70,239,0.15)] scale-[1.01] ring-1 ring-fuchsia-500/30"
-                              : "border-indigo-500 dark:border-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20 text-indigo-950 dark:text-indigo-100 shadow-[0_4px_16px_rgba(99,102,241,0.12)] scale-[1.01] ring-1 ring-indigo-500/30"
+                            ? `${isMSQ
+                                ? "border-fuchsia-500 dark:border-fuchsia-400 bg-gradient-to-r from-fuchsia-500/10 via-purple-500/5 to-transparent dark:from-fuchsia-950/20 dark:via-purple-950/10 dark:to-transparent text-fuchsia-950 dark:text-fuchsia-100 shadow-[0_4px_20px_rgba(217,70,239,0.15)] scale-[1.01] ring-1 ring-fuchsia-500/30"
+                                : "border-indigo-500 dark:border-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20 text-indigo-950 dark:text-indigo-100 shadow-[0_4px_16px_rgba(99,102,241,0.12)] scale-[1.01] ring-1 ring-indigo-500/30"
+                              } active-choice`
                             : isMSQ
                               ? "border-slate-200 dark:border-slate-800/80 hover:border-fuchsia-300 dark:hover:border-fuchsia-700 bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:bg-fuchsia-50/10 dark:hover:bg-fuchsia-950/10 hover:-translate-y-0.5 hover:shadow-md"
                               : "border-slate-200 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-700 bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:bg-indigo-50/10 dark:hover:bg-indigo-955/10 hover:-translate-y-0.5 hover:shadow-md"
@@ -2016,7 +2736,7 @@ export const AttemptTestPage = () => {
                               {optionLetter}
                             </div>
                           )}
-                          <span className="text-sm font-bold leading-relaxed">{optText}</span>
+                          <span className="text-sm font-bold leading-relaxed" style={getOptionStyle()}>{optText}</span>
                         </div>
 
                         {isMSQ ? (
@@ -2124,7 +2844,7 @@ export const AttemptTestPage = () => {
         </main>
 
         {/* Question Navigator stick to right edge of screen */}
-        <aside ref={navigatorSidebarRef} className="hidden lg:flex fixed right-0 top-[72px] bottom-0 w-16 flex-col items-center bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 py-6 gap-3 z-20 overflow-y-auto custom-scrollbar shadow-sm transition-colors duration-200">
+        <aside ref={navigatorSidebarRef} className="hidden lg:flex fixed right-0 top-[72px] bottom-0 w-16 flex-col items-center bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 py-6 gap-3 z-20 overflow-y-auto custom-scrollbar shadow-sm transition-colors duration-200 sidebar-card">
           {questions.map((q, idx) => {
             const qId = q.id ?? "";
             const isAns = answers[qId] !== undefined;
@@ -2233,6 +2953,7 @@ export const AttemptTestPage = () => {
       </Modal>
 
       {warningMessage && <Toast tone="error">{warningMessage}</Toast>}
+      {restoreMessage && <Toast tone="success">{restoreMessage}</Toast>}
 
       {/* Section Timeout Modal */}
       <Modal

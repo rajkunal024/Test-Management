@@ -2,6 +2,7 @@ import { IncomingMessage, ServerResponse } from "node:http";
 import { json, readBody } from "../middlewares/utils.js";
 import { TestModel, ResultModel, QuestionModel, TeacherModel, NotificationModel, StudentModel } from "../models/index.js";
 import { getUserFromRequest } from "../middlewares/auth.js";
+import { checkAndShareResults } from "../services/autoShareService.js";
 
 const seedRandom = (seedStr: string) => {
   let h = 2166136261 >>> 0;
@@ -144,11 +145,14 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
         return;
       }
     }
-    const existingAttempt = await ResultModel.findOne({ test_id, user_id: userIdStr });
+    const existingAttempt = await ResultModel.findOne({ test_id, user_id: userIdStr, status: "submitted" });
     if (existingAttempt) {
       json(response, 400, { success: false, message: "You have already attempted this test." });
       return;
     }
+
+    // Clean up draft attempt before final submission
+    await ResultModel.deleteOne({ test_id, user_id: userIdStr, status: "draft" });
 
     // Get all questions for this test by their linked IDs
     const rawQuestions = await QuestionModel.find({ id: { $in: test.questions || [] } });
@@ -223,6 +227,10 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
     });
 
     await newAttempt.save();
+
+    checkAndShareResults(test_id).catch(err => {
+      console.error("Failed to check and share results:", err);
+    });
 
     json(response, 201, {
       success: true,
@@ -344,6 +352,107 @@ export const getActiveStreams = async (request: IncomingMessage, response: Serve
     json(response, 200, { success: true, data: result });
   } catch (e) {
     json(response, 500, { success: false, message: "Server error" });
+  }
+};
+
+export const saveDraft = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const payload = JSON.parse(await readBody(request));
+    const { test_id, user_id, answers = {}, time_spent = 0, tab_switches = 0 } = payload;
+
+    const test = await TestModel.findOne({ id: test_id });
+    if (!test) {
+      json(response, 404, { success: false, message: "Test not found" });
+      return;
+    }
+
+    const userIdStr = user_id || "student";
+    const existingSubmitted = await ResultModel.findOne({ test_id, user_id: userIdStr, status: "submitted" });
+    if (existingSubmitted) {
+      json(response, 400, { success: false, message: "Test already submitted" });
+      return;
+    }
+
+    // Get questions to build the test_copy and compute draft stats
+    const rawQuestions = await QuestionModel.find({ id: { $in: test.questions || [] } });
+    const sortedQuestions = [...rawQuestions].sort((a: any, b: any) => (a.id || "").localeCompare(b.id || ""));
+    const seed = `${userIdStr}-${test.id}`;
+    const questions = getSectionalQuestions(test, sortedQuestions, seed);
+
+    let correct_answers = 0;
+    let wrong_answers = 0;
+    let unattempted = 0;
+    let score = 0;
+
+    const test_copy = questions.map((q: any) => ({
+      id: q.id,
+      type: q.type || "mcq",
+      passage_id: q.passage_id || null,
+      question: q.question,
+      option1: q.option1,
+      option2: q.option2,
+      option3: q.option3,
+      option4: q.option4,
+      correct_option: q.correct_option,
+      selected_option: answers[q.id ?? ""] || "",
+      media_url: q.media_url,
+      image_url: q.image_url
+    }));
+
+    questions.forEach((q: any) => {
+      const selected = answers[q.id ?? ""];
+      if (selected === undefined || selected === null || selected === "") {
+        unattempted++;
+        score += Number(test.unattempt_marks ?? 0);
+      } else {
+        const correctParts = (q.correct_option || "").split(",").map((o: string) => o.trim()).filter(Boolean).sort();
+        const selectedParts = (selected || "").split(",").map((o: string) => o.trim()).filter(Boolean).sort();
+
+        const isMatch = correctParts.length > 0 &&
+                        selectedParts.length === correctParts.length &&
+                        selectedParts.every((val: string, index: number) => val === correctParts[index]);
+
+        const isMSQ = (q.correct_option || "").includes(",");
+
+        if (isMatch) {
+          correct_answers++;
+          score += Number(test.correct_marks ?? 0);
+        } else {
+          wrong_answers++;
+          if (isMSQ) {
+            score += 0;
+          } else {
+            const penalty = Number(test.wrong_marks ?? 0);
+            score += penalty < 0 ? penalty : -penalty;
+          }
+        }
+      }
+    });
+
+    const updateData = {
+      test_name: test.name,
+      score,
+      correct_answers,
+      wrong_answers,
+      unattempted,
+      answers,
+      time_spent,
+      tab_switches,
+      test_copy,
+      status: "draft",
+      submitted_at: new Date()
+    };
+
+    // Update draft or create a new draft
+    const draftAttempt = await ResultModel.findOneAndUpdate(
+      { test_id, user_id: userIdStr, status: "draft" },
+      { $set: updateData },
+      { new: true, upsert: true }
+    );
+
+    json(response, 200, { success: true, data: draftAttempt });
+  } catch (e) {
+    json(response, 400, { success: false, message: "Invalid JSON or server error" });
   }
 };
 
