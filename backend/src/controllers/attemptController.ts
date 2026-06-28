@@ -223,7 +223,8 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
       time_spent,
       tab_switches,
       test_copy,
-      submitted_at: new Date()
+      submitted_at: new Date(),
+      submission_type: "Normal Submission"
     });
 
     await newAttempt.save();

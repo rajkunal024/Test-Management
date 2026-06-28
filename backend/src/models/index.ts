@@ -304,6 +304,7 @@ export const ResultSchema = new Schema({
   tab_switches: { type: Number, default: 0 },
   submitted_at: { type: Date, default: Date.now },
   status: { type: String, enum: ["draft", "submitted"], default: "submitted" },
+  submission_type: { type: String, default: "Normal Submission" },
   organization_id: { type: String, required: true },
   test_copy: [{
     id: { type: String },

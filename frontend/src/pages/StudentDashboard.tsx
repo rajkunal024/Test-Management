@@ -526,7 +526,10 @@ export const StudentDashboard = () => {
                   const isSlotActive = !isUpcoming && !isEnded;
                   const lateLimit = Number(test.lateEntryTime ?? 0);
                   const hasLocalAnswers = localStorage.getItem(`attempt_answers_${test.id}_${user?.userId}`) !== null;
-                  const isLateToStart = !attempt && !hasLocalAnswers && currentTime > (startTime + lateLimit * 60 * 1000);
+                  const hasSubmittedAttempt = attempt && attempt.status === "submitted";
+                  const hasDraftAttempt = attempt && attempt.status === "draft";
+                  const hasStartedExam = hasLocalAnswers || hasDraftAttempt;
+                  const isLateToStart = !hasSubmittedAttempt && !hasStartedExam && currentTime > (startTime + lateLimit * 60 * 1000);
                   // Start test button is enabled starting 1 minute before start time
                   const canEnterPrep = test.questions && test.questions.length > 0 && currentTime >= (startTime - 60000) && !isEnded && !isLateToStart;
 
@@ -682,7 +685,7 @@ export const StudentDashboard = () => {
                       {(() => {
                         const limitMins = Number(test.lateEntryTime ?? 0);
                         if (limitMins <= 0) return null;
-                        if (attempt || hasLocalAnswers) return null;
+                        if (hasSubmittedAttempt || hasStartedExam) return null;
 
                         const cutoffTime = startTime + limitMins * 60 * 1000;
                         const hasEndedCutoff = currentTime >= cutoffTime;
@@ -723,7 +726,7 @@ export const StudentDashboard = () => {
                       {/* Footer Actions */}
                       <div className="flex items-center justify-between mt-2 pt-4 border-t border-slate-100 dark:border-slate-800/80 border-dashed gap-4 relative z-10">
                         <div>
-                          {attempt ? (
+                          {hasSubmittedAttempt ? (
                             <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 px-4 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
                               <CheckCircle2 className="h-4 w-4 shrink-0" />
                               {test.results_shared
@@ -732,20 +735,20 @@ export const StudentDashboard = () => {
                             </div>
                           ) : (
                             <div className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl border ${
-                              hasLocalAnswers 
+                              hasStartedExam 
                                 ? "text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-955/20 border-amber-100 dark:border-amber-900/30 animate-pulse"
                                 : "text-slate-450 dark:text-slate-500 bg-white dark:bg-slate-900/30 border-slate-205 dark:border-slate-800"
                             }`}>
-                              {!hasLocalAnswers && <Lock className="h-4 w-4 shrink-0 text-slate-400" />}
+                              {!hasStartedExam && <Lock className="h-4 w-4 shrink-0 text-slate-400" />}
                               <span>
-                                {hasLocalAnswers ? "In Progress" : isUpcoming ? "Starts soon" : isEnded ? "Time ended" : isLateToStart ? "Late Entry Closed" : "Not attempted"}
+                                {hasStartedExam ? "In Progress" : isUpcoming ? "Starts soon" : isEnded ? "Time ended" : isLateToStart ? "Late Entry Closed" : "Not attempted"}
                               </span>
                             </div>
                           )}
                         </div>
 
                         <div className="flex gap-2 shrink-0">
-                          {attempt ? (
+                          {hasSubmittedAttempt ? (
                             test.results_shared ? (
                               <Link to={`/tests/${test.id}/result`}>
                                 <Button variant="secondary" className="h-11 text-xs font-extrabold px-5 rounded-xl border-slate-205 dark:border-slate-800 hover:border-indigo-500 hover:text-indigo-650 dark:hover:text-indigo-400 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300">
@@ -758,18 +761,13 @@ export const StudentDashboard = () => {
                               </Button>
                             )
                           ) : (
-                            canEnterPrep ? (
-                              (() => {
-                                const hasLocalAnswers = localStorage.getItem(`attempt_answers_${test.id}_${user?.userId}`) !== null;
-                                return (
-                                  <Link to={`/tests/${test.id}/attempt`}>
-                                    <Button className="h-11 text-xs font-extrabold px-5 flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/25 rounded-xl text-white border-none">
-                                      {hasLocalAnswers ? "Resume Test" : "Start Test"}
-                                      <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                                    </Button>
-                                  </Link>
-                                );
-                              })()
+                            canEnterPrep || hasDraftAttempt ? (
+                              <Link to={`/tests/${test.id}/attempt`}>
+                                <Button className="h-11 text-xs font-extrabold px-5 flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/25 rounded-xl text-white border-none">
+                                  {hasStartedExam ? "Resume Test" : "Start Test"}
+                                  <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                                </Button>
+                              </Link>
                             ) : (
                               <Button disabled className="h-11 text-xs font-extrabold px-5 bg-indigo-600/90 dark:bg-indigo-700/80 text-white border-none rounded-xl cursor-not-allowed flex items-center gap-1.5 shadow-sm">
                                 <Lock className="h-4 w-4" />

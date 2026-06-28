@@ -170,6 +170,8 @@ export interface Attempt {
   time_spent: number;
   tab_switches?: number;
   submitted_at: string;
+  submission_type?: string;
+  status?: "draft" | "submitted";
   rank?: number;
   test_copy?: Array<{
     id?: string;

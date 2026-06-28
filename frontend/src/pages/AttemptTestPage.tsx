@@ -1156,7 +1156,7 @@ export const AttemptTestPage = () => {
         }
       }
 
-      const latePenaltySeconds = Math.max(0, lateSeconds - 600); // 10-minute start buffer (600 seconds)
+      const latePenaltySeconds = Math.max(0, lateSeconds - (Number(test.graceTime ?? 0) * 60)); // start buffer based on test.graceTime
 
       if (isSectional && test.sections && test.sections.length > 0) {
         let tempLate = latePenaltySeconds;
@@ -1198,11 +1198,15 @@ export const AttemptTestPage = () => {
         let durationSeconds = test.total_time * 60;
         const remainingTime = Math.max(0, durationSeconds - latePenaltySeconds);
         let finalTime = remainingTime;
-        if (test.end_time) {
-          const now = new Date().getTime();
-          const end = new Date(test.end_time).getTime();
-          if (!isNaN(end) && end > 0) {
-            const remainingWindowSeconds = Math.max(0, Math.floor((end - now) / 1000));
+        if (test.start_time) {
+          const now = Date.now();
+          const start = new Date(test.start_time).getTime();
+          const graceMins = Number(test.graceTime ?? 0);
+          const durationMins = Number(test.total_time ?? 0);
+          const endCutoff = start + (graceMins * 60 * 1000) + (durationMins * 60 * 1000);
+          
+          if (!isNaN(endCutoff) && endCutoff > 0) {
+            const remainingWindowSeconds = Math.max(0, Math.floor((endCutoff - now) / 1000));
             finalTime = Math.min(finalTime, remainingWindowSeconds);
           }
         }
