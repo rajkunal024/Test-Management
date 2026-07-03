@@ -430,12 +430,18 @@ export const OrganizationDetailsPage: React.FC = () => {
         <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-indigo-500/5 blur-3xl pointer-events-none" />
 
         <div className="flex items-center gap-4 z-10">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#4B52DC] to-[#7C3AED] flex items-center justify-center text-white font-extrabold text-2xl shrink-0 shadow-md">
+          <div
+            className={
+              org.logo
+                ? "w-16 h-16 flex items-center justify-center shrink-0"
+                : "w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#4B52DC] to-[#7C3AED] flex items-center justify-center text-white font-extrabold text-2xl shrink-0 shadow-md"
+            }
+          >
             {org.logo ? (
               <img
                 src={org.logo}
                 alt={org.name}
-                className="w-full h-full object-contain rounded-2xl"
+                className="max-w-full max-h-full object-contain"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = "none";
                 }}
@@ -749,85 +755,42 @@ export const OrganizationDetailsPage: React.FC = () => {
               No matching records established under this directory search.
             </div>
           ) : (
-            <div className="bg-white/60 dark:bg-[#0B0E14]/65 border border-slate-200/50 dark:border-[#161B26] rounded-2xl overflow-hidden shadow-sm backdrop-blur-md">
-              <div className="overflow-x-auto w-full">
-                <table className="w-full text-left border-collapse min-w-[900px]">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-[#161B26] text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-widest bg-slate-50/50 dark:bg-[#0f1422]/30">
-                      <th className="px-6 py-4">User Identity</th>
-                      <th className="px-6 py-4">Assigned Role</th>
-                      <th className="px-6 py-4">Grade / Subject</th>
-                      <th className="px-6 py-4">Account Status</th>
-                      <th className="px-6 py-4 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200/40 dark:divide-[#161B26]/60">
-                    {users.map((u, idx) => (
-                      <tr
-                        key={u.id}
-                        className={`hover:bg-slate-100/40 dark:hover:bg-[#121824]/40 transition-all text-xs text-slate-700 dark:text-slate-350 border-l-[3.5px] ${idx === 0 ? "border-l-[#4B52DC]" : "border-l-transparent"
-                          }`}
-                      >
-                        <td className="px-6 py-3.5 font-bold text-slate-900 dark:text-white">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 flex items-center justify-center shadow-sm">
-                              {u.profilePicture ? (
-                                <img src={u.profilePicture} alt={u.name} className="w-full h-full object-cover animate-fade-in" />
-                              ) : (
-                                <div className={`w-full h-full ${getAvatarBgColor(u.name)} flex items-center justify-center text-white font-extrabold text-sm`}>
-                                  {u.name.charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="font-bold text-slate-900 dark:text-white leading-tight">{u.name}</span>
-                              <span className="text-[11px] text-slate-500 dark:text-slate-450 font-mono mt-0.5">{u.email}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-3.5">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${getRoleBadgeStyle(u.role)}`}>
-                            {u.role}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3.5">
-                          <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold ${u.role.toLowerCase() === "teacher"
-                            ? "bg-indigo-50 dark:bg-indigo-950/20 text-[#4B52DC] dark:text-[#818CF8]"
-                            : "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400"
-                            }`}>
-                            {u.class || (u.role.toLowerCase() === "teacher" ? "Mathematics" : "Class 10")}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3.5">
-                          {u.status.toLowerCase() === "active" ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border bg-emerald-50/60 dark:bg-emerald-950/25 text-emerald-650 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-900/30">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                              <span>{u.status}</span>
-                            </span>
+            <div className="user-directory">
+              <div className="user-directory-head">
+                <div><span>People</span><b>{users.length} accounts</b></div>
+                <span>Role & assignment</span>
+                <span>Status</span>
+                <span className="text-right">Profile</span>
+              </div>
+              <div className="user-directory-list">
+                {users.map((u) => {
+                  const assignment = u.class || (u.role.toLowerCase() === "teacher" ? "Mathematics" : u.role.toLowerCase() === "admin" ? "All access" : "Class 10");
+                  const isActive = u.status.toLowerCase() === "active";
+                  return (
+                    <article className="user-directory-row" key={u.id}>
+                      <div className="user-identity">
+                        <div className="user-avatar">
+                          {u.profilePicture ? (
+                            <img src={u.profilePicture} alt={u.name}/>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border bg-slate-50/60 dark:bg-slate-900/20 text-slate-550 dark:text-slate-400 border-slate-200/50 dark:border-slate-800/30">
-                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
-                              <span>{u.status}</span>
-                            </span>
+                            <span className={getAvatarBgColor(u.name)}>{u.name.charAt(0).toUpperCase()}</span>
                           )}
-                        </td>
-                        <td className="px-6 py-3.5 text-right">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              viewDossier(u.id);
-                            }}
-                            className="p-1.5 rounded-lg border border-slate-200/60 dark:border-[#161B26] bg-white/80 dark:bg-[#0B0E14]/80 text-slate-500 dark:text-slate-400 hover:text-[#4B52DC] hover:border-[#4B52DC]/30 hover:bg-slate-50 dark:hover:bg-[#121824] transition-all cursor-pointer shadow-sm inline-flex items-center justify-center"
-                            title="View Dossier"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                        <div><b>{u.name}</b><span>{u.email}</span></div>
+                      </div>
+                      <div className="user-assignment">
+                        <span className={`user-role ${getRoleBadgeStyle(u.role)}`}>{u.role}</span>
+                        <div><small>Assignment</small><b>{assignment}</b></div>
+                      </div>
+                      <div>
+                        <span className={`user-status ${isActive ? "is-online" : ""}`}><i/>{u.status}</span>
+                      </div>
+                      <button type="button" className="user-view-button" onClick={() => viewDossier(u.id)}>
+                        <Eye size={16}/><span>View profile</span>
+                      </button>
+                    </article>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -836,8 +799,8 @@ export const OrganizationDetailsPage: React.FC = () => {
 
       {/* Edit Profile Modal - Centers strictly on screen */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/40 dark:bg-[#06080c]/60 backdrop-blur-md">
-          <div className="relative w-full max-w-xl bg-white dark:bg-[#0B0E14] border border-slate-200/60 dark:border-[#161B26] rounded-3xl shadow-2xl p-6 md:p-8 space-y-6 hover:border-[#4B52DC]/25 dark:hover:border-indigo-500/20 transition-all duration-300">
+        <div className="org-editor-overlay fixed inset-0 z-50 overflow-y-auto flex items-start justify-center p-4 md:p-8 bg-slate-900/40 dark:bg-[#06080c]/60 backdrop-blur-md">
+          <div className="org-editor relative w-full max-w-4xl bg-white dark:bg-[#0B0E14] border border-slate-200/60 dark:border-[#161B26] rounded-3xl shadow-2xl p-6 md:p-8 space-y-6 transition-all duration-300">
             {/* Close Button */}
             <button
               onClick={() => setIsEditModalOpen(false)}
@@ -866,7 +829,7 @@ export const OrganizationDetailsPage: React.FC = () => {
               </div>
             )}
 
-            <form onSubmit={handleEditSubmit} className="space-y-5">
+            <form onSubmit={handleEditSubmit} className="org-editor-form space-y-5">
               {/* Organization Name Card */}
               <div className="rounded-2xl bg-slate-50 dark:bg-[#070A10] border border-slate-200/80 dark:border-[#161D2A] px-4.5 py-2.5 focus-within:border-[#4B52DC]/80 dark:focus-within:border-indigo-500/80 transition-all">
                 <label className="block font-title text-[11px] font-bold text-slate-400 dark:text-slate-500">

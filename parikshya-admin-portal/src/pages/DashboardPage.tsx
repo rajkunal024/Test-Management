@@ -182,7 +182,7 @@ export const DashboardPage: React.FC = () => {
         </div>
         <button
           onClick={fetchData}
-          className="flex items-center gap-2 px-4.5 py-2 rounded-full bg-white dark:bg-[#0B0E14] border border-slate-200/60 dark:border-[#161B26] text-slate-700 dark:text-slate-250 text-xs font-bold shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer shrink-0 whitespace-nowrap"
+          className="dashboard-refresh flex items-center gap-2 px-5 py-2.5 rounded-full bg-white dark:bg-[#0B0E14] border border-slate-200/60 dark:border-[#161B26] text-slate-700 dark:text-slate-250 text-xs font-bold shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer shrink-0 whitespace-nowrap"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           <span>Refresh Metrics</span>

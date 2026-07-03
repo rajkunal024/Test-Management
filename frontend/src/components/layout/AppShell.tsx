@@ -68,9 +68,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
   const [searchParams] = useSearchParams();
   const { toggleTheme, isDark } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [navHidden, setNavHidden] = useState(() => {
-    return localStorage.getItem("parikshya_nav_hidden") === "true";
-  });
+  const [navHidden, setNavHidden] = useState(false);
 
   const { data: orgData } = useQuery({
     queryKey: ["myOrganization"],
@@ -99,11 +97,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
   }, [orgData]);
 
   const toggleNav = () => {
-    setNavHidden((prev) => {
-      const newVal = !prev;
-      localStorage.setItem("parikshya_nav_hidden", String(newVal));
-      return newVal;
-    });
+    setNavHidden((prev) => !prev);
   };
 
   const currentSidebarItems = useMemo(() => {
@@ -1022,7 +1016,13 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
         </div>
       </Modal>
 
-      <main className={`min-h-screen pt-[100px] transition-all duration-300 ${navHidden ? "pl-0 nav-hidden" : compactRail ? "lg:pl-[64px]" : "lg:pl-[252px]"}`}>{children}</main>
+      <main className={`min-h-screen pt-[100px] transition-all duration-300 ${
+        navHidden
+          ? `pl-0 nav-hidden ${location.pathname === "/dashboard" ? "dashboard-expanded" : ""}`
+          : compactRail
+            ? "lg:pl-[64px]"
+            : "lg:pl-[252px]"
+      }`}>{children}</main>
     </div>
   );
 };

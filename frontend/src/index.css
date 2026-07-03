@@ -122,3 +122,188 @@ main.nav-hidden .max-w-\[1280px\] {
     padding-right: 1rem !important;
   }
 }
+
+/* Expanded dashboard shown only when the navigation panel is hidden */
+main.dashboard-expanded {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 8% 8%, rgba(99,102,241,.13), transparent 28%),
+    radial-gradient(circle at 92% 15%, rgba(14,165,233,.11), transparent 30%),
+    radial-gradient(circle at 76% 88%, rgba(16,185,129,.1), transparent 34%),
+    #f5f7fb;
+}
+.dark main.dashboard-expanded {
+  background:
+    radial-gradient(circle at 8% 8%, rgba(79,70,229,.15), transparent 29%),
+    radial-gradient(circle at 92% 15%, rgba(3,105,161,.13), transparent 31%),
+    radial-gradient(circle at 76% 88%, rgba(5,120,87,.11), transparent 35%),
+    #080d16;
+}
+main.dashboard-expanded::before {
+  content: "";
+  position: fixed;
+  inset: 100px 0 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .28;
+  background-image:
+    linear-gradient(rgba(71,85,105,.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(71,85,105,.08) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+}
+.dark main.dashboard-expanded::before { opacity: .13; }
+
+main.dashboard-expanded .max-w-\[1280px\] {
+  max-width: 1680px !important;
+  padding: 2rem 3rem 4rem !important;
+}
+
+/* Expanded hero treatment */
+main.dashboard-expanded .max-w-\[1280px\] > div:first-child.relative,
+main.dashboard-expanded .max-w-\[1280px\] > div:first-child > div:first-child.relative {
+  border-radius: 24px !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  box-shadow: 0 24px 65px rgba(30,41,59,.18) !important;
+}
+
+/* Every dashboard card becomes a sharper, spacious glass panel */
+main.dashboard-expanded article,
+main.dashboard-expanded .dashboard-main-content > div,
+main.dashboard-expanded .dashboard-grid-layout > div:last-child > div,
+main.dashboard-expanded table {
+  border-color: rgba(148,163,184,.3) !important;
+  background-color: rgba(255,255,255,.76) !important;
+  backdrop-filter: blur(18px) saturate(135%);
+  box-shadow: 0 12px 35px rgba(30,41,59,.07) !important;
+}
+.dark main.dashboard-expanded article,
+.dark main.dashboard-expanded .dashboard-main-content > div,
+.dark main.dashboard-expanded .dashboard-grid-layout > div:last-child > div,
+.dark main.dashboard-expanded table {
+  border-color: rgba(100,116,139,.28) !important;
+  background-color: rgba(15,23,42,.74) !important;
+  box-shadow: 0 15px 40px rgba(0,0,0,.22) !important;
+}
+main.dashboard-expanded article {
+  min-height: 132px;
+  padding: 1.5rem !important;
+  border-radius: 18px !important;
+}
+main.dashboard-expanded article:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 20px 46px rgba(30,41,59,.13) !important;
+}
+
+main.dashboard-expanded .dashboard-cards-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 1.5rem !important;
+  align-items: stretch;
+}
+
+/* Keep exam/result cards identical to their normal-navigation design */
+main.dashboard-expanded .dashboard-cards-grid article {
+  min-height: initial;
+  padding: 1.5rem !important;
+  border-color: rgb(226 232 240 / .8) !important;
+  background-color: rgb(255 255 255 / .7) !important;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 2px rgb(15 23 42 / .05) !important;
+}
+.dark main.dashboard-expanded .dashboard-cards-grid article {
+  border-color: rgb(30 41 59 / .85) !important;
+  background-color: rgb(15 23 42 / .4) !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .18) !important;
+}
+main.dashboard-expanded .dashboard-cards-grid article:hover {
+  transform: translateY(-.25rem) !important;
+}
+main.dashboard-expanded .dashboard-grid-layout {
+  grid-template-columns: minmax(0, 1.65fr) minmax(340px, .65fr) !important;
+  gap: 1.75rem !important;
+}
+
+main.dashboard-expanded input,
+main.dashboard-expanded select,
+main.dashboard-expanded textarea {
+  min-height: 46px;
+  border-radius: 11px !important;
+}
+
+main.dashboard-expanded [class*="rounded-2xl"][class*="border"],
+main.dashboard-expanded [class*="rounded-3xl"][class*="border"] {
+  backdrop-filter: blur(16px);
+}
+
+@media (max-width: 1100px) {
+  main.dashboard-expanded .dashboard-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  main.dashboard-expanded .dashboard-grid-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  main.dashboard-expanded .max-w-\[1280px\] {
+    padding: 1.25rem 1rem 3rem !important;
+  }
+  main.dashboard-expanded .dashboard-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+  main.dashboard-expanded article:hover { transform: none !important; }
+}
+
+/*
+ * Dark-mode parity fallbacks.
+ * These apply only when a light utility has no explicit dark counterpart,
+ * preserving every component's authored dark styling and layout.
+ */
+.dark [class~="bg-white"]:not([class*="dark:bg-"]),
+.dark [class*="bg-white/"]:not([class*="dark:bg-"]) {
+  background-color: #0f172a;
+}
+
+.dark [class~="bg-slate-50"]:not([class*="dark:bg-"]),
+.dark [class*="bg-slate-50/"]:not([class*="dark:bg-"]) {
+  background-color: rgba(15, 23, 42, .72);
+}
+
+.dark [class~="bg-slate-100"]:not([class*="dark:bg-"]),
+.dark [class*="bg-slate-100/"]:not([class*="dark:bg-"]) {
+  background-color: rgba(30, 41, 59, .82);
+}
+
+.dark [class~="text-slate-900"]:not([class*="dark:text-"]),
+.dark [class~="text-slate-800"]:not([class*="dark:text-"]) {
+  color: #f1f5f9;
+}
+
+.dark [class~="text-slate-700"]:not([class*="dark:text-"]),
+.dark [class~="text-slate-600"]:not([class*="dark:text-"]) {
+  color: #cbd5e1;
+}
+
+.dark [class~="text-slate-500"]:not([class*="dark:text-"]) {
+  color: #94a3b8;
+}
+
+.dark [class~="border-slate-100"]:not([class*="dark:border-"]),
+.dark [class~="border-slate-200"]:not([class*="dark:border-"]),
+.dark [class~="border-slate-300"]:not([class*="dark:border-"]) {
+  border-color: #334155;
+}
+
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([class*="dark:bg-"]),
+.dark select:not([class*="dark:bg-"]),
+.dark textarea:not([class*="dark:bg-"]) {
+  color: #e2e8f0;
+  background-color: #0f172a;
+  border-color: #334155;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b;
+}
