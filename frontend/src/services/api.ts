@@ -86,6 +86,48 @@ export const login = async (payload: LoginRequest): Promise<AuthResponse> => {
   return unwrap(data);
 };
 
+export interface CaptchaResponse {
+  captchaId: string;
+  captcha: string;
+  captchaSvg: string;
+}
+
+export const fetchCaptcha = async (role: "Student" | "Teacher" | "Admin"): Promise<CaptchaResponse> => {
+  const lowerRole = role.toLowerCase();
+  const { data } = await api.get<ApiEnvelope<CaptchaResponse>>(`/login/${lowerRole}/captcha`);
+  return unwrap(data);
+};
+
+export const loginStudent = async (payload: LoginRequest): Promise<AuthResponse> => {
+  const { data } = await api.post<ApiEnvelope<AuthResponse>>("/login/student", {
+    email: payload.userId,
+    password: payload.password,
+    captchaId: payload.captchaId,
+    captcha: payload.captcha
+  });
+  return unwrap(data);
+};
+
+export const loginTeacher = async (payload: LoginRequest): Promise<AuthResponse> => {
+  const { data } = await api.post<ApiEnvelope<AuthResponse>>("/login/teacher", {
+    email: payload.userId,
+    password: payload.password,
+    captchaId: payload.captchaId,
+    captcha: payload.captcha
+  });
+  return unwrap(data);
+};
+
+export const loginAdmin = async (payload: LoginRequest): Promise<AuthResponse> => {
+  const { data } = await api.post<ApiEnvelope<AuthResponse>>("/login/admin", {
+    email: payload.userId,
+    password: payload.password,
+    captchaId: payload.captchaId,
+    captcha: payload.captcha
+  });
+  return unwrap(data);
+};
+
 export const logout = async (): Promise<void> => {
   await api.post("/auth/logout");
 };

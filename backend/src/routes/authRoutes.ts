@@ -1,8 +1,30 @@
 import { IncomingMessage, ServerResponse } from "node:http";
-import { signupAdmin, login, logout, changePassword, forgotPassword, verifyOtpController, resetPassword, uploadProfilePicture } from "../controllers/authController.js";
+import { signupAdmin, login, logout, changePassword, forgotPassword, verifyOtpController, resetPassword, uploadProfilePicture, getCaptcha, loginStudentWithCaptcha, loginTeacherWithCaptcha, loginAdminWithCaptcha } from "../controllers/authController.js";
 import { json } from "../middlewares/utils.js";
 
 export const handleAuthRoutes = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
+  if (
+    (path === "/login/student/captcha" || path === "/api/login/student/captcha" ||
+     path === "/login/teacher/captcha" || path === "/api/login/teacher/captcha" ||
+     path === "/login/admin/captcha" || path === "/api/login/admin/captcha" ||
+     path === "/api/auth/captcha") &&
+    method === "GET"
+  ) {
+    await getCaptcha(request, response);
+    return;
+  }
+  if ((path === "/login/student" || path === "/api/login/student") && method === "POST") {
+    await loginStudentWithCaptcha(request, response);
+    return;
+  }
+  if ((path === "/login/teacher" || path === "/api/login/teacher") && method === "POST") {
+    await loginTeacherWithCaptcha(request, response);
+    return;
+  }
+  if ((path === "/login/admin" || path === "/api/login/admin") && method === "POST") {
+    await loginAdminWithCaptcha(request, response);
+    return;
+  }
   if (path === "/api/auth/signup-admin" && method === "POST") {
     await signupAdmin(request, response);
     return;

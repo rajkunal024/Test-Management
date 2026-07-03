@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from "node:http";
 import { json, readBody, readBodyBuffer } from "../middlewares/utils.js";
-import { AdminModel, TeacherModel, StudentModel, OrganizationModel } from "../models/index.js";
+import { AdminModel, TeacherModel, StudentModel, OrganizationModel, CaptchaModel } from "../models/index.js";
 import { hashPassword, verifyPassword, signToken } from "../utils/crypto.js";
 import { getUserFromRequest } from "../middlewares/auth.js";
 import bcrypt from "bcryptjs";
@@ -65,8 +65,27 @@ export const signupAdmin = async (request: IncomingMessage, response: ServerResp
 export const login = async (request: IncomingMessage, response: ServerResponse) => {
   try {
     const body = JSON.parse(await readBody(request));
-    const { userId, password, role } = body;
+    const { userId, password, role, captchaId, captcha } = body;
     const secret = process.env.JWT_SECRET ?? "dev_jwt_secret_key_change_me";
+
+    // Verify CAPTCHA for Admin and Teacher if present
+    if (role === "Admin" || role === "Teacher") {
+      if (!captchaId || !captcha) {
+        json(response, 400, { success: false, message: "CAPTCHA is required." });
+        return;
+      }
+      const captchaDoc = await CaptchaModel.findById(captchaId);
+      if (!captchaDoc) {
+        json(response, 400, { success: false, message: "CAPTCHA expired." });
+        return;
+      }
+      const storedCaptcha = captchaDoc.captcha;
+      await CaptchaModel.deleteOne({ _id: captchaId });
+      if (storedCaptcha !== captcha) {
+        json(response, 400, { success: false, message: "Invalid CAPTCHA." });
+        return;
+      }
+    }
 
     if (role === "Admin") {
       const admin = await AdminModel.findOne({
@@ -87,14 +106,14 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { 
-                id: admin.id, 
-                name: admin.name, 
-                userId: admin.userId, 
-                role: "Admin", 
-                email: admin.email, 
-                requiresPasswordChange: admin.requiresPasswordChange, 
-                profilePicture: admin.profilePicture, 
+              user: {
+                id: admin.id,
+                name: admin.name,
+                userId: admin.userId,
+                role: "Admin",
+                email: admin.email,
+                requiresPasswordChange: admin.requiresPasswordChange,
+                profilePicture: admin.profilePicture,
                 organization_id: admin.organization_id,
                 organizationName: org?.name,
                 organizationLogo: org?.logo
@@ -128,17 +147,17 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { 
-                id: teacher.id, 
-                name: teacher.name, 
-                userId: teacher.userId, 
-                role: "Teacher", 
-                subject: teacher.subject, 
-                gender: teacher.gender, 
-                email: teacher.email, 
-                dob: teacher.dob, 
-                requiresPasswordChange: teacher.requiresPasswordChange, 
-                profilePicture: teacher.profilePicture, 
+              user: {
+                id: teacher.id,
+                name: teacher.name,
+                userId: teacher.userId,
+                role: "Teacher",
+                subject: teacher.subject,
+                gender: teacher.gender,
+                email: teacher.email,
+                dob: teacher.dob,
+                requiresPasswordChange: teacher.requiresPasswordChange,
+                profilePicture: teacher.profilePicture,
                 organization_id: teacher.organization_id,
                 organizationName: org?.name,
                 organizationLogo: org?.logo
@@ -172,18 +191,18 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
             success: true,
             data: {
               token,
-              user: { 
-                id: student.id, 
-                name: student.name, 
-                userId: student.userId, 
-                role: "Student", 
-                email: student.email, 
-                dob: student.dob, 
-                class: student.class || "Class 10", 
-                gender: student.gender, 
-                requiresPasswordChange: student.requiresPasswordChange, 
-                profilePicture: student.profilePicture, 
-                joined_at: (student.toObject({ defaults: false } as any) as any).joined_at || student._id.getTimestamp(), 
+              user: {
+                id: student.id,
+                name: student.name,
+                userId: student.userId,
+                role: "Student",
+                email: student.email,
+                dob: student.dob,
+                class: student.class || "Class 10",
+                gender: student.gender,
+                requiresPasswordChange: student.requiresPasswordChange,
+                profilePicture: student.profilePicture,
+                joined_at: (student.toObject({ defaults: false } as any) as any).joined_at || student._id.getTimestamp(),
                 organization_id: student.organization_id,
                 organizationName: org?.name,
                 organizationLogo: org?.logo
@@ -295,9 +314,9 @@ export const forgotPassword = async (request: IncomingMessage, response: ServerR
     // Attempt to generate/store OTP (managing rate limit map internally)
     const otpResult = requestOtp(email);
     if (!otpResult.success) {
-      json(response, 429, { 
-        success: false, 
-        message: `Too many OTP requests. Please wait ${otpResult.cooldownLeft} seconds before trying again.` 
+      json(response, 429, {
+        success: false,
+        message: `Too many OTP requests. Please wait ${otpResult.cooldownLeft} seconds before trying again.`
       });
       return;
     }
@@ -381,9 +400,9 @@ export const resetPassword = async (request: IncomingMessage, response: ServerRe
     // Password validation: minimum 8 characters, one uppercase letter, one lowercase letter, one number
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      json(response, 400, { 
-        success: false, 
-        message: "Password must be at least 8 characters long, containing at least one uppercase letter, one lowercase letter, and one number" 
+      json(response, 400, {
+        success: false,
+        message: "Password must be at least 8 characters long, containing at least one uppercase letter, one lowercase letter, and one number"
       });
       return;
     }
@@ -451,33 +470,33 @@ export const uploadProfilePicture = async (request: IncomingMessage, response: S
     }
 
     const bodyBuffer = await readBodyBuffer(request);
-    
+
     // Parse boundary
     const boundaryMatch = contentType.match(/boundary=([^;]+)/);
     if (!boundaryMatch) {
       json(response, 400, { success: false, message: "No multipart boundary found" });
       return;
     }
-    
+
     let boundaryStr = boundaryMatch[1].trim();
     if (boundaryStr.startsWith('"') && boundaryStr.endsWith('"')) {
       boundaryStr = boundaryStr.slice(1, -1);
     }
     const boundary = "--" + boundaryStr;
     const boundaryBuffer = Buffer.from(boundary);
-    
+
     let fileBuffer: Buffer | null = null;
     let fileName = `profile-${Date.now()}.png`;
     let fileMime = "image/png";
-    
+
     let index = 0;
     while (true) {
       const start = bodyBuffer.indexOf(boundaryBuffer, index);
       if (start === -1) break;
-      
+
       const nextBoundaryIndex = bodyBuffer.indexOf(boundaryBuffer, start + boundaryBuffer.length);
       if (nextBoundaryIndex === -1) break;
-      
+
       const part = bodyBuffer.subarray(start + boundaryBuffer.length, nextBoundaryIndex);
       const crlf2 = Buffer.from("\r\n\r\n");
       const headerEnd = part.indexOf(crlf2);
@@ -485,7 +504,7 @@ export const uploadProfilePicture = async (request: IncomingMessage, response: S
         const headerText = part.subarray(0, headerEnd).toString("utf-8");
         // Data starts after \r\n\r\n and ends before trailing \r\n (2 bytes)
         const data = part.subarray(headerEnd + crlf2.length, part.length - 2);
-        
+
         // Parse headers
         const headers: Record<string, string> = {};
         headerText.split("\r\n").forEach(line => {
@@ -496,11 +515,11 @@ export const uploadProfilePicture = async (request: IncomingMessage, response: S
             headers[key] = value;
           }
         });
-        
+
         const disposition = headers["content-disposition"] || "";
         const nameMatch = disposition.match(/name="([^"]+)"/);
         const filenameMatch = disposition.match(/filename="([^"]+)"/);
-        
+
         if (nameMatch && nameMatch[1] === "file") {
           fileBuffer = data;
           if (filenameMatch) {
@@ -512,7 +531,7 @@ export const uploadProfilePicture = async (request: IncomingMessage, response: S
           break; // Found our file
         }
       }
-      
+
       index = nextBoundaryIndex;
     }
 
@@ -573,5 +592,338 @@ export const uploadProfilePicture = async (request: IncomingMessage, response: S
   } catch (e) {
     console.error("Error uploading profile picture:", e);
     json(response, 500, { success: false, message: "Internal server error during profile picture upload" });
+  }
+};
+
+const generateCaptchaSvg = (code: string): string => {
+  const width = 150;
+  const height = 48;
+
+  let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<rect width="100%" height="100%" fill="#f3f4ff" />`;
+
+  // Draw wavy lines
+  svg += `<path d="M 0 18 Q 37.5 8, 75 24 T 150 18" fill="none" stroke="#d5d8fc" stroke-width="1.5" />`;
+  svg += `<path d="M 0 30 Q 37.5 40, 75 24 T 150 30" fill="none" stroke="#d5d8fc" stroke-width="1.5" />`;
+
+  // Scattered tiny dots noise
+  for (let i = 0; i < 40; i++) {
+    const cx = Math.floor(Math.random() * width);
+    const cy = Math.floor(Math.random() * height);
+    svg += `<circle cx="${cx}" cy="${cy}" r="0.8" fill="#a5b4fc" opacity="0.5" />`;
+  }
+
+  // Diamond sparkles
+  const diamondPositions = [
+    { x: 12, y: 18 },
+    { x: 35, y: 35 },
+    { x: 65, y: 12 },
+    { x: 105, y: 38 },
+    { x: 138, y: 16 }
+  ];
+  diamondPositions.forEach(pos => {
+    const size = 3;
+    const cx = pos.x + Math.floor(Math.random() * 6) - 3;
+    const cy = pos.y + Math.floor(Math.random() * 6) - 3;
+    svg += `<rect x="${cx - size / 2}" y="${cy - size / 2}" width="${size}" height="${size}" fill="#818cf8" transform="rotate(45, ${cx}, ${cy})" opacity="0.7" />`;
+  });
+
+  // A couple of hollow circles
+  svg += `<circle cx="28" cy="10" r="1.5" fill="none" stroke="#818cf8" stroke-width="0.8" opacity="0.6" />`;
+  svg += `<circle cx="130" cy="14" r="2" fill="none" stroke="#818cf8" stroke-width="0.8" opacity="0.6" />`;
+
+  // Letters with random rotation, color, and vertical offset
+  const textLen = code.length;
+  const charSpacing = Math.floor((width - 30) / textLen);
+  for (let i = 0; i < textLen; i++) {
+    const char = code[i];
+    const x = 15 + i * charSpacing + Math.floor(Math.random() * 4);
+    const y = 33 + Math.floor(Math.random() * 6) - 3;
+    const angle = Math.floor(Math.random() * 24) - 12;
+    const colors = ["#4338ca", "#3730a3", "#1e3a8a", "#1e40af", "#1d4ed8", "#312e81", "#111827", "#1f2937"];
+    const fill = colors[Math.floor(Math.random() * colors.length)];
+    svg += `<text x="${x}" y="${y}" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="800" fill="${fill}" transform="rotate(${angle}, ${x}, ${y})">${char}</text>`;
+  }
+
+  svg += `</svg>`;
+  return svg;
+};
+
+const generateCaptchaCode = (): string => {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
+
+export const getCaptcha = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const code = generateCaptchaCode();
+    const expires = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes expiry
+    const svg = generateCaptchaSvg(code);
+
+    const captchaDoc = new CaptchaModel({
+      captcha: code,
+      expires
+    });
+    await captchaDoc.save();
+
+    json(response, 200, {
+      success: true,
+      captchaId: captchaDoc._id.toString(),
+      captcha: code,
+      captchaSvg: svg,
+      data: {
+        captchaId: captchaDoc._id.toString(),
+        captcha: code,
+        captchaSvg: svg
+      }
+    });
+  } catch (e) {
+    console.error("Error generating captcha:", e);
+    json(response, 500, { success: false, message: "Internal server error generating CAPTCHA" });
+  }
+};
+
+export const loginStudentWithCaptcha = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const body = JSON.parse(await readBody(request));
+    const { email, password, captchaId, captcha } = body;
+
+    if (!captchaId || !captcha) {
+      json(response, 400, { success: false, message: "CAPTCHA is required." });
+      return;
+    }
+
+    const captchaDoc = await CaptchaModel.findById(captchaId);
+    if (!captchaDoc) {
+      json(response, 400, { success: false, message: "CAPTCHA expired." });
+      return;
+    }
+
+    const storedCaptcha = captchaDoc.captcha;
+    await CaptchaModel.deleteOne({ _id: captchaId });
+
+    if (storedCaptcha !== captcha) {
+      json(response, 400, { success: false, message: "Invalid CAPTCHA." });
+      return;
+    }
+
+    if (!email || !password) {
+      json(response, 400, { success: false, message: "Email and password are required" });
+      return;
+    }
+
+    const student = await StudentModel.findOne({
+      $or: [{ userId: email }, { email }]
+    });
+
+    if (!student || !verifyPassword(password, student.password)) {
+      json(response, 400, { success: false, message: "Invalid credentials" });
+      return;
+    }
+
+    const org = await OrganizationModel.findOne({ id: student.organization_id });
+    if (!org || org.status !== "Active") {
+      json(response, 403, { success: false, message: "Organization account is deactivated. Please contact support." });
+      return;
+    }
+
+    const secret = process.env.JWT_SECRET ?? "dev_jwt_secret_key_change_me";
+    const token = signToken({ id: student.id, userId: student.userId, role: "Student", organization_id: student.organization_id }, secret);
+
+    json(
+      response,
+      200,
+      {
+        success: true,
+        data: {
+          token,
+          user: {
+            id: student.id,
+            name: student.name,
+            userId: student.userId,
+            role: "Student",
+            email: student.email,
+            dob: student.dob,
+            class: student.class || "Class 10",
+            gender: student.gender,
+            requiresPasswordChange: student.requiresPasswordChange,
+            profilePicture: student.profilePicture,
+            joined_at: (student.toObject({ defaults: false } as any) as any).joined_at || student._id.getTimestamp(),
+            organization_id: student.organization_id,
+            organizationName: org?.name,
+            organizationLogo: org?.logo
+          }
+        }
+      },
+      {
+        "Set-Cookie": `token=${token}; Path=/; HttpOnly; SameSite=Lax`
+      }
+    );
+  } catch (e) {
+    console.error("Error logging in student with CAPTCHA:", e);
+    json(response, 500, { success: false, message: "Internal server error during login" });
+  }
+};
+
+export const loginTeacherWithCaptcha = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const body = JSON.parse(await readBody(request));
+    const { email, password, captchaId, captcha } = body;
+
+    if (!captchaId || !captcha) {
+      json(response, 400, { success: false, message: "CAPTCHA is required." });
+      return;
+    }
+
+    const captchaDoc = await CaptchaModel.findById(captchaId);
+    if (!captchaDoc) {
+      json(response, 400, { success: false, message: "CAPTCHA expired." });
+      return;
+    }
+
+    const storedCaptcha = captchaDoc.captcha;
+    await CaptchaModel.deleteOne({ _id: captchaId });
+
+    if (storedCaptcha !== captcha) {
+      json(response, 400, { success: false, message: "Invalid CAPTCHA." });
+      return;
+    }
+
+    if (!email || !password) {
+      json(response, 400, { success: false, message: "Email and password are required" });
+      return;
+    }
+
+    const teacher = await TeacherModel.findOne({
+      $or: [{ userId: email }, { email }]
+    });
+
+    if (!teacher || !verifyPassword(password, teacher.password)) {
+      json(response, 400, { success: false, message: "Invalid credentials" });
+      return;
+    }
+
+    const org = await OrganizationModel.findOne({ id: teacher.organization_id });
+    if (!org || org.status !== "Active") {
+      json(response, 403, { success: false, message: "Organization account is deactivated. Please contact support." });
+      return;
+    }
+
+    const secret = process.env.JWT_SECRET ?? "dev_jwt_secret_key_change_me";
+    const token = signToken({ id: teacher.id, userId: teacher.userId, role: "Teacher", organization_id: teacher.organization_id }, secret);
+
+    json(
+      response,
+      200,
+      {
+        success: true,
+        data: {
+          token,
+          user: {
+            id: teacher.id,
+            name: teacher.name,
+            userId: teacher.userId,
+            role: "Teacher",
+            subject: teacher.subject,
+            gender: teacher.gender,
+            email: teacher.email,
+            dob: teacher.dob,
+            requiresPasswordChange: teacher.requiresPasswordChange,
+            profilePicture: teacher.profilePicture,
+            organization_id: teacher.organization_id,
+            organizationName: org?.name,
+            organizationLogo: org?.logo
+          }
+        }
+      },
+      {
+        "Set-Cookie": `token=${token}; Path=/; HttpOnly; SameSite=Lax`
+      }
+    );
+  } catch (e) {
+    console.error("Error logging in teacher with CAPTCHA:", e);
+    json(response, 500, { success: false, message: "Internal server error during login" });
+  }
+};
+
+export const loginAdminWithCaptcha = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const body = JSON.parse(await readBody(request));
+    const { email, password, captchaId, captcha } = body;
+
+    if (!captchaId || !captcha) {
+      json(response, 400, { success: false, message: "CAPTCHA is required." });
+      return;
+    }
+
+    const captchaDoc = await CaptchaModel.findById(captchaId);
+    if (!captchaDoc) {
+      json(response, 400, { success: false, message: "CAPTCHA expired." });
+      return;
+    }
+
+    const storedCaptcha = captchaDoc.captcha;
+    await CaptchaModel.deleteOne({ _id: captchaId });
+
+    if (storedCaptcha !== captcha) {
+      json(response, 400, { success: false, message: "Invalid CAPTCHA." });
+      return;
+    }
+
+    if (!email || !password) {
+      json(response, 400, { success: false, message: "Email and password are required" });
+      return;
+    }
+
+    const admin = await AdminModel.findOne({
+      $or: [{ userId: email }, { email }]
+    });
+
+    if (!admin || !verifyPassword(password, admin.password)) {
+      json(response, 400, { success: false, message: "Invalid credentials" });
+      return;
+    }
+
+    const org = await OrganizationModel.findOne({ id: admin.organization_id });
+    if (!org || org.status !== "Active") {
+      json(response, 403, { success: false, message: "Organization account is deactivated. Please contact support." });
+      return;
+    }
+
+    const secret = process.env.JWT_SECRET ?? "dev_jwt_secret_key_change_me";
+    const token = signToken({ id: admin.id, userId: admin.userId, role: "Admin", organization_id: admin.organization_id }, secret);
+
+    json(
+      response,
+      200,
+      {
+        success: true,
+        data: {
+          token,
+          user: {
+            id: admin.id,
+            name: admin.name,
+            userId: admin.userId,
+            role: "Admin",
+            email: admin.email,
+            requiresPasswordChange: admin.requiresPasswordChange,
+            profilePicture: admin.profilePicture,
+            organization_id: admin.organization_id,
+            organizationName: org?.name,
+            organizationLogo: org?.logo
+          }
+        }
+      },
+      {
+        "Set-Cookie": `token=${token}; Path=/; HttpOnly; SameSite=Lax`
+      }
+    );
+  } catch (e) {
+    console.error("Error logging in admin with CAPTCHA:", e);
+    json(response, 500, { success: false, message: "Internal server error during login" });
   }
 };

@@ -21,6 +21,8 @@ export interface LoginRequest {
   password: string;
   role?: string;
   subject?: string;
+  captchaId?: string;
+  captcha?: string;
 }
 
 export interface AuthResponse {

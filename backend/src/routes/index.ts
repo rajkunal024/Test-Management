@@ -16,6 +16,15 @@ const isPublicRoute = (path: string, method: string): boolean => {
   if (path === "/api/health") return true;
   if (path.startsWith("/api/parikshya-admin/auth/")) return true;
   
+  if (
+    path === "/login/student/captcha" || path === "/api/login/student/captcha" ||
+    path === "/login/teacher/captcha" || path === "/api/login/teacher/captcha" ||
+    path === "/login/admin/captcha" || path === "/api/login/admin/captcha" ||
+    path === "/login/student" || path === "/api/login/student" ||
+    path === "/login/teacher" || path === "/api/login/teacher" ||
+    path === "/login/admin" || path === "/api/login/admin"
+  ) return true;
+  
   const publicAuthPaths = [
     "/api/auth/login",
     "/api/auth/signup-admin",
@@ -36,7 +45,15 @@ export const routeRequest = async (request: IncomingMessage, response: ServerRes
       await handleParikshyaAdminRoutes(request, response, path, method);
       return;
     }
-    if (path.startsWith("/api/auth")) {
+    if (
+      path.startsWith("/api/auth") ||
+      path === "/login/student/captcha" || path === "/api/login/student/captcha" ||
+      path === "/login/teacher/captcha" || path === "/api/login/teacher/captcha" ||
+      path === "/login/admin/captcha" || path === "/api/login/admin/captcha" ||
+      path === "/login/student" || path === "/api/login/student" ||
+      path === "/login/teacher" || path === "/api/login/teacher" ||
+      path === "/login/admin" || path === "/api/login/admin"
+    ) {
       await handleAuthRoutes(request, response, path, method);
       return;
     }

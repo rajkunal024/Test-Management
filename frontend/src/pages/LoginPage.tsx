@@ -1,17 +1,18 @@
 import { FormEvent, useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { getErrorMessage, signupAdmin } from "../services/api";
+import { getErrorMessage, signupAdmin, fetchCaptcha, CaptchaResponse } from "../services/api";
 import { useLogin } from "../hooks/useAuth";
 import { Logo } from "../components/layout/Logo";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { PasswordInput } from "../components/ui/PasswordInput";
-import { 
-  GraduationCap, 
-  BookOpen, 
-  ShieldCheck, 
+import {
+  GraduationCap,
+  BookOpen,
+  ShieldCheck,
   ArrowLeft,
-  Sparkles
+  Sparkles,
+  RotateCw
 } from "lucide-react";
 
 import teacherIllus from "../assets/teacher_illus.png";
@@ -43,6 +44,26 @@ export const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"Admin" | "Teacher" | "Student">(initialRole || "Student");
   const [error, setError] = useState("");
+  const [captchaData, setCaptchaData] = useState<CaptchaResponse | undefined>(undefined);
+  const [captchaInput, setCaptchaInput] = useState("");
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+
+  const refreshCaptcha = async () => {
+    setCaptchaLoading(true);
+    try {
+      const data = await fetchCaptcha(role);
+      setCaptchaData(data);
+      setCaptchaInput("");
+    } catch (err) {
+      console.error("Failed to load captcha:", err);
+    } finally {
+      setCaptchaLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshCaptcha();
+  }, [role]);
 
   useEffect(() => {
     const mapped = getMappedRole(urlRole);
@@ -81,11 +102,28 @@ export const LoginPage = () => {
         setError("User ID and password are required.");
         return;
       }
+      if (!captchaInput.trim() || !captchaData?.captchaId) {
+        setError("CAPTCHA is required.");
+        return;
+      }
       try {
-        await loginMutation.mutateAsync({ userId, password, role });
+        await loginMutation.mutateAsync({
+          userId,
+          password,
+          role,
+          captchaId: captchaData.captchaId,
+          captcha: captchaInput.trim()
+        });
         navigate("/dashboard");
       } catch (err) {
-        setError(getErrorMessage(err));
+        const msg = getErrorMessage(err);
+        if (msg.toLowerCase().includes("captcha")) {
+          setError("Invalid CAPTCHA. Please try again.");
+        } else {
+          setError(msg);
+        }
+        setCaptchaInput("");
+        refreshCaptcha();
       }
     }
   };
@@ -99,18 +137,18 @@ export const LoginPage = () => {
         {/* Floating background glowing circles */}
         <div className="absolute top-[10%] left-[20%] w-72 h-72 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[10%] right-[20%] w-80 h-80 rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none animate-pulse" />
-        
+
         {/* Grid pattern overlay */}
         <div className="absolute inset-0 grid-cyber opacity-15 pointer-events-none" />
 
         <div className="relative w-full max-w-[460px] z-10">
-          <form 
+          <form
             onSubmit={submit}
             className="w-full bg-white/10 dark:bg-slate-900/30 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl transition-all duration-300 hover:shadow-indigo-500/10 text-white"
           >
             {/* Back to Home Link */}
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white font-bold mb-6 group transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
@@ -134,12 +172,12 @@ export const LoginPage = () => {
 
             {/* Inputs */}
             <div className="space-y-4">
-              <Input 
-                label="Student User ID" 
-                placeholder="Enter Student ID" 
-                className="bg-white/5 border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:ring-cyan-500/20 focus:ring-3" 
-                value={userId} 
-                onChange={(event) => setUserId(event.target.value)} 
+              <Input
+                label="Student User ID"
+                placeholder="Enter Student ID"
+                className="bg-white/5 border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:ring-cyan-500/20 focus:ring-3"
+                value={userId}
+                onChange={(event) => setUserId(event.target.value)}
               />
               <PasswordInput
                 label="Secret Password"
@@ -148,11 +186,46 @@ export const LoginPage = () => {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
+              {captchaData && (
+                <div className="flex gap-3 items-end mt-4">
+                  {/* CAPTCHA Input */}
+                  <div className="flex-1">
+                    <Input
+                      label="Enter CAPTCHA"
+                      placeholder="CAPTCHA"
+                      className="bg-white/5 border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:ring-cyan-500/20 focus:ring-3 h-12"
+                      value={captchaInput}
+                      onChange={(event) => setCaptchaInput(event.target.value)}
+                    />
+                  </div>
+                  {/* CAPTCHA Display & Refresh Group */}
+                  <div className="flex items-center shrink-0 border border-[#e0e2fe] rounded-md overflow-hidden bg-[#f3f4ff] h-12">
+                    <div className="w-[150px] h-full flex items-center justify-center select-none bg-[#f3f4ff]">
+                      {captchaLoading ? (
+                        <span className="text-[10px] text-indigo-600 animate-pulse font-mono font-bold tracking-wider">LOAD</span>
+                      ) : (
+                        <div
+                          className="w-full h-full"
+                          dangerouslySetInnerHTML={{ __html: captchaData.captchaSvg }}
+                        />
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={refreshCaptcha}
+                      className="p-2.5 text-indigo-650 hover:text-indigo-800 hover:bg-[#e8e9ff] transition-all cursor-pointer h-full w-12 flex items-center justify-center bg-[#f3f4ff]"
+                      title="Refresh CAPTCHA"
+                    >
+                      <RotateCw className="h-4.5 w-4.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Links */}
             <div className="mt-4 flex justify-between items-center text-xs">
-              <Link 
+              <Link
                 to="/forgot-password?role=student"
                 className="text-cyan-400 hover:underline font-bold transition-colors cursor-pointer"
               >
@@ -168,7 +241,7 @@ export const LoginPage = () => {
             )}
 
             {/* Submit button */}
-            <Button 
+            <Button
               className="mt-6 w-full py-6 rounded-xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-indigo-600 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 text-white border-none shadow-lg shadow-indigo-500/20"
               disabled={loginMutation.isPending}
             >
@@ -189,7 +262,7 @@ export const LoginPage = () => {
         {/* Left Column: Purple Info Panel */}
         <section className="hidden lg:flex flex-col justify-between p-16 bg-[#07040d] border-r border-slate-200/10 relative transition-colors duration-300 overflow-hidden min-h-screen">
           <div className="absolute top-[15%] right-[-10%] w-[350px] h-[350px] rounded-full blur-[120px] bg-purple-500/20 pointer-events-none opacity-30 z-0" />
-          
+
           <div className="relative z-10 flex items-center gap-3 self-start">
             <span className="text-2xl font-extrabold leading-none tracking-normal text-white font-outfit">Parikshya</span>
             <span className="h-4 w-px bg-white/20" />
@@ -214,13 +287,13 @@ export const LoginPage = () => {
 
         {/* Right Column: Form Panel */}
         <section className="flex items-center justify-center p-8 border-l border-slate-100 dark:border-slate-800/30 relative z-10 min-h-screen">
-          <form 
+          <form
             onSubmit={submit}
             className="w-full max-w-[440px] flex flex-col justify-center bg-white dark:bg-[#0f0b18] border border-slate-200/60 dark:border-purple-950/20 rounded-3xl p-8 md:p-10 shadow-xl hover:shadow-purple-500/5 transition-all duration-300"
           >
             {/* Go Back Link */}
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-bold mb-6 group self-start transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
@@ -245,12 +318,12 @@ export const LoginPage = () => {
 
             {/* Inputs */}
             <div className="space-y-4">
-              <Input 
-                label="Teacher User ID" 
-                placeholder="Enter Username or Email" 
-                className="focus:border-purple-500 focus:ring-purple-100/50 focus:ring-3 focus:ring-purple-500/10" 
-                value={userId} 
-                onChange={(event) => setUserId(event.target.value)} 
+              <Input
+                label="Teacher User ID"
+                placeholder="Enter Username or Email"
+                className="focus:border-purple-500 focus:ring-purple-100/50 focus:ring-3 focus:ring-purple-500/10"
+                value={userId}
+                onChange={(event) => setUserId(event.target.value)}
               />
               <PasswordInput
                 label="Password"
@@ -259,11 +332,46 @@ export const LoginPage = () => {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
+              {captchaData && (
+                <div className="flex gap-3 items-end mt-4">
+                  {/* CAPTCHA Input */}
+                  <div className="flex-1">
+                    <Input
+                      label="Enter CAPTCHA"
+                      placeholder="CAPTCHA"
+                      className="focus:border-purple-500 focus:ring-purple-100/50 focus:ring-3 focus:ring-purple-500/10 h-12"
+                      value={captchaInput}
+                      onChange={(event) => setCaptchaInput(event.target.value)}
+                    />
+                  </div>
+                  {/* CAPTCHA Display & Refresh Group */}
+                  <div className="flex items-center shrink-0 border border-[#e0e2fe] rounded-md overflow-hidden bg-[#f3f4ff] h-12">
+                    <div className="w-[150px] h-full flex items-center justify-center select-none bg-[#f3f4ff]">
+                      {captchaLoading ? (
+                        <span className="text-[10px] text-indigo-600 animate-pulse font-mono font-bold tracking-wider">LOAD</span>
+                      ) : (
+                        <div
+                          className="w-full h-full"
+                          dangerouslySetInnerHTML={{ __html: captchaData.captchaSvg }}
+                        />
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={refreshCaptcha}
+                      className="p-2.5 text-indigo-650 hover:text-indigo-800 hover:bg-[#e8e9ff] transition-all cursor-pointer h-full w-12 flex items-center justify-center bg-[#f3f4ff]"
+                      title="Refresh CAPTCHA"
+                    >
+                      <RotateCw className="h-4.5 w-4.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Links */}
             <div className="mt-4 flex justify-between items-center text-xs">
-              <Link 
+              <Link
                 to="/forgot-password?role=teacher"
                 className="text-purple-600 dark:text-purple-400 hover:underline font-bold transition-colors cursor-pointer"
               >
@@ -279,7 +387,7 @@ export const LoginPage = () => {
             )}
 
             {/* Submit button */}
-            <Button 
+            <Button
               className="mt-6 w-full py-6 rounded-xl font-bold text-xs uppercase tracking-wider bg-purple-600 hover:bg-purple-700 text-white border-none shadow-md shadow-purple-500/10 transition-all duration-300 transform active:scale-98"
               disabled={loginMutation.isPending}
             >
@@ -300,7 +408,7 @@ export const LoginPage = () => {
         {/* Left Column: Amber Info Panel */}
         <section className="hidden lg:flex flex-col justify-between p-16 bg-[#05060f] border-r border-slate-200/10 relative transition-colors duration-300 overflow-hidden min-h-screen">
           <div className="absolute top-[15%] right-[-10%] w-[350px] h-[350px] rounded-full blur-[120px] bg-amber-500/20 pointer-events-none opacity-30 z-0" />
-          
+
           <div className="relative z-10 flex items-center gap-3 self-start">
             <span className="text-2xl font-extrabold leading-none tracking-normal text-white font-outfit">Parikshya</span>
             <span className="h-4 w-px bg-white/20" />
@@ -325,13 +433,13 @@ export const LoginPage = () => {
 
         {/* Right Column: Form Panel */}
         <section className="flex items-center justify-center p-8 border-l border-slate-100 dark:border-slate-800/30 relative z-10 min-h-screen">
-          <form 
+          <form
             onSubmit={submit}
             className="w-full max-w-[440px] flex flex-col justify-center bg-white dark:bg-[#0c1322] border border-slate-200/60 dark:border-amber-950/20 rounded-3xl p-8 md:p-10 shadow-xl hover:shadow-amber-500/5 transition-all duration-300 text-slate-800 dark:text-white"
           >
             {/* Go Back Link */}
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-bold mb-6 group self-start transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
@@ -357,19 +465,19 @@ export const LoginPage = () => {
             {/* Inputs */}
             {isSignUp ? (
               <div className="space-y-4">
-                <Input 
-                  label="FULL NAME" 
-                  placeholder="Enter name" 
-                  className="focus:border-amber-500 focus:ring-amber-100/50 focus:ring-3 focus:ring-amber-500/10" 
-                  value={adminName} 
-                  onChange={(event) => setAdminName(event.target.value)} 
+                <Input
+                  label="FULL NAME"
+                  placeholder="Enter name"
+                  className="focus:border-amber-500 focus:ring-amber-100/50 focus:ring-3 focus:ring-amber-500/10"
+                  value={adminName}
+                  onChange={(event) => setAdminName(event.target.value)}
                 />
-                <Input 
-                  label="ADMIN USER ID" 
-                  placeholder="Enter username" 
-                  className="focus:border-amber-500 focus:ring-amber-100/50 focus:ring-3 focus:ring-amber-500/10" 
-                  value={userId} 
-                  onChange={(event) => setUserId(event.target.value)} 
+                <Input
+                  label="ADMIN USER ID"
+                  placeholder="Enter username"
+                  className="focus:border-amber-500 focus:ring-amber-100/50 focus:ring-3 focus:ring-amber-500/10"
+                  value={userId}
+                  onChange={(event) => setUserId(event.target.value)}
                 />
                 <PasswordInput
                   label="PASSWORD"
@@ -388,12 +496,12 @@ export const LoginPage = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                <Input 
-                  label="ADMIN USER ID" 
-                  placeholder="Enter Username" 
-                  className="focus:border-amber-500 focus:ring-amber-100/50 focus:ring-3 focus:ring-amber-500/10" 
-                  value={userId} 
-                  onChange={(event) => setUserId(event.target.value)} 
+                <Input
+                  label="ADMIN USER ID"
+                  placeholder="Enter Username"
+                  className="focus:border-amber-500 focus:ring-amber-100/50 focus:ring-3 focus:ring-amber-500/10"
+                  value={userId}
+                  onChange={(event) => setUserId(event.target.value)}
                 />
                 <PasswordInput
                   label="PASSWORD"
@@ -402,6 +510,41 @@ export const LoginPage = () => {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                 />
+                {captchaData && (
+                  <div className="flex gap-3 items-end mt-4">
+                    {/* CAPTCHA Input */}
+                    <div className="flex-1">
+                      <Input
+                        label="Enter CAPTCHA"
+                        placeholder="CAPTCHA"
+                        className="focus:border-amber-500 focus:ring-amber-100/50 focus:ring-3 focus:ring-amber-500/10 h-12"
+                        value={captchaInput}
+                        onChange={(event) => setCaptchaInput(event.target.value)}
+                      />
+                    </div>
+                    {/* CAPTCHA Display & Refresh Group */}
+                    <div className="flex items-center shrink-0 border border-[#e0e2fe] rounded-md overflow-hidden bg-[#f3f4ff] h-12">
+                      <div className="w-[150px] h-full flex items-center justify-center select-none bg-[#f3f4ff]">
+                        {captchaLoading ? (
+                          <span className="text-[10px] text-indigo-600 animate-pulse font-mono font-bold tracking-wider">LOAD</span>
+                        ) : (
+                          <div
+                            className="w-full h-full"
+                            dangerouslySetInnerHTML={{ __html: captchaData.captchaSvg }}
+                          />
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={refreshCaptcha}
+                        className="p-2.5 text-indigo-650 hover:text-indigo-800 hover:bg-[#e8e9ff] transition-all cursor-pointer h-full w-12 flex items-center justify-center bg-[#f3f4ff]"
+                        title="Refresh CAPTCHA"
+                      >
+                        <RotateCw className="h-4.5 w-4.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -418,9 +561,9 @@ export const LoginPage = () => {
               >
                 {isSignUp ? "Already registered? Login" : "Initialize new admin account"}
               </button>
-              
+
               {!isSignUp && (
-                <Link 
+                <Link
                   to="/forgot-password?role=admin"
                   className="self-start text-xs font-bold text-amber-500 hover:underline transition-colors cursor-pointer text-left"
                 >
@@ -442,7 +585,7 @@ export const LoginPage = () => {
             )}
 
             {/* Submit button */}
-            <Button 
+            <Button
               className="mt-6 w-full py-6 rounded-xl font-bold text-xs uppercase tracking-wider bg-amber-600 hover:bg-amber-700 text-white border-none shadow-md shadow-amber-500/10 transition-all duration-300 transform active:scale-98"
               disabled={loginMutation.isPending || (isSignUp && !adminName)}
             >

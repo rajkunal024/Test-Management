@@ -4,11 +4,11 @@ import { tenantContext } from "../utils/context.js";
 // Global Mongoose Multi-Tenancy Plugin
 mongoose.plugin((schema: any) => {
   // Intercept all queries and count actions to filter by tenant context organization_id
-  schema.pre(['find', 'findOne', 'countDocuments', 'estimatedDocumentCount', 'updateOne', 'updateMany', 'deleteOne', 'deleteMany', 'findOneAndUpdate', 'findOneAndDelete', 'replaceOne'], function(this: any, next: any) {
+  schema.pre(['find', 'findOne', 'countDocuments', 'estimatedDocumentCount', 'updateOne', 'updateMany', 'deleteOne', 'deleteMany', 'findOneAndUpdate', 'findOneAndDelete', 'replaceOne'], function (this: any, next: any) {
     const store = tenantContext.getStore();
     if (store && store.organization_id) {
       const modelName = this.model?.modelName;
-      if (modelName !== "Organization" && modelName !== "ParikshyaAdmin") {
+      if (modelName !== "Organization" && modelName !== "ParikshyaAdmin" && modelName !== "Captcha") {
         const query = this.getQuery();
         if (query && query.organization_id === undefined) {
           this.where({ organization_id: store.organization_id });
@@ -19,11 +19,11 @@ mongoose.plugin((schema: any) => {
   });
 
   // Automatically assign organization_id to newly created documents
-  schema.pre('validate', function(this: any, next: any) {
+  schema.pre('validate', function (this: any, next: any) {
     const store = tenantContext.getStore();
     if (store && store.organization_id) {
       const modelName = this.constructor?.modelName;
-      if (modelName !== "Organization" && modelName !== "ParikshyaAdmin") {
+      if (modelName !== "Organization" && modelName !== "ParikshyaAdmin" && modelName !== "Captcha") {
         if (!this.organization_id) {
           this.organization_id = store.organization_id;
         }
@@ -128,7 +128,7 @@ const parseDobToDdmmyy = (dob: string): string => {
       const year = String(d.getFullYear()).substring(2, 4);
       return `${day}${month}${year}`;
     }
-  } catch (e) {}
+  } catch (e) { }
   return "000000";
 };
 
@@ -164,7 +164,7 @@ TeacherSchema.pre("validate", async function (this: any, next) {
       const orgName = (org?.name || "tester").toLowerCase().replace(/\s+/g, "");
       const userName = this.name.toLowerCase().replace(/\s+/g, "");
       this.email = `${userName}@${orgName}.teacher.com`;
-      
+
       const subjectClean = (this.subject || "subject").toLowerCase().replace(/\s+/g, "");
       const datePart = parseJoiningDate(this.joined_at || new Date());
       this.userId = `${userName}_${subjectClean}_${datePart}`;
@@ -206,7 +206,7 @@ StudentSchema.pre("validate", async function (this: any, next) {
       const orgName = (org?.name || "tester").toLowerCase().replace(/\s+/g, "");
       const userName = this.name.toLowerCase().replace(/\s+/g, "");
       this.email = `${userName}@${orgName}.student.com`;
-      
+
       const dobPart = parseDobToDdmmyy(this.dob);
       this.userId = `${userName}_${dobPart}`;
     } catch (err) {
@@ -236,7 +236,7 @@ AdminSchema.pre("validate", async function (this: any, next) {
       const orgName = (org?.name || "tester").toLowerCase().replace(/\s+/g, "");
       const userName = this.name.toLowerCase().replace(/\s+/g, "");
       this.email = `${userName}@${orgName}.admin.com`;
-      
+
       const matches = this.userId && this.userId.match(/^admin\d+$/);
       if (!matches) {
         let n = 1;
@@ -374,3 +374,10 @@ export const NotificationSchema = new Schema({
   organization_id: { type: String, required: true }
 });
 export const NotificationModel = mongoose.model("Notification", NotificationSchema);
+
+export const CaptchaSchema = new Schema({
+  captcha: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  expires: { type: Date, required: true, expires: 0 }
+});
+export const CaptchaModel = mongoose.model("Captcha", CaptchaSchema);
