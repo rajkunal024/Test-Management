@@ -396,8 +396,12 @@ export const listUsers = async (request: IncomingMessage, response: ServerRespon
     const orgIdFilter = url.searchParams.get("organization_id") || "";
 
     const usersList: any[] = [];
-    const orgs = await OrganizationModel.find().select("id name");
-    const orgsMap = new Map(orgs.map(o => [o.id, o.name]));
+    const orgs = await OrganizationModel.find().select("id name orgType");
+    const orgsMap = new Map(orgs.map(o => [o.id, o]));
+
+    const { ProgramModel } = await import("../models/index.js");
+    const programs = await ProgramModel.find().select("id code name");
+    const programsMap = new Map(programs.map(p => [p.id, p]));
 
     // Helper to check filters
     const matchesFilter = (user: any, orgName: string) => {
@@ -414,7 +418,8 @@ export const listUsers = async (request: IncomingMessage, response: ServerRespon
     if (!role || role === "Admin") {
       const admins = await AdminModel.find();
       admins.forEach(u => {
-        const orgName = orgsMap.get(u.organization_id) || "Default Organization";
+        const org = orgsMap.get(u.organization_id);
+        const orgName = org ? org.name : "Default Organization";
         if (matchesFilter(u, orgName)) {
           usersList.push({
             id: u.userId,
@@ -438,7 +443,8 @@ export const listUsers = async (request: IncomingMessage, response: ServerRespon
     if (!role || role === "Teacher") {
       const teachers = await TeacherModel.find();
       teachers.forEach(u => {
-        const orgName = orgsMap.get(u.organization_id) || "Default Organization";
+        const org = orgsMap.get(u.organization_id);
+        const orgName = org ? org.name : "Default Organization";
         if (matchesFilter(u, orgName)) {
           usersList.push({
             id: u.userId,
@@ -462,14 +468,33 @@ export const listUsers = async (request: IncomingMessage, response: ServerRespon
     if (!role || role === "Student") {
       const students = await StudentModel.find();
       students.forEach(u => {
-        const orgName = orgsMap.get(u.organization_id) || "Default Organization";
+        const org = orgsMap.get(u.organization_id);
+        const orgName = org ? org.name : "Default Organization";
+        const isCollege = org ? org.get("orgType") === "College" : false;
+        
+        let classDisplay = u.class || "Class 10";
+        if (isCollege) {
+          if (u.program_id && u.semester) {
+            const prog = programsMap.get(u.program_id);
+            classDisplay = `${prog?.code || u.program_id} - Sem ${u.semester}`;
+          } else if (classDisplay.startsWith("program-")) {
+            const parts = classDisplay.split("-sem-");
+            if (parts.length === 2) {
+              const progId = parts[0];
+              const sem = parts[1];
+              const prog = programsMap.get(progId);
+              classDisplay = `${prog?.code || progId} - Sem ${sem}`;
+            }
+          }
+        }
+
         if (matchesFilter(u, orgName)) {
           usersList.push({
             id: u.userId,
             name: u.name,
             email: u.email,
             role: "Student",
-            class: u.class || "Class 10",
+            class: classDisplay,
             organizationId: u.organization_id,
             organization: orgName,
             status: "Active",
@@ -515,6 +540,24 @@ export const getUserDetails = async (request: IncomingMessage, response: ServerR
 
     const org = await OrganizationModel.findOne({ id: userDoc.organization_id });
     const orgName = org ? org.name : "Default Organization";
+    const isCollege = org ? org.get("orgType") === "College" : false;
+
+    let classDisplay = userDoc.class || userDoc.subject || "N/A";
+    if (isCollege && role === "Student") {
+      const { ProgramModel } = await import("../models/index.js");
+      if (userDoc.program_id && userDoc.semester) {
+        const prog = await ProgramModel.findOne({ id: userDoc.program_id });
+        classDisplay = `${prog?.code || userDoc.program_id} - Sem ${userDoc.semester}`;
+      } else if (classDisplay.startsWith("program-")) {
+        const parts = classDisplay.split("-sem-");
+        if (parts.length === 2) {
+          const progId = parts[0];
+          const sem = parts[1];
+          const prog = await ProgramModel.findOne({ id: progId });
+          classDisplay = `${prog?.code || progId} - Sem ${sem}`;
+        }
+      }
+    }
 
     const userData = {
       id: userDoc.userId,
@@ -525,7 +568,7 @@ export const getUserDetails = async (request: IncomingMessage, response: ServerR
       organizationId: userDoc.organization_id,
       dob: userDoc.dob || "N/A",
       gender: userDoc.gender || "N/A",
-      class: userDoc.class || userDoc.subject || "N/A",
+      class: classDisplay,
       registrationDate: userDoc.joined_at || userDoc._id.getTimestamp(),
       lastLogin: "N/A",
       status: "Active",
@@ -782,17 +825,30 @@ export const listAllQuestions = async (request: IncomingMessage, response: Serve
   try {
     const questions = await QuestionModel.find({});
     
-    // Fetch all organizations to map their names
+    // Fetch all organizations to map their names and types
     const orgs = await OrganizationModel.find({});
-    const orgMap = new Map(orgs.map(o => [o.id, o.name]));
+    const orgMap = new Map(orgs.map(o => [o.id, o]));
 
     // Fetch all teachers to map their names
     const teachers = await TeacherModel.find({});
     const teacherMap = new Map(teachers.map(t => [t.userId, t.name]));
 
+    const { ProgramModel } = await import("../models/index.js");
+    const programs = await ProgramModel.find({});
+    const programMap = new Map(programs.map(p => [p.id, p]));
+
     const questionsData = questions.map((q: any) => {
-      const orgName = orgMap.get(q.organization_id) || "N/A";
+      const org = orgMap.get(q.organization_id);
+      const orgName = org ? org.name : "N/A";
+      const isCollege = org ? org.get("orgType") === "College" : false;
       const teacherName = q.created_by ? (teacherMap.get(q.created_by) || q.created_by) : "System";
+
+      let classDisplay = q.class || "N/A";
+      if (isCollege && q.class) {
+        const prog = programMap.get(q.class);
+        classDisplay = prog?.code || q.class;
+      }
+
       return {
         id: q.id,
         question: q.question,
@@ -803,7 +859,7 @@ export const listAllQuestions = async (request: IncomingMessage, response: Serve
         option4: q.option4,
         correct_option: q.correct_option,
         difficulty: q.difficulty,
-        class: q.class || "N/A",
+        class: classDisplay,
         created_by: teacherName,
         teacherId: q.created_by || "",
         organization_id: q.organization_id,

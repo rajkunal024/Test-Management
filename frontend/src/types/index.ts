@@ -254,3 +254,19 @@ export interface Semester {
   name: string;
   program_id: string;
 }
+
+export interface LmsMaterial {
+  id: string;
+  title: string;
+  description?: string;
+  file_url: string;
+  readme_content?: string;
+  resource_type: "document" | "video" | "link" | "readme";
+  organization_id: string;
+  program_id: string;
+  semester: number;
+  subject_id: string;
+  uploaded_by: string;
+  uploaded_by_name: string;
+  created_at: string;
+}

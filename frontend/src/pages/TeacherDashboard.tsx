@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,6 +18,12 @@ import {
   FolderPlus,
   Check,
   FileQuestion,
+  FolderOpen,
+  Youtube,
+  Link2,
+  Download,
+  ExternalLink,
+  FileText,
 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -27,6 +33,7 @@ import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { Spinner } from "../components/ui/Spinner";
 import { Modal } from "../components/ui/Modal";
+import { MarkdownPreview } from "../components/ui/MarkdownPreview";
 import { Toast } from "../components/ui/Toast";
 import {
   createQuestion,
@@ -48,11 +55,15 @@ import {
   getTopicsBySubject,
   getPrograms,
   getSemesters,
-  getClasses
+  getClasses,
+  getMaterialsApi,
+  uploadMaterialApi,
+  createMaterialUrlApi,
+  deleteMaterialApi
 } from "../services/api";
 import { useSubTopics, useTopics } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
-import { CorrectOption, Question, Passage } from "../types";
+import { CorrectOption, Question, Passage, LmsMaterial } from "../types";
 import { questionSchema, QuestionFormValues } from "../utils/validators";
 
 const emptyQuestion = {
@@ -407,6 +418,156 @@ export const TeacherDashboard = () => {
   }, [subjects, user?.subject]);
 
   const isSchool = orgData?.orgType !== "College";
+
+  // LMS Materials Hooks & Handlers
+  const { data: lmsMaterials = [], refetch: refetchLmsMaterials } = useQuery({
+    queryKey: ["lmsMaterials"],
+    queryFn: () => getMaterialsApi({}),
+    enabled: Boolean(user && orgData?.orgType === "College"),
+  });
+
+  const [lmsSubTab, setLmsSubTab] = useState<"library" | "publish">("library");
+  const [isEditingReadme, setIsEditingReadme] = useState(false);
+  const [lmsTitle, setLmsTitle] = useState("");
+  const [lmsDescription, setLmsDescription] = useState("");
+  const [lmsResourceType, setLmsResourceType] = useState<"document" | "video" | "link" | "readme">("document");
+  const [lmsSubjectId, setLmsSubjectId] = useState("");
+  const [lmsProgramSemesterStr, setLmsProgramSemesterStr] = useState("");
+  const [lmsFileUrl, setLmsFileUrl] = useState("");
+  const [lmsUploadType, setLmsUploadType] = useState<"file" | "url">("file");
+  const [lmsReadmeContent, setLmsReadmeContent] = useState("");
+  const [selectedLmsFile, setSelectedLmsFile] = useState<File | null>(null);
+  const [lmsSubmitLoading, setLmsSubmitLoading] = useState(false);
+
+  // Extract program and semester from activeSubjectObj's program_semesters
+  const activeSubjectObjForLms = useMemo(() => {
+    return subjects.find(s => s.id === lmsSubjectId);
+  }, [subjects, lmsSubjectId]);
+
+  const teacherProgramIds = useMemo(() => {
+    if (user?.program_ids && user.program_ids.length > 0) {
+      return user.program_ids;
+    }
+    return user?.program_id ? [user.program_id] : [];
+  }, [user]);
+
+  const lmsProgramSemesters = useMemo(() => {
+    if (!activeSubjectObjForLms || !activeSubjectObjForLms.program_semesters) return [];
+    return activeSubjectObjForLms.program_semesters.filter((ps: any) =>
+      teacherProgramIds.includes(ps.program_id)
+    );
+  }, [activeSubjectObjForLms, teacherProgramIds]);
+
+  const handleLmsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lmsTitle.trim()) {
+      setToast("Title is required");
+      return;
+    }
+    if (!lmsSubjectId || !lmsProgramSemesterStr) {
+      setToast("Subject and Program/Semester assignment are required");
+      return;
+    }
+
+    const [progId, semStr] = lmsProgramSemesterStr.split("|");
+    const semNum = parseInt(semStr, 10);
+
+    setLmsSubmitLoading(true);
+    try {
+      if (lmsResourceType === "readme") {
+        if (!lmsReadmeContent.trim()) {
+          setToast("Please write MarkDown File content before publishing");
+          setLmsSubmitLoading(false);
+          return;
+        }
+        await createMaterialUrlApi({
+          title: lmsTitle,
+          description: lmsDescription,
+          resource_type: "readme",
+          program_id: progId,
+          semester: semNum,
+          subject_id: lmsSubjectId,
+          file_url: "",
+          readme_content: lmsReadmeContent
+        });
+      } else if (lmsUploadType === "file" && selectedLmsFile) {
+        const formData = new FormData();
+        formData.append("title", lmsTitle);
+        formData.append("description", lmsDescription);
+        formData.append("resource_type", lmsResourceType);
+        formData.append("program_id", progId);
+        formData.append("semester", String(semNum));
+        formData.append("subject_id", lmsSubjectId);
+        formData.append("file", selectedLmsFile);
+
+        await uploadMaterialApi(formData);
+      } else {
+        if (!lmsFileUrl.trim()) {
+          setToast("File URL link is required");
+          setLmsSubmitLoading(false);
+          return;
+        }
+        await createMaterialUrlApi({
+          title: lmsTitle,
+          description: lmsDescription,
+          resource_type: lmsResourceType,
+          program_id: progId,
+          semester: semNum,
+          subject_id: lmsSubjectId,
+          file_url: lmsFileUrl
+        });
+      }
+
+      setToast("Study Material uploaded successfully");
+      setLmsTitle("");
+      setLmsDescription("");
+      setLmsFileUrl("");
+      setLmsReadmeContent("");
+      setSelectedLmsFile(null);
+      setLmsProgramSemesterStr("");
+      setLmsSubjectId("");
+      const fileInput = document.getElementById("lms-file-input") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+
+      setIsEditingReadme(false);
+      setLmsSubTab("library");
+      refetchLmsMaterials();
+    } catch (err: any) {
+      console.error("LMS upload error:", err);
+      setToast(err.response?.data?.message || "Failed to upload study material");
+    } finally {
+      setLmsSubmitLoading(false);
+    }
+  };
+
+  const handleContinueToEditor = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!lmsSubjectId || !lmsProgramSemesterStr) {
+      setToast("Subject and Program/Semester assignment are required");
+      return;
+    }
+    if (!lmsTitle.trim()) {
+      setToast("Material Title is required");
+      return;
+    }
+    setIsEditingReadme(true);
+  };
+
+  const handleLmsSubmitFromEditor = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleLmsSubmit(e as any);
+  };
+
+  const handleLmsDelete = async (matId: string) => {
+    if (!window.confirm("Are you sure you want to delete this study material?")) return;
+    try {
+      await deleteMaterialApi(matId);
+      setToast("Study Material deleted successfully");
+      refetchLmsMaterials();
+    } catch (err: any) {
+      setToast("Failed to delete study material");
+    }
+  };
 
   const teacherSubjects = useMemo(() => {
     if (user?.subjects && user.subjects.length > 0) {
@@ -3464,6 +3625,440 @@ export const TeacherDashboard = () => {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "lms" && (
+          <div className="space-y-8 animate-fade-in">
+            <section className="relative overflow-hidden rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-slate-950 p-6 md:p-8 shadow-xl shadow-slate-200/70 dark:shadow-black/20">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(99,102,241,.35),transparent_32%),radial-gradient(circle_at_85%_8%,rgba(16,185,129,.24),transparent_30%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(30,41,59,.94))]" />
+              <div className="relative z-10 grid gap-6 xl:grid-cols-[1fr_360px] xl:items-end">
+                <div>
+                  <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.24em] text-indigo-100 backdrop-blur">
+                    <FolderPlus className="h-4 w-4" />
+                    Teacher LMS Portal
+                  </div>
+                  <h2 className="max-w-3xl text-3xl font-black leading-tight tracking-tight text-white md:text-5xl">
+                    Publish study resources into student learning lanes.
+                  </h2>
+                  <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-slate-300">
+                    Upload documents or attach links, target the right program and semester, and keep your materials organized for students.
+                  </p>
+                </div>
+                {(() => {
+                  const myMaterials = lmsMaterials.filter(m => m.uploaded_by === user?.userId);
+                  return (
+                    <div className="grid grid-cols-3 gap-3 rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur-xl">
+                      <div className="rounded-2xl bg-white/10 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Uploads</p>
+                        <p className="mt-2 text-2xl font-black text-white">{myMaterials.length}</p>
+                      </div>
+                      <div className="rounded-2xl bg-white/10 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Subjects</p>
+                        <p className="mt-2 text-2xl font-black text-white">{teacherSubjects.length}</p>
+                      </div>
+                      <div className="rounded-2xl bg-white/10 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Modes</p>
+                        <p className="mt-2 text-2xl font-black text-white">2</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </section>
+
+            {/* Sleek sub-tabs toggle option */}
+            <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6">
+              <button
+                type="button"
+                onClick={() => setLmsSubTab("library")}
+                className={`border-b-2 pb-3.5 text-xs font-black uppercase tracking-[0.15em] transition-all cursor-pointer ${
+                  lmsSubTab === "library"
+                    ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-black"
+                    : "border-transparent text-slate-400 hover:text-slate-700 dark:text-slate-450 dark:hover:text-slate-300"
+                }`}
+              >
+                Preview Material
+              </button>
+              <button
+                type="button"
+                onClick={() => setLmsSubTab("publish")}
+                className={`border-b-2 pb-3.5 text-xs font-black uppercase tracking-[0.15em] transition-all cursor-pointer ${
+                  lmsSubTab === "publish"
+                    ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-black"
+                    : "border-transparent text-slate-400 hover:text-slate-700 dark:text-slate-450 dark:hover:text-slate-300"
+                }`}
+              >
+                Publish Material
+              </button>
+            </div>
+
+            {lmsSubTab === "publish" && (
+              <div className="mx-auto max-w-2xl w-full">
+                <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm animate-fade-in">
+                  <div className="border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-indigo-50 via-white to-teal-50 dark:from-indigo-950/30 dark:via-slate-900 dark:to-teal-950/20 p-5">
+                    <h3 className="flex items-center gap-3 text-lg font-black text-slate-900 dark:text-white">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/20">
+                        <Upload className="h-5 w-5" />
+                      </span>
+                      Publish material
+                    </h3>
+                    <p className="mt-2 text-xs font-semibold leading-5 text-slate-500 dark:text-slate-400">
+                      Fill the target audience first, then attach a file or external resource.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleLmsSubmit} className="space-y-5 p-5">
+                    <div className="grid gap-4">
+                      <label className="block">
+                        <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Subject</span>
+                        <select
+                          value={lmsSubjectId}
+                          onChange={(e) => {
+                            setLmsSubjectId(e.target.value);
+                            setLmsProgramSemesterStr("");
+                          }}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                          required
+                        >
+                          <option value="">Choose subject...</option>
+                          {teacherSubjects.map((sub) => (
+                            <option key={sub.id} value={sub.id}>{sub.name}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Program & semester</span>
+                        <select
+                          value={lmsProgramSemesterStr}
+                          onChange={(e) => setLmsProgramSemesterStr(e.target.value)}
+                          disabled={!lmsSubjectId}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                          required
+                        >
+                          <option value="">Choose target audience...</option>
+                          {lmsProgramSemesters.map((ps: any, index: number) => {
+                            const progCode = programs.find((p) => p.id === ps.program_id)?.code || ps.program_id;
+                            return (
+                              <option key={index} value={`${ps.program_id}|${ps.semester}`}>
+                                {progCode} - Semester {ps.semester}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Title / Topic</span>
+                        <Input
+                          placeholder="e.g. Unit 3 - Advanced Tree Operations"
+                          value={lmsTitle}
+                          onChange={(e) => setLmsTitle(e.target.value)}
+                          required
+                          className="h-12 rounded-2xl"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Description (Optional)</span>
+                        <textarea
+                          placeholder="Provide overview of the published topic resource..."
+                          value={lmsDescription}
+                          onChange={(e) => setLmsDescription(e.target.value)}
+                          className="min-h-[80px] w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Resource type</span>
+                        <select
+                          value={lmsResourceType}
+                          onChange={(e) => {
+                            const nextType = e.target.value as "document" | "video" | "link" | "readme";
+                            setLmsResourceType(nextType);
+                            if (nextType === "video" || nextType === "link") {
+                              setLmsUploadType("url");
+                            } else if (nextType === "document") {
+                              setLmsUploadType("file");
+                            }
+                          }}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                          required
+                        >
+                          <option value="document">PDF Document</option>
+                          <option value="readme">Markdown Note</option>
+                          <option value="video">Video URL (YouTube/Vimeo)</option>
+                          <option value="link">Other URL Link</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    {lmsResourceType === "readme" ? null : (lmsResourceType === "document" && lmsUploadType === "file") ? (
+                      <div className="mt-4">
+                        <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Upload PDF / Document</span>
+                        <div className="flex h-32 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-400 transition bg-slate-50 dark:border-slate-850 dark:bg-slate-950 relative cursor-pointer">
+                          <input
+                            type="file"
+                            onChange={(e) => setSelectedLmsFile(e.target.files?.[0] || null)}
+                            required={lmsUploadType === "file"}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                          />
+                          <Upload className="h-6 w-6 text-slate-400 mb-2" />
+                          <p className="text-xs font-black text-slate-600 dark:text-slate-350">
+                            {selectedLmsFile ? selectedLmsFile.name : "Select or drag file here"}
+                          </p>
+                          <p className="mt-1 text-[10px] font-bold text-slate-400">PDF, Word, or presentation files up to 10MB</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setLmsUploadType("url")}
+                          className="mt-2 text-xs font-black text-indigo-600 hover:underline dark:text-indigo-400 cursor-pointer"
+                        >
+                          Or enter an external URL link instead
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-4">
+                        <label className="block">
+                          <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                            {lmsResourceType === "video" ? "Video URL Link" : lmsResourceType === "link" ? "External Reference Link" : "Document URL link"}
+                          </span>
+                          <Input
+                            placeholder={lmsResourceType === "video" ? "https://youtube.com/watch?v=..." : "https://example.com/..."}
+                            value={lmsFileUrl}
+                            onChange={(e) => setLmsFileUrl(e.target.value)}
+                            required={lmsResourceType === "video" || lmsResourceType === "link" || lmsUploadType === "url"}
+                            className="h-12 rounded-2xl"
+                          />
+                        </label>
+                        {lmsResourceType === "document" && (
+                          <button
+                            type="button"
+                            onClick={() => setLmsUploadType("file")}
+                            className="mt-2 text-xs font-black text-indigo-600 hover:underline dark:text-indigo-400 cursor-pointer"
+                          >
+                            Or upload a file from your device
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {lmsResourceType === "readme" ? (
+                      <Button
+                        type="button"
+                        className="mt-6 h-12 w-full rounded-2xl bg-amber-500 hover:bg-amber-600 text-sm font-black text-black shadow-lg shadow-amber-500/20 flex items-center justify-center cursor-pointer"
+                        onClick={handleContinueToEditor}
+                      >
+                        Continue to Markdown Editor
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        disabled={lmsSubmitLoading}
+                        className="mt-6 h-12 w-full rounded-2xl bg-indigo-600 text-sm font-black text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 flex items-center justify-center cursor-pointer"
+                      >
+                        {lmsSubmitLoading ? <Spinner className="h-4 w-4 mr-2" /> : null}
+                        {lmsSubmitLoading ? "Publishing..." : "Publish Material"}
+                      </Button>
+                    )}
+                  </form>
+                </section>
+              </div>
+            )}
+
+            {lmsSubTab === "library" && (
+              <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm min-h-[520px] animate-fade-in">
+                <div className="flex flex-col gap-4 border-b border-slate-200 dark:border-slate-800 p-5 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h3 className="flex items-center gap-3 text-xl font-black text-slate-900 dark:text-white">
+                      <FolderOpen className="h-6 w-6 text-indigo-500" />
+                      Your material library
+                    </h3>
+                    <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      Review, open, or remove study resources you have published.
+                    </p>
+                  </div>
+                </div>
+
+                {(() => {
+                  const myMaterials = lmsMaterials.filter(m => m.uploaded_by === user?.userId);
+
+                  if (myMaterials.length === 0) {
+                    return (
+                      <div className="flex min-h-[420px] flex-col items-center justify-center p-8 text-center">
+                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-100 dark:bg-slate-800 text-slate-500">
+                          <FolderOpen className="h-8 w-8" />
+                        </div>
+                        <p className="text-sm font-black uppercase tracking-widest text-slate-500">Library Empty</p>
+                        <p className="mt-2 text-xs font-semibold text-slate-400">You haven't uploaded any study resources yet.</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid gap-4 p-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {myMaterials.map((mat) => {
+                        const isDoc = mat.resource_type === "document";
+                        const isVideo = mat.resource_type === "video";
+                        const isReadme = mat.resource_type === "readme";
+                        const isPdf = isDoc && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf');
+                        
+                        let ResourceIcon = FileText;
+                        if (isVideo) ResourceIcon = Youtube;
+                        else if (isReadme) ResourceIcon = FileText;
+                        else if (mat.resource_type === "link") ResourceIcon = Link2;
+
+                        const subObj = subjects.find(s => s.id === mat.subject_id);
+                        const progName = programs.find(p => p.id === mat.program_id)?.code || mat.program_id;
+
+                        return (
+                          <article
+                            key={mat.id}
+                            className="group flex min-h-[240px] flex-col justify-between rounded-3xl border border-slate-200/80 bg-slate-50/80 p-5 transition duration-200 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-xl hover:shadow-slate-200/70 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-indigo-700 dark:hover:shadow-black/20"
+                          >
+                            <div>
+                              <div className="mb-4 flex items-start justify-between gap-3">
+                                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+                                  isVideo
+                                    ? "bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
+                                    : isReadme
+                                      ? "bg-amber-100 text-amber-650 dark:bg-amber-950/40 dark:text-amber-300"
+                                    : isDoc
+                                      ? "bg-emerald-100 text-emerald-650 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                      : "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
+                                }`}>
+                                  <ResourceIcon className="h-6 w-6" />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleLmsDelete(mat.id)}
+                                  className="rounded-xl p-2 text-rose-500 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/25 cursor-pointer"
+                                  title="Delete study material"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+
+                              <Badge tone="slate" className="mb-3 rounded-full text-[9px] font-black uppercase tracking-wider">
+                                {mat.resource_type}
+                              </Badge>
+                              <h4 className="text-lg font-black leading-tight text-slate-900 dark:text-white line-clamp-2">
+                                {mat.title}
+                              </h4>
+
+                              {mat.description && (
+                                <p className="mt-3 line-clamp-3 text-sm font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                  {mat.description}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="mt-5 border-t border-slate-200 dark:border-slate-800 pt-4">
+                              <div className="mb-4 flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                <span className="truncate">{subObj?.name || mat.subject_id}</span>
+                                <span>{progName} · Sem {mat.semester}</span>
+                              </div>
+                              {isReadme ? (
+                                <Link to={`/lms/subjects/${encodeURIComponent(mat.subject_id)}/readme/${encodeURIComponent(mat.id)}`}>
+                                  <Button className="h-10 w-full rounded-2xl text-[11px] font-black shadow-sm flex items-center justify-center gap-2">
+                                    <FileText className="h-3.5 w-3.5" /> Preview Markdown
+                                  </Button>
+                                </Link>
+                              ) : isPdf ? (
+                                <div className="flex gap-2 w-full">
+                                  <Link to={`/lms/subjects/${encodeURIComponent(mat.subject_id)}/pdf/${encodeURIComponent(mat.id)}`} className="flex-1">
+                                    <Button className="h-10 w-full rounded-2xl text-[11px] font-black shadow-sm flex items-center justify-center gap-2">
+                                      <FileText className="h-3.5 w-3.5" /> Preview PDF
+                                    </Button>
+                                  </Link>
+                                  <a href={mat.file_url} target="_blank" rel="noopener noreferrer">
+                                    <Button variant="secondary" className="h-10 rounded-2xl px-3 flex items-center justify-center shadow-sm" title="Download File">
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                  </a>
+                                </div>
+                              ) : (
+                                <a href={mat.file_url} target="_blank" rel="noopener noreferrer">
+                                  <Button className="h-10 w-full rounded-2xl text-[11px] font-black shadow-sm flex items-center justify-center gap-2">
+                                    {mat.resource_type === "document" ? <Download className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                                    {mat.resource_type === "document" ? "Get File" : "Visit Link"}
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </section>
+            )}
+          </div>
+        )}
+
+        {/* Fullscreen Markdown Editor overlay */}
+        {isEditingReadme && (
+          <div className="fixed inset-0 z-[110] bg-[#1e1e1d] flex flex-col p-6 animate-fade-in text-white">
+            {/* Header */}
+            <div className="flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <span className="mb-2 inline-flex items-center gap-2 rounded-full bg-amber-100/10 border border-amber-500/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-400">
+                  <FileText className="h-3.5 w-3.5" />
+                  Markdown Text Editor
+                </span>
+                <h2 className="text-xl font-black text-white">{lmsTitle}</h2>
+                <p className="mt-0.5 text-xs text-zinc-400">{lmsDescription || "No description provided"}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="rounded-2xl border border-white/10 text-white hover:bg-white/10 h-10 px-5"
+                  onClick={() => setIsEditingReadme(false)}
+                >
+                  Back to Details
+                </Button>
+                <Button
+                  type="button"
+                  className="rounded-2xl bg-amber-500 hover:bg-amber-600 text-black font-black h-10 px-6 flex items-center gap-2 cursor-pointer"
+                  onClick={handleLmsSubmitFromEditor}
+                  disabled={lmsSubmitLoading}
+                >
+                  {lmsSubmitLoading && <Spinner className="h-4 w-4 mr-2" />}
+                  Publish Material
+                </Button>
+              </div>
+            </div>
+
+            {/* Editor Body */}
+            <div className="flex-1 grid grid-cols-2 gap-6 mt-6 min-h-0">
+              {/* Left: Input Textarea */}
+              <div className="flex flex-col h-full bg-[#181817] border border-white/10 rounded-2xl overflow-hidden">
+                <div className="border-b border-white/5 bg-[#20201f] px-4 py-2.5 flex items-center justify-between text-xs font-bold text-zinc-400">
+                  <span>MARKDOWN EDITOR</span>
+                  <span>{lmsReadmeContent.length} characters</span>
+                </div>
+                <textarea
+                  value={lmsReadmeContent}
+                  onChange={(e) => setLmsReadmeContent(e.target.value)}
+                  placeholder="# Title&#10;&#10;Write markdown text here. You can use standard formatting:&#10;- Bullet lists&#10;- **Bold text**&#10;- [Links](https://example.com)&#10;- Code snippets"
+                  className="flex-1 w-full bg-transparent p-6 font-mono text-sm leading-relaxed text-zinc-200 outline-none resize-none overflow-y-auto"
+                  autoFocus
+                />
+              </div>
+
+              {/* Right: Live Preview */}
+              <div className="flex flex-col h-full bg-[#1e1e1d] border border-white/10 rounded-2xl overflow-hidden">
+                <div className="border-b border-white/5 bg-[#20201f] px-4 py-2.5 text-xs font-bold text-zinc-400">
+                  <span>LIVE PREVIEW</span>
+                </div>
+                <div className="flex-1 p-6 overflow-y-auto max-w-none prose prose-invert bg-[#1c1c1b] rounded-b-2xl">
+                  <MarkdownPreview content={lmsReadmeContent || "*Start typing to see preview...*"} variant="reader" />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

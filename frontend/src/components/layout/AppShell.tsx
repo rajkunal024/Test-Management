@@ -18,6 +18,7 @@ import {
   Users,
   Key,
   PlusCircle,
+  FolderOpen,
   Sun,
   Moon,
   Menu,
@@ -137,17 +138,25 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
 
   const currentSidebarItems = useMemo(() => {
     if (user?.role === "Teacher") {
-      return [
+      const items = [
         { label: "Add Question", icon: PlusCircle, to: "/dashboard?tab=add" },
         { label: "View Question", icon: BookOpenCheck, to: "/dashboard?tab=view" },
         { label: "Test Tracking", icon: ClipboardList, to: "/dashboard?tab=monitoring" },
       ];
+      if (orgData?.orgType === "College" || user?.program_id || (user?.program_ids && user.program_ids.length > 0)) {
+        items.push({ label: "LMS Portal", icon: FolderOpen, to: "/dashboard?tab=lms" });
+      }
+      return items;
     }
     if (user?.role === "Student") {
-      return [
+      const items = [
         { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
         { label: "Analytics", icon: BarChart3, to: "/analytics" },
       ];
+      if (orgData?.orgType === "College" || user?.program_id) {
+        items.push({ label: "LMS Portal", icon: FolderOpen, to: "/lms" });
+      }
+      return items;
     }
     if (user?.role === "Admin") {
       return [
@@ -445,6 +454,10 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                   isActive = currentPath === "/dashboard" || currentPath === "/dashboard?tab=add" || currentPath.includes("tab=add");
                 } else if (isViewTab) {
                   isActive = currentPath.includes("tab=view");
+                } else if (to.includes("tab=monitoring")) {
+                  isActive = currentPath.includes("tab=monitoring");
+                } else if (to.includes("tab=lms")) {
+                  isActive = currentPath.includes("tab=lms");
                 } else {
                   isActive = currentPath === to;
                 }

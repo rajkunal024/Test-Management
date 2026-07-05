@@ -441,3 +441,20 @@ export const SemesterSchema = new Schema({
   organization_id: { type: String, required: true }
 });
 export const SemesterModel = mongoose.model("Semester", SemesterSchema);
+
+export const MaterialSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  description: { type: String },
+  file_url: { type: String },
+  readme_content: { type: String },
+  resource_type: { type: String, enum: ["document", "video", "link", "readme"], default: "document" },
+  organization_id: { type: String, required: true },
+  program_id: { type: String, required: true },
+  semester: { type: Number, required: true },
+  subject_id: { type: String, required: true },
+  uploaded_by: { type: String, required: true },
+  uploaded_by_name: { type: String, required: true },
+  created_at: { type: Date, default: Date.now }
+});
+export const MaterialModel = mongoose.model("Material", MaterialSchema);

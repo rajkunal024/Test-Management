@@ -9,6 +9,7 @@ import { handleUsersRoutes } from "./userRoutes.js";
 import { handleNotificationsRoutes } from "./notificationRoutes.js";
 import { handlePassagesRoutes } from "./passageRoutes.js";
 import { handleAcademicRoutes } from "./academicRoutes.js";
+import { handleLmsRoutes } from "./lmsRoutes.js";
 import { json } from "../middlewares/utils.js";
 import { tenantContext } from "../utils/context.js";
 import { resolveTenant } from "../middlewares/tenant.js";
@@ -130,6 +131,12 @@ export const routeRequest = async (request: IncomingMessage, response: ServerRes
       path.startsWith("/api/students/promote")
     ) {
       await handleAcademicRoutes(request, response, path, method);
+      return;
+    }
+
+    // LMS routes
+    if (path.startsWith("/api/lms")) {
+      await handleLmsRoutes(request, response, path, method);
       return;
     }
 

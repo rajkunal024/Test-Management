@@ -22,6 +22,11 @@ import {
   Signal,
   Compass,
   FileText,
+  FolderOpen,
+  Youtube,
+  Link2,
+  Download,
+  ExternalLink,
 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -29,8 +34,8 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Spinner } from "../components/ui/Spinner";
-import { getAllAttempts, getMyOrganization } from "../services/api";
-import { useTests } from "../hooks/useTests";
+import { getAllAttempts, getMyOrganization, getMaterialsApi, getPrograms } from "../services/api";
+import { useTests, useSubjects } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
 
 const getSubjectTheme = (subjectStr: string) => {
@@ -111,6 +116,24 @@ export const StudentDashboard = () => {
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [currentTime, setCurrentTime] = useState(new Date().getTime());
   const [activeTab, setActiveTab] = useState<"exams" | "results">("exams");
+
+  const { data: programs = [] } = useQuery({
+    queryKey: ["programs"],
+    queryFn: getPrograms,
+    enabled: Boolean(user && orgData?.orgType === "College"),
+  });
+
+  const classDisplay = useMemo(() => {
+    if (orgData?.orgType === "College" || user?.program_id) {
+      if (user?.program_id && user?.semester) {
+        const prog = programs.find(p => p.id === user.program_id);
+        const progName = prog?.code || user.program_id;
+        return `${progName} - Sem ${user.semester}`;
+      }
+      return user?.class || "College Student";
+    }
+    return user?.class || "Class 10";
+  }, [user, orgData, programs]);
 
   // Calendar state management
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
@@ -393,7 +416,7 @@ export const StudentDashboard = () => {
                 <span className="absolute -inset-1 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 opacity-20 blur-sm -z-10 animate-pulse" />
               </div>
               <span className="mt-3 text-[10px] font-black tracking-widest uppercase text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 rounded-full px-3 py-1">
-                {user?.class || "Class 10"}
+                {classDisplay}
               </span>
             </div>
           </div>
@@ -957,7 +980,7 @@ export const StudentDashboard = () => {
             })()}
           </div>
         )}
-          </div>
+      </div>
 
           {/* Right panel: custom calendar */}
           <aside className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-5 shadow-sm sticky top-[88px] relative z-10 dashboard-calendar-sidebar">

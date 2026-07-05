@@ -15,6 +15,7 @@ import {
   User,
   AppNotification,
   Organization,
+  LmsMaterial,
 } from "../types";
 import { useAuthStore } from "../store/authStore";
 
@@ -562,3 +563,34 @@ export const getMe = async (): Promise<User> => {
   return unwrap(data);
 };
 
+export const getMaterialsApi = async (params: { program_id?: string; semester?: number; subject_id?: string }): Promise<LmsMaterial[]> => {
+  const { data } = await api.get<ApiEnvelope<LmsMaterial[]> | LmsMaterial[]>("/lms/materials", { params });
+  return unwrap(data);
+};
+
+export const uploadMaterialApi = async (formData: FormData): Promise<LmsMaterial> => {
+  const { data } = await api.post<ApiEnvelope<LmsMaterial> | LmsMaterial>("/lms/materials", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return unwrap(data);
+};
+
+export const createMaterialUrlApi = async (payload: {
+  title: string;
+  description?: string;
+  file_url: string;
+  resource_type: string;
+  program_id: string;
+  semester: number;
+  subject_id: string;
+  readme_content?: string;
+}): Promise<LmsMaterial> => {
+  const { data } = await api.post<ApiEnvelope<LmsMaterial> | LmsMaterial>("/lms/materials", payload);
+  return unwrap(data);
+};
+
+export const deleteMaterialApi = async (materialId: string): Promise<void> => {
+  await api.delete(`/lms/materials/${materialId}`);
+};

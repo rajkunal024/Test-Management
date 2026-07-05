@@ -18,6 +18,10 @@ import { AdminPromotionPage } from "./pages/AdminPromotionPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { VerifyOtpPage } from "./pages/VerifyOtpPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { StudentLmsPage } from "./pages/StudentLmsPage";
+import { StudentLmsSubjectPage } from "./pages/StudentLmsSubjectPage";
+import { StudentLmsReadmePreviewPage } from "./pages/StudentLmsReadmePreviewPage";
+import { StudentLmsPdfPreviewPage } from "./pages/StudentLmsPdfPreviewPage";
 
 export const App = () => (
   <Routes>
@@ -29,6 +33,10 @@ export const App = () => (
     <Route element={<ProtectedRoute />}>
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/analytics" element={<AnalyticsPage />} />
+      <Route path="/lms" element={<StudentLmsPage />} />
+      <Route path="/lms/subjects/:subjectId" element={<StudentLmsSubjectPage />} />
+      <Route path="/lms/subjects/:subjectId/readme/:materialId" element={<StudentLmsReadmePreviewPage />} />
+      <Route path="/lms/subjects/:subjectId/pdf/:materialId" element={<StudentLmsPdfPreviewPage />} />
       <Route path="/admin/students" element={<AdminStudentsPage />} />
       <Route path="/admin/students/:studentId" element={<AdminStudentProfilePage />} />
       <Route path="/admin/students/:studentId/performance" element={<AdminStudentPerformancePage />} />
