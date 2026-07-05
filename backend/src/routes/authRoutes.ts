@@ -1,8 +1,12 @@
 import { IncomingMessage, ServerResponse } from "node:http";
-import { signupAdmin, login, logout, changePassword, forgotPassword, verifyOtpController, resetPassword, uploadProfilePicture, getCaptcha, loginStudentWithCaptcha, loginTeacherWithCaptcha, loginAdminWithCaptcha } from "../controllers/authController.js";
+import { signupAdmin, login, logout, changePassword, forgotPassword, verifyOtpController, resetPassword, uploadProfilePicture, getCaptcha, loginStudentWithCaptcha, loginTeacherWithCaptcha, loginAdminWithCaptcha, getMe } from "../controllers/authController.js";
 import { json } from "../middlewares/utils.js";
 
 export const handleAuthRoutes = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
+  if (path === "/api/auth/me" && method === "GET") {
+    await getMe(request, response);
+    return;
+  }
   if (
     (path === "/login/student/captcha" || path === "/api/login/student/captcha" ||
      path === "/login/teacher/captcha" || path === "/api/login/teacher/captcha" ||
@@ -67,6 +71,7 @@ export const handleAuthRoutes = async (request: IncomingMessage, response: Serve
         id: org?.id,
         name: org?.name,
         logo: org?.logo,
+        orgType: org?.get("orgType") || "School",
         securityFeatures: org?.securityFeatures,
         brandingBannerText: org?.get("brandingBannerText"),
         brandingColor: org?.get("brandingColor")

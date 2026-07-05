@@ -13,6 +13,8 @@ import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { AdminStudentsPage } from "./pages/AdminStudentsPage";
 import { AdminStudentProfilePage } from "./pages/AdminStudentProfilePage";
 import { AdminStudentPerformancePage } from "./pages/AdminStudentPerformancePage";
+import { AdminRegisterPage } from "./pages/AdminRegisterPage";
+import { AdminPromotionPage } from "./pages/AdminPromotionPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { VerifyOtpPage } from "./pages/VerifyOtpPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
@@ -30,6 +32,8 @@ export const App = () => (
       <Route path="/admin/students" element={<AdminStudentsPage />} />
       <Route path="/admin/students/:studentId" element={<AdminStudentProfilePage />} />
       <Route path="/admin/students/:studentId/performance" element={<AdminStudentPerformancePage />} />
+      <Route path="/admin/register" element={<AdminRegisterPage />} />
+      <Route path="/admin/promotion" element={<AdminPromotionPage />} />
       <Route path="/tests/create" element={<CreateEditTestPage />} />
       <Route path="/tests/:id/edit" element={<CreateEditTestPage />} />
       <Route path="/tests/:id/questions" element={<AddQuestionsPage />} />

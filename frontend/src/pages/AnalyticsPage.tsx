@@ -79,18 +79,19 @@ export const AnalyticsPage = () => {
     const subjectList = new Set<string>();
     baseAttempts.forEach((att) => {
       const testObj = tests.find((t) => t.id === att.test_id);
-      let sub = "General";
       if (testObj && testObj.subject) {
         if (Array.isArray(testObj.subject)) {
-          sub = testObj.subject[0] || "General";
+          testObj.subject.forEach(s => {
+            if (s) subjectList.add(String(s).trim());
+          });
         } else {
-          sub = String(testObj.subject);
+          subjectList.add(String(testObj.subject).trim());
         }
       } else {
         const rawSub = att.test_name?.split(" ")[0] || "General";
-        sub = rawSub.charAt(0).toUpperCase() + rawSub.slice(1).toLowerCase();
+        const sub = rawSub.charAt(0).toUpperCase() + rawSub.slice(1).toLowerCase();
+        subjectList.add(sub);
       }
-      subjectList.add(sub);
     });
     const uniqueSubjects = Array.from(subjectList);
 
@@ -128,18 +129,20 @@ export const AnalyticsPage = () => {
     if (selectedSubject !== "All") {
       filteredAttempts = filteredAttempts.filter((att) => {
         const testObj = tests.find((t) => t.id === att.test_id);
-        let sub = "General";
+        let subs: string[] = [];
         if (testObj && testObj.subject) {
           if (Array.isArray(testObj.subject)) {
-            sub = testObj.subject[0] || "General";
+            subs = testObj.subject.map(s => String(s).trim()).filter(Boolean);
           } else {
-            sub = String(testObj.subject);
+            subs = [String(testObj.subject).trim()];
           }
-        } else {
-          const rawSub = att.test_name?.split(" ")[0] || "General";
-          sub = rawSub.charAt(0).toUpperCase() + rawSub.slice(1).toLowerCase();
         }
-        return sub === selectedSubject;
+        if (subs.length === 0) {
+          const rawSub = att.test_name?.split(" ")[0] || "General";
+          const sub = rawSub.charAt(0).toUpperCase() + rawSub.slice(1).toLowerCase();
+          subs = [sub];
+        }
+        return subs.includes(selectedSubject);
       });
     }
 
@@ -217,23 +220,27 @@ export const AnalyticsPage = () => {
       totalUnattempted += unattempted;
 
       // Grouping: average performance per subject
-      let sub = "General";
+      let subs: string[] = [];
       if (testObj && testObj.subject) {
         if (Array.isArray(testObj.subject)) {
-          sub = testObj.subject[0] || "General";
+          subs = testObj.subject.map(s => String(s).trim()).filter(Boolean);
         } else {
-          sub = String(testObj.subject);
+          subs = [String(testObj.subject).trim()];
         }
-      } else {
+      }
+      if (subs.length === 0) {
         const rawSub = att.test_name?.split(" ")[0] || "General";
-        sub = rawSub.charAt(0).toUpperCase() + rawSub.slice(1).toLowerCase();
+        const sub = rawSub.charAt(0).toUpperCase() + rawSub.slice(1).toLowerCase();
+        subs = [sub];
       }
 
-      if (!subjectMap[sub]) {
-        subjectMap[sub] = { sum: 0, count: 0 };
-      }
-      subjectMap[sub].sum += percent;
-      subjectMap[sub].count += 1;
+      subs.forEach((sub) => {
+        if (!subjectMap[sub]) {
+          subjectMap[sub] = { sum: 0, count: 0 };
+        }
+        subjectMap[sub].sum += percent;
+        subjectMap[sub].count += 1;
+      });
 
       // Calculate Marks Lost for this attempt
       const correctMarks = testObj?.correct_marks ?? 4;

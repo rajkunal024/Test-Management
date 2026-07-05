@@ -33,16 +33,8 @@ const FEATURE_LABELS: Record<string, string> = {
   printDisabled: "Disable Printing",
 };
 
-export const DashboardPage = () => {
+const AdminDashboard = () => {
   const user = useAuthStore((state) => state.user);
-
-  if (user?.role === "Student") {
-    return <StudentDashboard />;
-  }
-
-  if (user?.role === "Teacher") {
-    return <TeacherDashboard />;
-  }
 
   const { data: tests = [], isLoading, error } = useTests();
   const { data: orgData } = useQuery({
@@ -523,15 +515,6 @@ export const DashboardPage = () => {
               Test Configurations
             </button>
             <button
-              onClick={() => setActiveTab("users")}
-              className={`py-2 px-6 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === "users"
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-800/50"
-                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
-                }`}
-            >
-              User Accounts
-            </button>
-            <button
               onClick={() => setActiveTab("features")}
               className={`py-2 px-6 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === "features"
                 ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-800/50"
@@ -561,18 +544,6 @@ export const DashboardPage = () => {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setSubjectFormError("");
-                    setNewSubjectName("");
-                    setIsSubjectOpen(true);
-                  }}
-                  className="rounded-xl shadow-sm border border-slate-200 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-900 transition-colors text-xs font-bold"
-                  icon={<Plus className="h-4 w-4 text-indigo-500" />}
-                >
-                  Register Subject
-                </Button>
                 <Link to="/tests/create">
                   <Button
                     className="rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/10 text-white border-none font-bold transition-all hover:scale-[1.02] active:scale-[0.98] text-xs"
@@ -747,7 +718,7 @@ export const DashboardPage = () => {
           </>
         )}
 
-        {activeTab === "users" && (
+        {false && activeTab === "users" && (
           <>
             <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
@@ -756,23 +727,8 @@ export const DashboardPage = () => {
                   User Directory
                 </h2>
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                  Supervise registered students and faculties, create single accounts, or perform bulk uploads.
+                  Review registered students and faculty accounts across the organization.
                 </p>
-              </div>
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => {
-                    setRegWizardStep(1);
-                    setRegRole("Student");
-                    setRegGender("Male");
-                    setFormError("");
-                    setIsRegisterOpen(true);
-                  }}
-                  className="rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/10 text-white border-none font-bold transition-all hover:scale-[1.02] active:scale-[0.98] text-xs"
-                  icon={<UserPlus className="h-4 w-4" />}
-                >
-                  Register User
-                </Button>
               </div>
             </div>
 
@@ -1055,7 +1011,7 @@ export const DashboardPage = () => {
 
         {/* Register User Modal (Unified Wizard) */}
         <Modal
-          open={isRegisterOpen}
+          open={false}
           title={
             regWizardStep === 1
               ? "Register New User"
@@ -1447,7 +1403,7 @@ export const DashboardPage = () => {
 
         {/* Register Subject Modal */}
         <Modal
-          open={isSubjectOpen}
+          open={false}
           title="Register New Subject"
           onClose={() => setIsSubjectOpen(false)}
           footer={
@@ -1488,4 +1444,29 @@ export const DashboardPage = () => {
       </PageWrapper>
     </AppShell>
   );
+};
+
+export const DashboardPage = () => {
+  const user = useAuthStore((state) => state.user);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300">
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 px-5 py-4 shadow-sm">
+          <Spinner />
+          <span className="text-sm font-bold">Loading your dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (user.role === "Student") {
+    return <StudentDashboard />;
+  }
+
+  if (user.role === "Teacher") {
+    return <TeacherDashboard />;
+  }
+
+  return <AdminDashboard />;
 };

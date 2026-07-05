@@ -6,8 +6,13 @@ export interface User {
   email?: string;
   avatarUrl?: string;
   subject?: string;
+  subjects?: string[];
   dob?: string;
   class?: string;
+  session?: string;
+  program_id?: string;
+  program_ids?: string[];
+  semester?: number;
   gender?: string;
   requiresPasswordChange?: boolean;
   joined_at?: string;
@@ -33,6 +38,9 @@ export interface AuthResponse {
 export interface Subject {
   id: string;
   name: string;
+  program_id?: string;
+  program_ids?: string[];
+  program_semesters?: { program_id: string; semester: number }[];
 }
 
 export interface Topic {
@@ -231,4 +239,18 @@ export interface Organization {
   securityFeatures?: Record<string, boolean> | OrganizationFeatures;
   brandingBannerText?: string;
   brandingColor?: string;
+  orgType?: "School" | "College";
+}
+
+export interface Program {
+  id: string;
+  name: string;
+  code: string;
+  totalSemesters: number;
+}
+
+export interface Semester {
+  id: string;
+  name: string;
+  program_id: string;
 }

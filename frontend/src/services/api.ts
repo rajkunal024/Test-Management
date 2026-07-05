@@ -137,9 +137,19 @@ export const getSubjects = async (): Promise<Subject[]> => {
   return unwrap(data);
 };
 
-export const createSubject = async (name: string): Promise<Subject> => {
-  const { data } = await api.post<ApiEnvelope<Subject> | Subject>("/subjects", { name });
+export const createSubject = async (payload: string | { name: string; program_id?: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[] }): Promise<Subject> => {
+  const body = typeof payload === "string" ? { name: payload } : payload;
+  const { data } = await api.post<ApiEnvelope<Subject> | Subject>("/subjects", body);
   return unwrap(data);
+};
+
+export const updateSubject = async (subjectId: string, payload: { name: string; program_id?: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[] }): Promise<Subject> => {
+  const { data } = await api.put<ApiEnvelope<Subject> | Subject>(`/subjects/${subjectId}`, payload);
+  return unwrap(data);
+};
+
+export const deleteSubject = async (subjectId: string): Promise<void> => {
+  await api.delete(`/subjects/${subjectId}`);
 };
 
 export const getTopicsBySubject = async (subjectId: string): Promise<Topic[]> => {
@@ -259,6 +269,15 @@ export const getAdminUsers = async (): Promise<User[]> => {
 export const registerUser = async (payload: Partial<User> & { password?: string }): Promise<User> => {
   const { data } = await api.post<ApiEnvelope<User> | User>("/admin/users", payload);
   return unwrap(data);
+};
+
+export const updateUser = async (userId: string, payload: Partial<User>): Promise<User> => {
+  const { data } = await api.put<ApiEnvelope<User> | User>(`/admin/users/${userId}`, payload);
+  return unwrap(data);
+};
+
+export const deleteUser = async (userId: string): Promise<void> => {
+  await api.delete(`/admin/users/${userId}`);
 };
 
 export const signupAdmin = async (payload: { userId: string; password?: string; name: string; signupKey: string }): Promise<User> => {
@@ -409,6 +428,137 @@ export const generateAIQuestionsApi = async (payload: {
   count: number;
 }): Promise<AIGeneratedQuestion[]> => {
   const { data } = await api.post<ApiEnvelope<AIGeneratedQuestion[]> | AIGeneratedQuestion[]>("/questions/generate-ai", payload);
+  return unwrap(data);
+};
+
+export interface ClassItem {
+  id: string;
+  name: string;
+  numericOrder: number;
+}
+
+export interface SessionItem {
+  id: string;
+  name: string;
+  isCurrent: boolean;
+}
+
+export interface ProgramItem {
+  id: string;
+  name: string;
+  code: string;
+  totalSemesters: number;
+}
+
+export const getClasses = async (): Promise<ClassItem[]> => {
+  const { data } = await api.get<ApiEnvelope<ClassItem[]> | ClassItem[]>("/classes");
+  return unwrap(data);
+};
+
+export const createClass = async (payload: { name: string; numericOrder: number }): Promise<ClassItem> => {
+  const { data } = await api.post<ApiEnvelope<ClassItem> | ClassItem>("/classes", payload);
+  return unwrap(data);
+};
+
+export const getSessions = async (): Promise<SessionItem[]> => {
+  const { data } = await api.get<ApiEnvelope<SessionItem[]> | SessionItem[]>("/sessions");
+  return unwrap(data);
+};
+
+export const createSession = async (payload: { name: string; isCurrent: boolean }): Promise<SessionItem> => {
+  const { data } = await api.post<ApiEnvelope<SessionItem> | SessionItem>("/sessions", payload);
+  return unwrap(data);
+};
+
+export const setCurrentSessionApi = async (sessionId: string): Promise<SessionItem> => {
+  const { data } = await api.put<ApiEnvelope<SessionItem> | SessionItem>(`/sessions/${sessionId}/current`);
+  return unwrap(data);
+};
+
+export const getPrograms = async (): Promise<ProgramItem[]> => {
+  const { data } = await api.get<ApiEnvelope<ProgramItem[]> | ProgramItem[]>("/programs");
+  return unwrap(data);
+};
+
+export const createProgram = async (payload: { name: string; code: string; totalSemesters?: number }): Promise<ProgramItem> => {
+  const { data } = await api.post<ApiEnvelope<ProgramItem> | ProgramItem>("/programs", payload);
+  return unwrap(data);
+};
+
+export interface SchoolPromotionResponse {
+  success: boolean;
+  message: string;
+  data: {
+    promotedCount: number;
+    promoted: string[];
+    failedToQualify: { name: string; score: number }[];
+    alreadyPromoted: string[];
+  };
+}
+
+export interface CollegePromotionResponse {
+  success: boolean;
+  message: string;
+  data: {
+    promotedCount: number;
+    promoted: string[];
+  };
+}
+
+export const promoteSchoolStudentsApi = async (payload: {
+  sourceSession: string;
+  targetSession: string;
+  sourceClass: string;
+  targetClass: string;
+}): Promise<SchoolPromotionResponse> => {
+  const { data } = await api.post<SchoolPromotionResponse>("/students/promote/school", payload);
+  return data;
+};
+
+export const promoteCollegeStudentsApi = async (payload: {
+  programId: string;
+  currentSemester: number;
+  targetSemester: number;
+}): Promise<CollegePromotionResponse> => {
+  const { data } = await api.post<CollegePromotionResponse>("/students/promote/college", payload);
+  return data;
+};
+
+export interface SemesterItem {
+  id: string;
+  name: string;
+}
+
+export const updateProgram = async (programId: string, payload: { name: string; code: string; totalSemesters: number }): Promise<ProgramItem> => {
+  const { data } = await api.put<ApiEnvelope<ProgramItem> | ProgramItem>(`/programs/${programId}`, payload);
+  return unwrap(data);
+};
+
+export const deleteProgram = async (programId: string): Promise<void> => {
+  await api.delete(`/programs/${programId}`);
+};
+
+export const getSemesters = async (): Promise<SemesterItem[]> => {
+  const { data } = await api.get<ApiEnvelope<SemesterItem[]> | SemesterItem[]>("/semesters");
+  return unwrap(data);
+};
+
+export const createSemester = async (payload: { name: string }): Promise<SemesterItem> => {
+  const { data } = await api.post<ApiEnvelope<SemesterItem> | SemesterItem>("/semesters", payload);
+  return unwrap(data);
+};
+
+export const updateSemester = async (semesterId: string, payload: { name: string }): Promise<SemesterItem> => {
+  const { data } = await api.put<ApiEnvelope<SemesterItem> | SemesterItem>(`/semesters/${semesterId}`, payload);
+  return unwrap(data);
+};
+
+export const deleteSemester = async (semesterId: string): Promise<void> => {
+  await api.delete(`/semesters/${semesterId}`);
+};
+
+export const getMe = async (): Promise<User> => {
+  const { data } = await api.get<ApiEnvelope<User> | User>("/auth/me");
   return unwrap(data);
 };
 

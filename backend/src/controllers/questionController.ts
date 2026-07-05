@@ -18,15 +18,17 @@ const escapeRegex = (string: string) => {
   return string.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 };
 
-const isTeacherAuthorizedForSubject = async (teacherSubject: string, topicId?: string, subjectId?: string, subjectName?: string) => {
-  if (subjectName && subjectName.trim().toLowerCase() !== teacherSubject.toLowerCase()) {
+const isTeacherAuthorizedForSubject = async (teacherSubjects: string[], topicId?: string, subjectId?: string, subjectName?: string) => {
+  const normalizedSubjects = teacherSubjects.map(s => s.toLowerCase());
+
+  if (subjectName && !normalizedSubjects.includes(subjectName.trim().toLowerCase())) {
     return false;
   }
   if (topicId && topicId !== "new") {
     const topic = await TopicModel.findOne({ id: topicId });
     if (topic) {
       const subject = await SubjectModel.findOne({ id: topic.subject_id });
-      if (subject && subject.name.toLowerCase() === teacherSubject.toLowerCase()) {
+      if (subject && normalizedSubjects.includes(subject.name.toLowerCase())) {
         return true;
       }
       return false;
@@ -34,7 +36,7 @@ const isTeacherAuthorizedForSubject = async (teacherSubject: string, topicId?: s
   }
   if (subjectId) {
     const subject = await SubjectModel.findOne({ id: subjectId });
-    if (subject && subject.name.toLowerCase() === teacherSubject.toLowerCase()) {
+    if (subject && normalizedSubjects.includes(subject.name.toLowerCase())) {
       return true;
     }
     return false;
@@ -63,48 +65,39 @@ const resolveTopicAndSubTopic = async (payload: any) => {
         subject_id: subject_id
       });
       await topic.save();
+      topic_id = newId;
+    } else {
+      topic_id = topic.id;
     }
-    topic_id = topic.id;
   }
 
   const stName = payload.new_sub_topic_name || payload.sub_topic_name;
   if ((sub_topic_id === "new" || !sub_topic_id) && stName && stName.trim() && topic_id) {
-    const subNameTrim = stName.trim();
+    const nameTrim = stName.trim();
     let subTopic = await SubTopicModel.findOne({
       topic_id: topic_id,
-      name: { $regex: new RegExp(`^${escapeRegex(subNameTrim)}$`, "i") }
+      name: { $regex: new RegExp(`^${escapeRegex(nameTrim)}$`, "i") }
     });
     if (!subTopic) {
       const count = await SubTopicModel.countDocuments();
       const newId = `subtopic-${Date.now()}-${count + 1}`;
       subTopic = new SubTopicModel({
         id: newId,
-        name: subNameTrim,
+        name: nameTrim,
         topic_id: topic_id
       });
       await subTopic.save();
+      sub_topic_id = newId;
+    } else {
+      sub_topic_id = subTopic.id;
     }
-    sub_topic_id = subTopic.id;
   }
 
-  const cleanPayload = { ...payload };
-  if (topic_id && topic_id !== "new") {
-    cleanPayload.topic_id = topic_id;
-  } else {
-    delete cleanPayload.topic_id;
-  }
-  if (sub_topic_id && sub_topic_id !== "new") {
-    cleanPayload.sub_topic_id = sub_topic_id;
-  } else {
-    delete cleanPayload.sub_topic_id;
-  }
-  delete cleanPayload.new_topic_name;
-  delete cleanPayload.new_sub_topic_name;
-  delete cleanPayload.topic_name;
-  delete cleanPayload.sub_topic_name;
-  delete cleanPayload.subject_id;
-
-  return cleanPayload;
+  return {
+    ...payload,
+    topic_id,
+    sub_topic_id
+  };
 };
 
 export const getQuestions = async (request: IncomingMessage, response: ServerResponse) => {
@@ -115,13 +108,24 @@ export const getQuestions = async (request: IncomingMessage, response: ServerRes
     if (user && user.role === "Teacher") {
       const teacher = await TeacherModel.findOne({ userId: user.userId });
       if (teacher) {
-        const subject = await SubjectModel.findOne({ name: { $regex: new RegExp(`^${escapeRegex(teacher.subject)}$`, "i") } });
-        if (subject) {
-          const topics = await TopicModel.find({ subject_id: subject.id });
-          const topicIds = topics.map(t => t.id);
-          query.topic_id = { $in: topicIds };
-        } else {
-          query.topic_id = { $in: [] };
+        const teacherSubjectNames = teacher.subjects && teacher.subjects.length > 0
+          ? teacher.subjects
+          : [teacher.subject].filter(Boolean);
+
+        const subjects = await SubjectModel.find({
+          name: { $in: teacherSubjectNames }
+        });
+        const subjectIds = subjects.map(s => s.id);
+        const topics = await TopicModel.find({ subject_id: { $in: subjectIds } });
+        const topicIds = topics.map(t => t.id);
+        query.topic_id = { $in: topicIds };
+
+        if (teacher.program_id) {
+          const differentProgramTeachers = await TeacherModel.find({
+            program_id: { $ne: teacher.program_id }
+          });
+          const disallowedCreatorIds = differentProgramTeachers.map(t => t.userId);
+          query.created_by = { $nin: disallowedCreatorIds };
         }
       } else {
         query.topic_id = { $in: [] };
@@ -147,15 +151,46 @@ export const createQuestion = async (request: IncomingMessage, response: ServerR
         return;
       }
 
+      const teacherSubjectsList = teacher.subjects && teacher.subjects.length > 0
+        ? teacher.subjects
+        : [teacher.subject].filter(Boolean);
+
       const authorized = await isTeacherAuthorizedForSubject(
-        teacher.subject,
+        teacherSubjectsList,
         rawPayload.topic_id,
         rawPayload.subject_id,
         rawPayload.subject
       );
 
       if (!authorized) {
-        json(response, 403, { success: false, message: `You are not allowed to upload/create questions for a subject other than ${teacher.subject}.` });
+        json(response, 403, { success: false, message: `You are not allowed to upload/create questions for a subject other than ${teacherSubjectsList.join(", ")}.` });
+        return;
+      }
+    }
+
+    // Check if the question already exists (case-insensitive, trimmed) within the organization
+    let orgId = "";
+    if (user && user.role === "Teacher") {
+      const teacher = await TeacherModel.findOne({ userId: user.userId });
+      if (teacher) {
+        orgId = teacher.organization_id;
+      }
+    } else if (user) {
+      orgId = (user as any).organization_id;
+    }
+
+    if (!orgId) {
+      orgId = rawPayload.organization_id;
+    }
+
+    if (orgId && rawPayload.question && rawPayload.question.trim()) {
+      const qTextTrimmed = rawPayload.question.trim();
+      const duplicate = await QuestionModel.findOne({
+        organization_id: orgId,
+        question: { $regex: new RegExp(`^${escapeRegex(qTextTrimmed)}$`, "i") }
+      });
+      if (duplicate) {
+        json(response, 400, { success: false, message: "This question is already registered in the system." });
         return;
       }
     }
@@ -201,17 +236,21 @@ export const updateQuestion = async (request: IncomingMessage, response: ServerR
         return;
       }
 
+      const teacherSubjectsList = teacher.subjects && teacher.subjects.length > 0
+        ? teacher.subjects
+        : [teacher.subject].filter(Boolean);
+
       const targetTopic = rawPayload.topic_id || existingQuestion.topic_id;
       const targetSubject = rawPayload.subject_id;
       const authorized = await isTeacherAuthorizedForSubject(
-        teacher.subject,
+        teacherSubjectsList,
         targetTopic,
         targetSubject,
         rawPayload.subject
       );
 
       if (!authorized) {
-        json(response, 403, { success: false, message: `You are not allowed to set questions to a subject other than ${teacher.subject}.` });
+        json(response, 403, { success: false, message: `You are not allowed to set questions to a subject other than ${teacherSubjectsList.join(", ")}.` });
         return;
       }
     }

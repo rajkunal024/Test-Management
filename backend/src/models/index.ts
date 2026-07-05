@@ -64,6 +64,7 @@ export const OrganizationSchema = new Schema({
   },
   brandingBannerText: { type: String, default: "Welcome to Parikshya Online Testing Portal" },
   brandingColor: { type: String, default: "#4B52DC" },
+  orgType: { type: String, enum: ["School", "College"], default: "School" },
   createdAt: { type: Date, default: Date.now }
 });
 export const OrganizationModel = mongoose.model("Organization", OrganizationSchema);
@@ -80,6 +81,15 @@ export const ParikshyaAdminModel = mongoose.model("ParikshyaAdmin", ParikshyaAdm
 export const SubjectSchema = new Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
+  program_id: { type: String, default: null },
+  program_ids: { type: [String], default: [] },
+  program_semesters: {
+    type: [{
+      program_id: { type: String, required: true },
+      semester: { type: Number, required: true }
+    }],
+    default: []
+  },
   organization_id: { type: String, required: true }
 });
 export const SubjectModel = mongoose.model("Subject", SubjectSchema);
@@ -146,7 +156,10 @@ export const TeacherSchema = new Schema({
   password: { type: String, required: true },
   name: { type: String, required: true },
   role: { type: String, default: "Teacher" },
-  subject: { type: String, required: true },
+  subject: { type: String, default: "" },
+  subjects: { type: [String], default: [] },
+  program_id: { type: String, default: null },
+  program_ids: { type: [String], default: [] },
   email: { type: String, required: true },
   dob: { type: String, required: true },
   gender: { type: String, enum: ["Male", "Female"], default: "Male" },
@@ -158,14 +171,16 @@ export const TeacherSchema = new Schema({
 TeacherSchema.index({ organization_id: 1, userId: 1 }, { unique: true });
 TeacherSchema.index({ organization_id: 1, email: 1 }, { unique: true });
 TeacherSchema.pre("validate", async function (this: any, next) {
-  if (this.isModified("name") || this.isModified("subject") || this.isModified("organization_id") || this.isModified("joined_at") || this.isNew) {
+  if (this.isModified("name") || this.isModified("subject") || this.isModified("subjects") || this.isModified("organization_id") || this.isModified("joined_at") || this.isNew) {
     try {
       const org = await mongoose.model("Organization").findOne({ id: this.organization_id });
       const orgName = (org?.name || "tester").toLowerCase().replace(/\s+/g, "");
       const userName = this.name.toLowerCase().replace(/\s+/g, "");
-      this.email = `${userName}@${orgName}.teacher.com`;
+      if (!this.email) {
+        this.email = `${userName}@${orgName}.teacher.com`;
+      }
 
-      const subjectClean = (this.subject || "subject").toLowerCase().replace(/\s+/g, "");
+      const subjectClean = (this.subject || (this.subjects && this.subjects[0]) || "subject").toLowerCase().replace(/\s+/g, "");
       const datePart = parseJoiningDate(this.joined_at || new Date());
       this.userId = `${userName}_${subjectClean}_${datePart}`;
     } catch (err) {
@@ -184,6 +199,15 @@ export const StudentSchema = new Schema({
   email: { type: String, required: true },
   dob: { type: String, required: true },
   class: { type: String },
+  session: { type: String },
+  program_id: { type: String, default: null },
+  semester: { type: Number, default: null },
+  academicHistory: [{
+    session: { type: String, required: true },
+    class: { type: String },
+    semester: { type: Number },
+    promotedAt: { type: Date, default: Date.now }
+  }],
   gender: { type: String, enum: ["Male", "Female"], default: "Male" },
   requiresPasswordChange: { type: Boolean, default: false },
   profilePicture: { type: String, default: "" },
@@ -205,7 +229,9 @@ StudentSchema.pre("validate", async function (this: any, next) {
       const org = await mongoose.model("Organization").findOne({ id: this.organization_id });
       const orgName = (org?.name || "tester").toLowerCase().replace(/\s+/g, "");
       const userName = this.name.toLowerCase().replace(/\s+/g, "");
-      this.email = `${userName}@${orgName}.student.com`;
+      if (!this.email) {
+        this.email = `${userName}@${orgName}.student.com`;
+      }
 
       const dobPart = parseDobToDdmmyy(this.dob);
       this.userId = `${userName}_${dobPart}`;
@@ -235,7 +261,9 @@ AdminSchema.pre("validate", async function (this: any, next) {
       const org = await mongoose.model("Organization").findOne({ id: this.organization_id });
       const orgName = (org?.name || "tester").toLowerCase().replace(/\s+/g, "");
       const userName = this.name.toLowerCase().replace(/\s+/g, "");
-      this.email = `${userName}@${orgName}.admin.com`;
+      if (!this.email) {
+        this.email = `${userName}@${orgName}.admin.com`;
+      }
 
       const matches = this.userId && this.userId.match(/^admin\d+$/);
       if (!matches) {
@@ -381,3 +409,35 @@ export const CaptchaSchema = new Schema({
   expires: { type: Date, required: true, expires: 0 }
 });
 export const CaptchaModel = mongoose.model("Captcha", CaptchaSchema);
+
+export const ClassSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  numericOrder: { type: Number, required: true },
+  organization_id: { type: String, required: true }
+});
+export const ClassModel = mongoose.model("Class", ClassSchema);
+
+export const SessionSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  isCurrent: { type: Boolean, default: false },
+  organization_id: { type: String, required: true }
+});
+export const SessionModel = mongoose.model("Session", SessionSchema);
+
+export const ProgramSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  code: { type: String, required: true },
+  totalSemesters: { type: Number, default: 10 },
+  organization_id: { type: String, required: true }
+});
+export const ProgramModel = mongoose.model("Program", ProgramSchema);
+
+export const SemesterSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  organization_id: { type: String, required: true }
+});
+export const SemesterModel = mongoose.model("Semester", SemesterSchema);

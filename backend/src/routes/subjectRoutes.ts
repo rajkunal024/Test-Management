@@ -1,5 +1,5 @@
 import { IncomingMessage, ServerResponse } from "node:http";
-import { getSubjects, createSubject, getTopicsBySubject, getSubtopicsByTopics } from "../controllers/subjectController.js";
+import { getSubjects, createSubject, getTopicsBySubject, getSubtopicsByTopics, updateSubject, deleteSubject } from "../controllers/subjectController.js";
 import { json } from "../middlewares/utils.js";
 
 export const handleSubjectsRoutes = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
@@ -9,6 +9,16 @@ export const handleSubjectsRoutes = async (request: IncomingMessage, response: S
   }
   if (path === "/api/subjects" && method === "POST") {
     await createSubject(request, response);
+    return;
+  }
+  if (path.startsWith("/api/subjects/") && method === "PUT") {
+    const subjectId = path.replace("/api/subjects/", "");
+    await updateSubject(request, response, subjectId);
+    return;
+  }
+  if (path.startsWith("/api/subjects/") && method === "DELETE") {
+    const subjectId = path.replace("/api/subjects/", "");
+    await deleteSubject(request, response, subjectId);
     return;
   }
   if (path.startsWith("/api/topics/subject/") && method === "GET") {

@@ -54,6 +54,7 @@ interface Organization {
   address: string;
   status: "Active" | "Inactive";
   createdAt: string;
+  orgType?: "School" | "College";
   securityFeatures: SecurityFeatures;
   brandingBannerText?: string;
   brandingColor?: string;

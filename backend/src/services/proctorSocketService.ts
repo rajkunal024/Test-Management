@@ -1,7 +1,7 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { IncomingMessage } from "node:http";
 import { activeStreams } from "../controllers/attemptController.js";
-import { TestModel, TeacherModel, NotificationModel } from "../models/index.js";
+import { TestModel, TeacherModel, NotificationModel, OrganizationModel } from "../models/index.js";
 
 interface TeacherConnection {
   ws: WebSocket;
@@ -80,10 +80,35 @@ export const setupProctorWebSocketServer = (wss: WebSocketServer) => {
 
                     if (!alreadyNotified) {
                       const testSubjects = Array.isArray(testObj.subject) ? testObj.subject : [testObj.subject];
-                      const teachersList = await TeacherModel.find({
-                        subject: { $in: testSubjects }
-                      });
-                      const targetTeachers = teachersList.length > 0 ? teachersList : await TeacherModel.find({});
+                      const testSubjectsLower = testSubjects.map(s => s.toLowerCase().trim());
+                      
+                      const org = await OrganizationModel.findOne({ id: testObj.organization_id });
+                      const isCollege = org?.orgType === "College";
+                      
+                      let targetTeachers = [];
+                      const teachersList = await TeacherModel.find({ organization_id: testObj.organization_id });
+                      
+                      for (const t of teachersList) {
+                        const teacherSubs = [
+                          ...(t.subject ? [t.subject] : []),
+                          ...(Array.isArray(t.subjects) ? t.subjects : [])
+                        ].map(s => s.toLowerCase().trim());
+                        
+                        const hasSubject = testSubjectsLower.some(sub => teacherSubs.includes(sub));
+                        if (!hasSubject) continue;
+                        
+                        if (isCollege) {
+                          if (t.program_id && testObj.class && !testObj.class.toLowerCase().startsWith(t.program_id.toLowerCase())) {
+                            continue;
+                          }
+                        }
+                        
+                        targetTeachers.push(t);
+                      }
+                      
+                      if (targetTeachers.length === 0) {
+                        targetTeachers = teachersList;
+                      }
 
                       for (const t of targetTeachers) {
                         await NotificationModel.create({

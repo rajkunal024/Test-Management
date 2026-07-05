@@ -30,6 +30,7 @@ interface Organization {
   address: string;
   status: "Active" | "Inactive";
   createdAt: string;
+  orgType?: "School" | "College";
   counts: OrgCounts;
   adminName: string;
   adminEmail: string;
@@ -58,6 +59,7 @@ export const OrganizationsPage: React.FC = () => {
   const [address, setAddress] = useState("");
   const [brandingBannerText, setBrandingBannerText] = useState("Welcome to Parikshya Online Testing Portal");
   const [brandingColor, setBrandingColor] = useState("#4B52DC");
+  const [orgType, setOrgType] = useState<"School" | "College">("School");
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -73,7 +75,7 @@ export const OrganizationsPage: React.FC = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await api.post("../questions/upload-image", formData, {
+      const response = await api.post("/questions/upload-image", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -123,6 +125,7 @@ export const OrganizationsPage: React.FC = () => {
     setAddress("");
     setBrandingBannerText("Welcome to Parikshya Online Testing Portal");
     setBrandingColor("#4B52DC");
+    setOrgType("School");
     setWizardError(null);
     setIsWizardOpen(false);
   };
@@ -149,15 +152,16 @@ export const OrganizationsPage: React.FC = () => {
     setWizardLoading(true);
     try {
       const payload = {
-        name,
-        code,
+        name: name.trim(),
+        code: code.trim().toUpperCase(),
         logo,
-        contactEmail,
+        contactEmail: contactEmail.trim(),
         phone: phone.trim() ? `${countryCode} ${phone.trim()}` : "",
-        address,
+        address: address.trim(),
         status: "Active",
         brandingBannerText,
-        brandingColor
+        brandingColor,
+        orgType
       };
 
       const response = await api.post("/organizations", payload);
@@ -368,227 +372,260 @@ export const OrganizationsPage: React.FC = () => {
 
       {/* Onboarding Wizard Modal */}
       {isWizardOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
-          <div className="relative w-full max-w-2xl bg-[#0B0E14] border border-[#161B26] rounded-3xl shadow-2xl p-6 md:p-8 space-y-6 animate-fade-in hover:border-indigo-500/20 transition-colors duration-300">
-            <button
-              onClick={resetWizard}
-              className="absolute top-6 right-6 p-1.5 rounded-xl text-slate-450 hover:text-white hover:bg-[#121824] transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="space-y-4">
+        <div className="tenant-v2-overlay">
+          <div className="tenant-v2-modal animate-fade-in">
+            <aside className="tenant-v2-side">
+              <div className="tenant-v2-side-badge">
+                <Building className="w-5 h-5" />
+              </div>
               <div>
-                <h3 className="font-title font-extrabold text-xl text-white">Register Organization</h3>
-                <p className="text-slate-500 text-xs mt-1">
-                  Complete the onboarding profile to seed a new client environment.
+                <span className="tenant-v2-kicker">New tenant</span>
+                <h3>Launch a tenant workspace</h3>
+                <p>
+                  Add the organization identity, contact details, logo, and first visual branding in one flow.
                 </p>
               </div>
-            </div>
-
-            {wizardError && (
-              <div className="p-3.5 rounded-2xl bg-red-950/20 border border-red-900/40 text-red-200 text-xs flex items-start gap-2.5">
-                <ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{wizardError}</span>
+              <div className="tenant-v2-checklist">
+                <div><span>01</span><b>Identity</b><small>Name, code, and tenant type</small></div>
+                <div><span>02</span><b>Contact</b><small>Email, phone, and address</small></div>
+                <div><span>03</span><b>Branding</b><small>Logo, banner, and primary color</small></div>
               </div>
-            )}
+            </aside>
 
-            {/* Form: Profile Details */}
-            <form onSubmit={handleRegisterSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <input
-                    type="text"
-                    placeholder="Organization Name*"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
-                  />
+            <section className="tenant-v2-main">
+              <button type="button" onClick={resetWizard} className="tenant-v2-close" aria-label="Close register tenant form">
+                <X className="w-5 h-5" />
+              </button>
+
+              <header className="tenant-v2-header">
+                <span>Tenant registration</span>
+                <h2>Register organization</h2>
+                <p>Create a ready-to-use environment for a school or college.</p>
+              </header>
+
+              {wizardError && (
+                <div className="tenant-v2-error">
+                  <ShieldAlert className="w-5 h-5" />
+                  <span>{wizardError}</span>
                 </div>
+              )}
 
-                <div className="space-y-1">
-                  <input
-                    type="text"
-                    placeholder="Unique Code*"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold uppercase"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <input
-                    type="email"
-                    placeholder="Contact Email*"
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex gap-2">
-                    <select
-                      value={countryCode}
-                      onChange={(e) => setCountryCode(e.target.value)}
-                      className="px-3 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white outline-none text-xs font-semibold cursor-pointer"
-                    >
-                      <option value="+91">IN (+91)</option>
-                      <option value="+1">US (+1)</option>
-                      <option value="+44">UK (+44)</option>
-                      <option value="+61">AU (+61)</option>
-                      <option value="+977">NP (+977)</option>
-                      <option value="+880">BD (+880)</option>
-                      <option value="+971">AE (+971)</option>
-                      <option value="+65">SG (+65)</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Phone Number"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="flex-1 px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
-                    />
+              <form onSubmit={handleRegisterSubmit} className="tenant-v2-form">
+                <section className="tenant-v2-section">
+                  <div className="tenant-v2-section-head">
+                    <span>01</span>
+                    <div>
+                      <b>Organization identity</b>
+                      <small>These details identify the tenant across the portal.</small>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Logo Image Upload */}
-              <div className="rounded-2xl bg-[#0F1422] border border-[#161B26] px-4 py-3 focus-within:border-[#4B52DC] transition-all flex items-center justify-between gap-3 relative">
-                <div className="flex-1 min-w-0">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Logo Image (Optional)
-                  </label>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    {logo ? (
-                      <div className="w-8 h-8 rounded bg-[#0B0E14] border border-[#161B26] overflow-hidden flex items-center justify-center shrink-0">
-                        <img src={logo} alt="Logo Preview" className="w-full h-full object-contain" />
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 rounded bg-[#151A26] flex items-center justify-center shrink-0 text-slate-500">
-                        <Building className="w-4 h-4" />
-                      </div>
-                    )}
-                    <label className="flex items-center gap-1.5 px-3 py-1 bg-[#121824] hover:bg-[#151A26] border border-[#161B26] text-slate-300 font-title text-[11px] font-bold rounded-lg cursor-pointer transition-colors shadow-sm">
-                      <ImageIcon className="w-3.5 h-3.5" />
-                      <span>{uploadingLogo ? "Uploading..." : "Upload Logo"}</span>
+                  <div className="tenant-v2-grid">
+                    <label className="tenant-v2-field" htmlFor="tenant-name">
+                      <span>Organization name <em>*</em></span>
                       <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                        className="hidden"
-                        disabled={uploadingLogo}
+                        id="tenant-name"
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
                       />
                     </label>
-                    {logo && (
-                      <button
-                        type="button"
-                        onClick={() => setLogo("")}
-                        className="font-title text-[11px] font-bold text-red-500 hover:text-red-400 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="text-slate-500 font-title text-[11px] font-semibold max-w-[40%] text-right truncate">
-                  {logo ? "Logo Selected" : "No image selected"}
-                </div>
-              </div>
 
-              <div className="space-y-1">
-                <textarea
-                  placeholder="Address"
-                  rows={2}
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold resize-none"
-                />
-              </div>
-
-              {/* Custom Branding Whitelabeling */}
-              <div className="text-[10px] font-bold text-[#4B52DC] uppercase tracking-wider mb-2 pt-2 border-t border-[#161B26]/30">
-                Custom Portal Whitelabel Branding
-              </div>
-
-              <div className="space-y-1">
-                <input
-                  type="text"
-                  placeholder="Welcome Banner Text (e.g. Welcome to Delhi Public School)"
-                  value={brandingBannerText}
-                  onChange={(e) => setBrandingBannerText(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-[#0F1422] border border-[#161B26] focus:border-[#4B52DC] text-white placeholder-slate-600 outline-none text-xs font-semibold"
-                />
-              </div>
-
-              <div className="rounded-2xl bg-[#0F1422] border border-[#161B26] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Primary Brand Color
-                  </label>
-                  <p className="text-[9px] text-slate-500 mt-0.5">Used for buttons, highlights, and borders in the tenant portal.</p>
-                </div>
-                <div className="flex items-center gap-3.5">
-                  <div className="flex gap-2">
-                    {[
-                      { hex: "#4B52DC", name: "Classic Indigo" },
-                      { hex: "#10B981", name: "Emerald Green" },
-                      { hex: "#F59E0B", name: "Amber Orange" },
-                      { hex: "#EF4444", name: "Crimson Red" },
-                      { hex: "#8B5CF6", name: "Violet Purple" },
-                      { hex: "#06B6D4", name: "Cyan Teal" }
-                    ].map((preset) => (
-                      <button
-                        key={preset.hex}
-                        type="button"
-                        onClick={() => setBrandingColor(preset.hex)}
-                        title={preset.name}
-                        className={`w-6 h-6 rounded-full border transition-all cursor-pointer hover:scale-110 active:scale-95 ${
-                          brandingColor === preset.hex
-                            ? "border-white ring-2 ring-indigo-500"
-                            : "border-transparent"
-                        }`}
-                        style={{ backgroundColor: preset.hex }}
+                    <label className="tenant-v2-field" htmlFor="tenant-code">
+                      <span>Organization code <em>*</em></span>
+                      <input
+                        id="tenant-code"
+                        type="text"
+                        required
+                        maxLength={20}
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase())}
                       />
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={brandingColor}
-                      onChange={(e) => setBrandingColor(e.target.value)}
-                      className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
-                    />
-                    <input
-                      type="text"
-                      maxLength={7}
-                      value={brandingColor}
-                      onChange={(e) => setBrandingColor(e.target.value)}
-                      className="w-20 px-2 py-1 rounded bg-[#0B0E14] border border-[#161B26] text-white text-[11px] font-mono text-center uppercase"
-                    />
-                  </div>
-                </div>
-              </div>
+                    </label>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-[#161B26]/60">
-                <button
-                  type="button"
-                  onClick={resetWizard}
-                  className="px-5 py-2.5 text-slate-450 hover:text-white text-xs font-bold transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={wizardLoading}
-                  className="px-6 py-2.5 bg-gradient-to-r from-[#4B52DC] to-[#7C3AED] hover:from-[#3f47d9] hover:to-[#6d28d9] text-white font-bold rounded-xl shadow-lg active:scale-[0.98] transition-all text-xs disabled:opacity-50 uppercase tracking-wider"
-                >
-                  {wizardLoading ? "Registering..." : "Register"}
-                </button>
-              </div>
-            </form>
+                    <label className="tenant-v2-field full" htmlFor="tenant-type">
+                      <span>Organization type <em>*</em></span>
+                      <select
+                        id="tenant-type"
+                        value={orgType}
+                        onChange={(e) => setOrgType(e.target.value as "School" | "College")}
+                      >
+                        <option value="School">School</option>
+                        <option value="College">College</option>
+                      </select>
+                    </label>
+                  </div>
+                </section>
+
+                <section className="tenant-v2-section">
+                  <div className="tenant-v2-section-head">
+                    <span>02</span>
+                    <div>
+                      <b>Contact profile</b>
+                      <small>Primary administrator contact and registered address.</small>
+                    </div>
+                  </div>
+
+                  <div className="tenant-v2-grid">
+                    <label className="tenant-v2-field" htmlFor="tenant-email">
+                      <span>Contact email <em>*</em></span>
+                      <input
+                        id="tenant-email"
+                        type="email"
+                        required
+                        placeholder="admin@organization.com"
+                        value={contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
+                      />
+                    </label>
+
+                    <label className="tenant-v2-field" htmlFor="tenant-phone">
+                      <span>Phone number</span>
+                      <div className="tenant-v2-phone-row">
+                        <select
+                          value={countryCode}
+                          onChange={(e) => setCountryCode(e.target.value)}
+                          aria-label="Country code"
+                        >
+                          <option value="+91">IN (+91)</option>
+                          <option value="+1">US (+1)</option>
+                          <option value="+44">UK (+44)</option>
+                          <option value="+61">AU (+61)</option>
+                          <option value="+977">NP (+977)</option>
+                          <option value="+880">BD (+880)</option>
+                          <option value="+971">AE (+971)</option>
+                          <option value="+65">SG (+65)</option>
+                        </select>
+                        <input
+                          id="tenant-phone"
+                          type="text"
+                          inputMode="tel"
+                          placeholder="98765 43210"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                        />
+                      </div>
+                    </label>
+
+                    <label className="tenant-v2-field full" htmlFor="tenant-address">
+                      <span>Registered address</span>
+                      <textarea
+                        id="tenant-address"
+                        placeholder="Organization address"
+                        rows={3}
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                <section className="tenant-v2-section">
+                  <div className="tenant-v2-section-head">
+                    <span>03</span>
+                    <div>
+                      <b>Portal branding</b>
+                      <small>Customize how this tenant appears after login.</small>
+                    </div>
+                  </div>
+
+                  <div className="tenant-v2-logo-card">
+                    <div className="tenant-v2-logo-preview">
+                      {logo ? (
+                        <img src={logo} alt="Logo Preview" />
+                      ) : (
+                        <Building className="w-6 h-6" />
+                      )}
+                    </div>
+                    <div className="tenant-v2-logo-copy">
+                      <b>Logo image</b>
+                      <small>{logo ? "Logo selected for this tenant." : "Upload a square logo, under 5MB."}</small>
+                    </div>
+                    <div className="tenant-v2-logo-actions">
+                      <label>
+                        <ImageIcon className="w-4 h-4" />
+                        <span>{uploadingLogo ? "Uploading..." : "Upload logo"}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          disabled={uploadingLogo}
+                        />
+                      </label>
+                      {logo && (
+                        <button type="button" onClick={() => setLogo("")}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <label className="tenant-v2-field" htmlFor="tenant-banner">
+                    <span>Welcome banner text</span>
+                    <input
+                      id="tenant-banner"
+                      type="text"
+                      placeholder="e.g. Welcome to Delhi Public School"
+                      value={brandingBannerText}
+                      onChange={(e) => setBrandingBannerText(e.target.value)}
+                    />
+                  </label>
+
+                  <div className="tenant-v2-brand-card">
+                    <div>
+                      <b>Primary brand color</b>
+                      <small>Used for highlights, buttons, and portal accents.</small>
+                    </div>
+                    <div className="tenant-v2-color-tools">
+                      <div className="tenant-v2-presets">
+                        {[
+                          { hex: "#4B52DC", name: "Classic Indigo" },
+                          { hex: "#10B981", name: "Emerald Green" },
+                          { hex: "#F59E0B", name: "Amber Orange" },
+                          { hex: "#EF4444", name: "Crimson Red" },
+                          { hex: "#8B5CF6", name: "Violet Purple" },
+                          { hex: "#06B6D4", name: "Cyan Teal" }
+                        ].map((preset) => (
+                          <button
+                            key={preset.hex}
+                            type="button"
+                            onClick={() => setBrandingColor(preset.hex)}
+                            title={preset.name}
+                            className={brandingColor === preset.hex ? "active" : ""}
+                            style={{ backgroundColor: preset.hex }}
+                          />
+                        ))}
+                      </div>
+                      <div className="tenant-v2-color-inputs">
+                        <input
+                          type="color"
+                          value={brandingColor}
+                          onChange={(e) => setBrandingColor(e.target.value)}
+                          aria-label="Primary brand color"
+                        />
+                        <input
+                          type="text"
+                          maxLength={7}
+                          value={brandingColor}
+                          onChange={(e) => setBrandingColor(e.target.value)}
+                          aria-label="Primary brand color hex code"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <footer className="tenant-v2-actions">
+                  <button type="button" onClick={resetWizard}>
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={wizardLoading || uploadingLogo}>
+                    {wizardLoading ? "Registering..." : "Register tenant"}
+                  </button>
+                </footer>
+              </form>
+            </section>
           </div>
         </div>
       )}

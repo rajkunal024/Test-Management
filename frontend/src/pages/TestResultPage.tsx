@@ -317,6 +317,22 @@ export const TestResultPage = () => {
   return (
     <AppShell>
       <PageWrapper>
+        {/* Print-only Header with Logo */}
+        <div className="hidden print:flex items-center justify-between border-b-2 border-slate-100 pb-4 mb-6">
+          <div className="flex items-center gap-2">
+            <span className="relative h-6 w-9 shrink-0">
+              <span className="absolute left-0 top-1 h-3.5 w-3.5 rounded-sm border-2 border-indigo-600 bg-indigo-500" />
+              <span className="absolute left-1.5 top-0 h-1.5 w-5 rounded-full border-t-2 border-slate-950" />
+              <span className="absolute left-3 top-1 h-2 w-5 rounded-full border-t-2 border-slate-950" />
+              <span className="absolute left-1 top-2 h-1 w-1 rounded-full bg-white" />
+            </span>
+            <span className="text-xl font-extrabold text-slate-800 leading-none">Parikshya</span>
+          </div>
+          <div className="text-right">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Official Report Card</span>
+          </div>
+        </div>
+
         {/* Back Link */}
         <div className="mb-6 print:hidden">
           <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-xs font-black text-[#6c7df7] hover:underline uppercase tracking-wider">

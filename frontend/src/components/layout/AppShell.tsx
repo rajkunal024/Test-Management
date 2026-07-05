@@ -31,10 +31,14 @@ import {
   ArrowLeft,
   Check,
   Home,
+  UserPlus,
+  TrendingUp,
+  School,
+  Sparkles,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuthStore } from "../../store/authStore";
-import { logout as apiLogout, getNotifications, markNotificationsRead, clearAllNotifications, changePassword, uploadProfilePicture, getErrorMessage, getMyOrganization } from "../../services/api";
+import { logout as apiLogout, getNotifications, markNotificationsRead, clearAllNotifications, changePassword, uploadProfilePicture, getErrorMessage, getMyOrganization, getPrograms, getMe, getClasses } from "../../services/api";
 import { Modal } from "../ui/Modal";
 import { PasswordInput } from "../ui/PasswordInput";
 import { Button } from "../ui/Button";
@@ -75,6 +79,37 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
     queryFn: getMyOrganization,
     enabled: Boolean(user),
   });
+
+  const isSchool = orgData?.orgType !== "College";
+
+  const { data: programs = [] } = useQuery({
+    queryKey: ["programs"],
+    queryFn: getPrograms,
+    enabled: Boolean(user) && orgData?.orgType === "College",
+  });
+
+  const { data: registeredClasses = [] } = useQuery({
+    queryKey: ["registeredClasses"],
+    queryFn: getClasses,
+    enabled: Boolean(user) && orgData?.orgType !== "College",
+  });
+
+  const { data: freshUser } = useQuery({
+    queryKey: ["authMe"],
+    queryFn: getMe,
+    enabled: Boolean(user),
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000, // Poll every 5s to immediately pick up backend promotions
+  });
+
+  useEffect(() => {
+    if (freshUser) {
+      const currentToken = useAuthStore.getState().token;
+      if (currentToken) {
+        useAuthStore.getState().setAuth({ token: currentToken, user: freshUser });
+      }
+    }
+  }, [freshUser]);
 
   const orgLogo = orgData?.logo || user?.organizationLogo;
   const orgName = orgData?.name || user?.organizationName;
@@ -118,6 +153,8 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
       return [
         { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
         { label: "Students", icon: Users, to: "/admin/students" },
+        { label: "Registration", icon: UserPlus, to: "/admin/register" },
+        { label: "Promotions", icon: TrendingUp, to: "/admin/promotion" },
         { label: "Test Creation", icon: FileQuestion, to: "/tests/create" },
         { label: "Test Tracking", icon: ClipboardList, to: "/dashboard?status=live" },
       ];
@@ -412,13 +449,25 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                   isActive = currentPath === to;
                 }
 
-                const subItems = [
-                  { label: "All Questions", classVal: "all" },
-                  { label: "Class 9", classVal: "Class 9" },
-                  { label: "Class 10", classVal: "Class 10" },
-                  { label: "Class 11", classVal: "Class 11" },
-                  { label: "Class 12", classVal: "Class 12" },
-                ];
+                const subItems = isSchool
+                  ? [
+                      { label: "All Questions", classVal: "all" },
+                      ...(Array.isArray(registeredClasses) && registeredClasses.length > 0
+                        ? registeredClasses.map(c => ({ label: c.name, classVal: c.name }))
+                        : [
+                            { label: "Class 9", classVal: "Class 9" },
+                            { label: "Class 10", classVal: "Class 10" },
+                            { label: "Class 11", classVal: "Class 11" },
+                            { label: "Class 12", classVal: "Class 12" },
+                          ])
+                    ]
+                  : [
+                      { label: "All Questions", classVal: "all" },
+                      ...(user?.subjects || []).map((subName: string) => ({
+                        label: subName,
+                        classVal: subName
+                      }))
+                    ];
 
                 return (
                   <div key={label} className="space-y-1">
@@ -465,7 +514,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
       </aside>
 
       <div
-        className={`fixed bottom-0 left-0 z-40 transition-all duration-300 flex items-center justify-center ${
+        className={`fixed bottom-0 left-0 z-40 transition-all duration-300 flex items-center justify-center print:hidden ${
           navHidden
             ? "w-[64px] h-[80px] bg-transparent border-t-0 border-r-0"
             : compactRail
@@ -768,28 +817,93 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                 </div>
               </div>
 
-              {user?.role === "Teacher" && user?.subject && (
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shrink-0">
-                    <BookOpen className="h-5 w-5" />
+              {user?.role === "Teacher" && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shrink-0">
+                      <BookOpen className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">
+                        {isSchool ? "Specialist Subject" : "Assigned Subjects"}
+                      </span>
+                      <span className="font-semibold text-emerald-650 dark:text-emerald-400 block">
+                        {isSchool
+                          ? (user.subject || "—")
+                          : (user.subjects && user.subjects.length > 0 ? user.subjects.join(", ") : (user.subject || "—"))
+                        }
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Specialist Subject</span>
-                    <span className="font-semibold text-emerald-650 dark:text-emerald-400 block">{user.subject}</span>
-                  </div>
+
+                  {!isSchool && user.program_id && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 shrink-0">
+                        <School className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Program</span>
+                        <span className="font-semibold text-indigo-650 dark:text-indigo-400 block leading-tight">
+                          {programs.find((p: any) => p.id === user.program_id)?.name || user.program_id}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {user?.role === "Student" && user?.class && (
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 shrink-0">
-                    <BookOpen className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Assigned Class</span>
-                    <span className="font-semibold text-indigo-650 dark:text-indigo-400 block">{user.class}</span>
-                  </div>
-                </div>
+              {user?.role === "Student" && (
+                <>
+                  {isSchool && user.class && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 shrink-0">
+                        <BookOpen className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Assigned Class</span>
+                        <span className="font-semibold text-indigo-650 dark:text-indigo-400 block">{user.class}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isSchool && user.program_id && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-450 shrink-0">
+                        <School className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Program</span>
+                        <span className="font-semibold text-emerald-655 dark:text-emerald-450 block leading-tight">
+                          {programs.find((p: any) => p.id === user.program_id)?.name || user.program_id}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {user.semester && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 shrink-0">
+                        <Sparkles className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Semester</span>
+                        <span className="font-semibold text-indigo-650 dark:text-indigo-400 block">Semester {user.semester}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {user.session && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shrink-0">
+                        <Calendar className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Academic Session</span>
+                        <span className="font-semibold text-indigo-650 dark:text-indigo-400 block">{user.session}</span>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {user?.gender && (

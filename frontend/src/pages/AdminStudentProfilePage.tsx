@@ -21,7 +21,7 @@ import { PageWrapper } from "../components/layout/PageWrapper";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Spinner } from "../components/ui/Spinner";
-import { getAdminUsers, getAllAttempts, getAllTests } from "../services/api";
+import { getAdminUsers, getAllAttempts, getAllTests, getMyOrganization, getPrograms } from "../services/api";
 
 export const AdminStudentProfilePage = () => {
   const { studentId = "" } = useParams();
@@ -41,9 +41,27 @@ export const AdminStudentProfilePage = () => {
     queryFn: getAllTests,
   });
 
+  const { data: orgData } = useQuery({
+    queryKey: ["myOrganization"],
+    queryFn: getMyOrganization
+  });
+  const isSchool = orgData?.orgType !== "College";
+
+  const { data: programs = [] } = useQuery({
+    queryKey: ["programs"],
+    queryFn: getPrograms,
+    enabled: !isSchool
+  });
+
   const student = useMemo(() => {
     return users.find((u) => u.id === studentId && u.role === "Student");
   }, [users, studentId]);
+
+  const programName = useMemo(() => {
+    if (isSchool || !student?.program_id) return null;
+    const p = programs.find((prog: any) => prog.id === student.program_id);
+    return p ? p.name : student.program_id;
+  }, [programs, student?.program_id, isSchool]);
 
   const stats = useMemo(() => {
     if (!student) return null;
@@ -199,15 +217,61 @@ export const AdminStudentProfilePage = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-450 shrink-0 shadow-sm border border-emerald-100/30">
-                  <School className="h-5 w-5" />
-                </div>
-                <div>
-                  <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Class Level</span>
-                  <Badge tone={classTone} className="font-extrabold mt-0.5">{student.class || "Class 10"}</Badge>
-                </div>
-              </div>
+              {isSchool ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-450 shrink-0 shadow-sm border border-emerald-100/30">
+                      <School className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Class Level</span>
+                      <Badge tone={classTone} className="font-extrabold mt-0.5">{student.class || "Class 10"}</Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 shrink-0 shadow-sm border border-indigo-100/30">
+                      <Calendar className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Academic Session</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-350 block">{student.session || "N/A"}</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-450 shrink-0 shadow-sm border border-emerald-100/30">
+                      <School className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Program</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-300 block leading-tight">{programName || "N/A"}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/45 text-violet-650 dark:text-violet-400 shrink-0 shadow-sm border border-violet-100/30">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Semester</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-300 block">{student.semester ? `Semester ${student.semester}` : "N/A"}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400 shrink-0 shadow-sm border border-indigo-100/30">
+                      <Calendar className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Academic Session</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-300 block">{student.session || "N/A"}</span>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {student.gender && (
                 <div className="flex items-center gap-3">

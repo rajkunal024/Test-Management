@@ -193,7 +193,18 @@ export const StudentDashboard = () => {
   // Only show live tests for students matching their class and who joined before test start time
   const liveTests = useMemo(() => {
     return tests.filter((t) => {
-      if (t.status !== "live" || t.class !== user?.class) {
+      const isSchool = orgData?.orgType !== "College";
+      let classMatches = false;
+      if (isSchool) {
+        classMatches = String(t.class || "").toLowerCase().trim() === String(user?.class || "").toLowerCase().trim();
+      } else {
+        const testClassLower = String(t.class || "").toLowerCase().trim();
+        const userClassLower = String(user?.class || "").toLowerCase().trim();
+        const expectedUserClass = `${user?.program_id || ""}-sem-${user?.semester || ""}`.toLowerCase().trim();
+        classMatches = testClassLower === userClassLower || Boolean(user?.program_id && user?.semester && testClassLower === expectedUserClass);
+      }
+
+      if (t.status !== "live" || !classMatches) {
         return false;
       }
       if (t.start_time) {
@@ -214,7 +225,7 @@ export const StudentDashboard = () => {
       }
       return true;
     });
-  }, [tests, user]);
+  }, [tests, user, orgData]);
 
   // Filter available subjects dynamically (supports both string and string[])
   const subjects = useMemo(() => {

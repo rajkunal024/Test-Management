@@ -14,9 +14,21 @@ const devToken = import.meta.env.VITE_DEV_AUTH_TOKEN as string | undefined;
 const initialToken = storedToken ?? devToken ?? null;
 const devUser: User = { name: "Alex Wando", role: "Admin" };
 
+const readStoredUser = (): User | null => {
+  if (!storedUser) return null;
+
+  try {
+    const parsed = JSON.parse(storedUser) as User;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    localStorage.removeItem("parikshya_user");
+    return null;
+  }
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   token: initialToken,
-  user: storedUser ? (JSON.parse(storedUser) as User) : initialToken ? devUser : null,
+  user: readStoredUser() ?? (initialToken ? devUser : null),
   setAuth: ({ token, user }) => {
     localStorage.setItem("parikshya_token", token);
     localStorage.setItem("parikshya_user", JSON.stringify(user));

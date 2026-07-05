@@ -45,6 +45,10 @@ import {
   getMyOrganization,
   generateAIQuestionsApi,
   AIGeneratedQuestion,
+  getTopicsBySubject,
+  getPrograms,
+  getSemesters,
+  getClasses
 } from "../services/api";
 import { useSubTopics, useTopics } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
@@ -402,19 +406,89 @@ export const TeacherDashboard = () => {
     return defaultSubject || { id: "sub-1", name: user?.subject || "Mathematics" };
   }, [subjects, user?.subject]);
 
-  // Hooks for topics/sub-topics based on teacher subject
-  const { data: rawTopics = [] } = useTopics(teacherSubject.id);
-  const topics = useMemo(() => {
-    const isComputerTeacher = teacherSubject.name.toLowerCase().includes("computer");
-    if (isComputerTeacher) {
-      return rawTopics.filter(t => !["physics", "biology", "chemistry"].includes(t.name.toLowerCase().trim()));
+  const isSchool = orgData?.orgType !== "College";
+
+  const teacherSubjects = useMemo(() => {
+    if (user?.subjects && user.subjects.length > 0) {
+      return user.subjects.map(subjName => {
+        const found = subjects.find(s => s.name === subjName);
+        return found || { id: subjName, name: subjName };
+      });
     }
-    return rawTopics;
-  }, [rawTopics, teacherSubject.name]);
-  const selectedTopicIds = useMemo(() => topics.map(t => t.id), [topics]);
+    const defaultSubject = subjects.find(s => s.name === user?.subject);
+    return [defaultSubject || { id: user?.subject || "sub-1", name: user?.subject || "Mathematics" }];
+  }, [subjects, user]);
+
+  const teacherSubjectIds = useMemo(() => teacherSubjects.map(s => s.id), [teacherSubjects]);
+
+  const { data: rawTopics = [] } = useQuery({
+    queryKey: ["teacherTopics", teacherSubjectIds],
+    queryFn: async () => {
+      const results = await Promise.all(
+        teacherSubjectIds.map(subId => getTopicsBySubject(subId))
+      );
+      return results.flat();
+    },
+    enabled: teacherSubjectIds.length > 0,
+  });
+
+  const [selectedTeacherSubject, setSelectedTeacherSubject] = useState("");
+
+  useEffect(() => {
+    if (teacherSubjects.length > 0 && !selectedTeacherSubject) {
+      setSelectedTeacherSubject(teacherSubjects[0].name);
+    }
+  }, [teacherSubjects, selectedTeacherSubject]);
+
+  // All topics belonging to the teacher's assigned subjects
+  const allTeacherTopics = useMemo(() => {
+    if (isSchool) {
+      const isComputerTeacher = teacherSubject.name.toLowerCase().includes("computer");
+      if (isComputerTeacher) {
+        return rawTopics.filter(t => !["physics", "biology", "chemistry"].includes(t.name.toLowerCase().trim()));
+      }
+      return rawTopics;
+    }
+    const tSubIds = teacherSubjects.map(s => s.id);
+    return rawTopics.filter(t => t.subject_id && tSubIds.includes(t.subject_id));
+  }, [rawTopics, isSchool, teacherSubject.name, teacherSubjects]);
+
+  const selectedTopicIds = useMemo(() => allTeacherTopics.map(t => t.id), [allTeacherTopics]);
   const { data: subTopics = [] } = useSubTopics(selectedTopicIds);
 
-  // Form setup
+  const subjectsDisplay = useMemo(() => {
+    return teacherSubjects.map(s => s.name).join(", ") || teacherSubject.name;
+  }, [teacherSubjects, teacherSubject.name]);
+
+  const dashboardTopics = useMemo(() => {
+    if (isSchool) {
+      return allTeacherTopics;
+    }
+    if (selectedClass === "all") {
+      return allTeacherTopics;
+    }
+    const subObj = subjects.find(s => s.name.toLowerCase().trim() === selectedClass.toLowerCase().trim());
+    if (!subObj) return [];
+    return allTeacherTopics.filter(t => t.subject_id === subObj.id);
+  }, [allTeacherTopics, selectedClass, subjects, isSchool]);
+
+  const formTopics = useMemo(() => {
+    if (isSchool) {
+      return allTeacherTopics;
+    }
+    if (!selectedTeacherSubject) return [];
+    const subObj = subjects.find(s => s.name === selectedTeacherSubject);
+    if (!subObj) return [];
+    return allTeacherTopics.filter(t => t.subject_id === subObj.id);
+  }, [allTeacherTopics, selectedTeacherSubject, subjects, isSchool]);
+
+  const { data: programs = [] } = useQuery({ queryKey: ["programs"], queryFn: getPrograms, enabled: !isSchool });
+  const { data: semesters = [] } = useQuery({ queryKey: ["semesters"], queryFn: getSemesters, enabled: !isSchool });
+  const { data: registeredClasses = [] } = useQuery({ queryKey: ["registeredClasses"], queryFn: getClasses, enabled: isSchool });
+
+  const [selectedQuestionProgram, setSelectedQuestionProgram] = useState("");
+  const [selectedQuestionSemester, setSelectedQuestionSemester] = useState("");
+
   const {
     register,
     control,
@@ -428,6 +502,25 @@ export const TeacherDashboard = () => {
     resolver: zodResolver(questionSchema),
     defaultValues: emptyQuestion,
   });
+
+  useEffect(() => {
+    if (!isSchool) {
+      if (selectedQuestionProgram && selectedQuestionSemester) {
+        setValue("class", `${selectedQuestionProgram}-sem-${selectedQuestionSemester}`);
+      } else {
+        setValue("class", "");
+      }
+    }
+  }, [selectedQuestionProgram, selectedQuestionSemester, isSchool, setValue]);
+
+  useEffect(() => {
+    if (isSchool && Array.isArray(registeredClasses) && registeredClasses.length > 0) {
+      const currentClass = getValues("class");
+      if (!currentClass || !registeredClasses.some(c => c.name === currentClass)) {
+        setValue("class", registeredClasses[0].name);
+      }
+    }
+  }, [isSchool, registeredClasses, setValue, getValues, addSubTab]);
 
   useEffect(() => {
     if (addSubTab === "manual" || addSubTab === null) {
@@ -515,31 +608,58 @@ export const TeacherDashboard = () => {
     }
   }, [csvText]);
 
-  // Filter questions that belong to the teacher's subject
+  // Filter questions that belong to the teacher's subjects
   const subjectQuestions = useMemo(() => {
-    // A question is in the subject if its topic matches one of the teacher's subject's topics
     return allQuestions.filter(q => {
-      if (q.topic_id) {
-        return selectedTopicIds.includes(q.topic_id);
+      if (isSchool) {
+        if (q.topic_id) {
+          return selectedTopicIds.includes(q.topic_id);
+        }
+        return false;
+      } else {
+        const tSubIds = teacherSubjects.map(s => s.id);
+        if (q.subject_id) {
+          return tSubIds.includes(q.subject_id);
+        }
+        if (q.topic_id) {
+          return selectedTopicIds.includes(q.topic_id);
+        }
+        return false;
       }
-      return false;
     });
-  }, [allQuestions, selectedTopicIds]);
+  }, [allQuestions, selectedTopicIds, isSchool, teacherSubjects]);
 
   const effectiveClassFilter = selectedClass;
 
   const filteredTopics = useMemo(() => {
     if (effectiveClassFilter === "all") {
-      return topics;
+      return dashboardTopics;
     }
     const activeTopicIds = new Set(
       subjectQuestions
-        .filter(q => q.class === effectiveClassFilter)
+        .filter(q => {
+          if (isSchool) {
+            return q.class === effectiveClassFilter;
+          }
+          const filterLower = effectiveClassFilter.toLowerCase().trim();
+          const subObj = subjects.find(s => s.name.toLowerCase().trim() === filterLower);
+          if (!subObj) return false;
+
+          if (q.subject_id && q.subject_id === subObj.id) return true;
+          const qSubLower = (q.subject || "").toLowerCase().trim();
+          if (qSubLower === filterLower) return true;
+
+          if (q.topic_id) {
+            const topicObj = rawTopics.find(t => t.id === q.topic_id);
+            if (topicObj && topicObj.subject_id === subObj.id) return true;
+          }
+          return false;
+        })
         .map(q => q.topic_id)
         .filter(Boolean)
     );
-    return topics.filter(t => activeTopicIds.has(t.id));
-  }, [topics, subjectQuestions, effectiveClassFilter]);
+    return dashboardTopics.filter(t => activeTopicIds.has(t.id));
+  }, [dashboardTopics, subjectQuestions, effectiveClassFilter, isSchool, subjects]);
 
   useEffect(() => {
     if (topicFilter !== "all" && effectiveClassFilter !== "all") {
@@ -562,20 +682,56 @@ export const TeacherDashboard = () => {
         (filterDiff === "hard" && qDiff === "difficult") ||
         (filterDiff === "difficult" && qDiff === "hard");
       const matchesTopic = topicFilter === "all" || q.topic_id === topicFilter;
-      const matchesClass = effectiveClassFilter === "all" || q.class === effectiveClassFilter;
+      const matchesClass = effectiveClassFilter === "all" || (
+        isSchool
+          ? q.class === effectiveClassFilter
+          : (() => {
+              const filterLower = effectiveClassFilter.toLowerCase().trim();
+              const subObj = subjects.find(s => s.name.toLowerCase().trim() === filterLower);
+              if (!subObj) return false;
+
+              if (q.subject_id && q.subject_id === subObj.id) return true;
+              const qSubLower = (q.subject || "").toLowerCase().trim();
+              if (qSubLower === filterLower) return true;
+
+              if (q.topic_id) {
+                const topicObj = rawTopics.find(t => t.id === q.topic_id);
+                if (topicObj && topicObj.subject_id === subObj.id) return true;
+              }
+              return false;
+            })()
+      );
       return matchesSearch && matchesDiff && matchesTopic && matchesClass;
     });
-  }, [subjectQuestions, search, difficultyFilter, topicFilter, effectiveClassFilter]);
+  }, [subjectQuestions, search, difficultyFilter, topicFilter, effectiveClassFilter, isSchool, subjects]);
 
   // Statistics
   const questionsFilteredExceptDifficulty = useMemo(() => {
     return subjectQuestions.filter(q => {
       const matchesSearch = q.question.toLowerCase().includes(search.toLowerCase());
       const matchesTopic = topicFilter === "all" || q.topic_id === topicFilter;
-      const matchesClass = effectiveClassFilter === "all" || q.class === effectiveClassFilter;
+      const matchesClass = effectiveClassFilter === "all" || (
+        isSchool
+          ? q.class === effectiveClassFilter
+          : (() => {
+              const filterLower = effectiveClassFilter.toLowerCase().trim();
+              const subObj = subjects.find(s => s.name.toLowerCase().trim() === filterLower);
+              if (!subObj) return false;
+
+              if (q.subject_id && q.subject_id === subObj.id) return true;
+              const qSubLower = (q.subject || "").toLowerCase().trim();
+              if (qSubLower === filterLower) return true;
+
+              if (q.topic_id) {
+                const topicObj = rawTopics.find(t => t.id === q.topic_id);
+                if (topicObj && topicObj.subject_id === subObj.id) return true;
+              }
+              return false;
+            })()
+      );
       return matchesSearch && matchesTopic && matchesClass;
     });
-  }, [subjectQuestions, search, topicFilter, effectiveClassFilter]);
+  }, [subjectQuestions, search, topicFilter, effectiveClassFilter, isSchool, subjects, rawTopics]);
 
   const stats = useMemo(() => {
     const total = questionsFilteredExceptDifficulty.length;
@@ -667,7 +823,7 @@ export const TeacherDashboard = () => {
     };
 
     const rows = selectedQuestions.map(q => {
-      const tName = topics.find(t => t.id === q.topic_id)?.name ?? q.topic_name ?? "General";
+      const tName = allTeacherTopics.find(t => t.id === q.topic_id)?.name ?? q.topic_name ?? "General";
       const stName = subTopics.find(st => st.id === q.sub_topic_id)?.name ?? q.sub_topic_name ?? "";
       
       return [
@@ -903,29 +1059,41 @@ export const TeacherDashboard = () => {
 
       // Create questions in global pool under teacher's subject
       let createdCount = 0;
+      let duplicateCount = 0;
       for (const row of rows) {
-        if (!row.question || !row.option1 || !row.option2) continue;
+        const qText = row.question;
+        const opt1 = row.options1 || row.option1;
+        const opt2 = row.option2;
+        if (!qText || !opt1 || !opt2) continue;
 
         const rowSubject = (row.subject || "").trim();
-        if (rowSubject && rowSubject.toLowerCase() !== teacherSubject.name.toLowerCase()) {
-          alert(`Error: You are a ${teacherSubject.name} teacher and cannot upload/register questions for ${rowSubject}.`);
+        const allowedSubjects = isSchool
+          ? [teacherSubject.name]
+          : teacherSubjects.map(s => s.name);
+
+        if (rowSubject && !allowedSubjects.map(s => s.toLowerCase()).includes(rowSubject.toLowerCase())) {
+          alert(`Error: You cannot upload/register questions for ${rowSubject}. You are allowed to upload questions for: ${allowedSubjects.join(", ")}.`);
           setIsImporting(false);
           return;
         }
+
+        const activeSubName = rowSubject || (isSchool ? teacherSubject.name : teacherSubjects[0]?.name || "");
+        const subObj = subjects.find(s => s.name.toLowerCase() === activeSubName.toLowerCase());
+        const subId = subObj ? subObj.id : teacherSubject.id;
 
         const topicNameClean = (row.topic || "").trim();
         const subTopicNameClean = (row.sub_topic || "").trim();
 
         // Try to match topic name
         const matchedTopic = topicNameClean
-          ? topics.find((t) => t.name.toLowerCase() === topicNameClean.toLowerCase())
+          ? allTeacherTopics.find((t) => t.name.toLowerCase() === topicNameClean.toLowerCase() && t.subject_id === subId)
           : null;
         const topic_id = matchedTopic ? matchedTopic.id : (topicNameClean ? "new" : "");
         const topic_name = matchedTopic ? undefined : topicNameClean;
 
         // Find subtopic if matched
-        const matchedSubTopic = subTopicNameClean
-          ? subTopics.find((st) => st.name.toLowerCase() === subTopicNameClean.toLowerCase())
+        const matchedSubTopic = isSchool && subTopicNameClean && topic_id && topic_id !== "new"
+          ? subTopics.find((st) => st.name.toLowerCase() === subTopicNameClean.toLowerCase() && st.topic_id === topic_id)
           : null;
         const sub_topic_id = matchedSubTopic ? matchedSubTopic.id : (subTopicNameClean ? "new" : "");
         const sub_topic_name = matchedSubTopic ? undefined : subTopicNameClean;
@@ -934,8 +1102,8 @@ export const TeacherDashboard = () => {
         let correct_option = "option1";
         const rawCorrect = (row.correct_option || "").toUpperCase().trim();
         const coLower = (row.correct_option || "").toLowerCase().trim();
-        const optVal1 = (row.option1 || "").toLowerCase().trim();
-        const optVal2 = (row.option2 || "").toLowerCase().trim();
+        const optVal1 = (opt1 || "").toLowerCase().trim();
+        const optVal2 = (opt2 || "").toLowerCase().trim();
         const optVal3 = (row.option3 || "").toLowerCase().trim();
         const optVal4 = (row.option4 || "").toLowerCase().trim();
 
@@ -950,38 +1118,48 @@ export const TeacherDashboard = () => {
         }
 
         const qPayload: Question = {
-          question: row.question,
-          option1: row.option1,
-          option2: row.option2,
+          question: qText,
+          option1: opt1,
+          option2: opt2,
           option3: row.option3 || "",
           option4: row.option4 || "",
           correct_option: correct_option as any,
           difficulty: row.difficulty || "easy",
-          class: row.class || "Class 10",
+          class: isSchool ? (row.class || "Class 10") : (user?.program_id || ""),
           topic_id: topic_id || undefined,
-          sub_topic_id: sub_topic_id || undefined,
+          sub_topic_id: isSchool ? (sub_topic_id || undefined) : undefined,
           topic_name: topic_name || undefined,
-          sub_topic_name: sub_topic_name || undefined,
-          subject_id: teacherSubject.id,
-          subject: rowSubject || undefined,
+          sub_topic_name: isSchool ? (sub_topic_name || undefined) : undefined,
+          subject_id: subId,
+          subject: activeSubName,
           type: "mcq",
           test_id: "",
         };
 
-        const createdQ = await createQuestion(qPayload);
-        if (createdQ.id) {
-          createdCount++;
+        try {
+          const createdQ = await createQuestion(qPayload);
+          if (createdQ.id) {
+            createdCount++;
+          }
+        } catch (err: any) {
+          const errMsg = getErrorMessage(err);
+          if (errMsg.toLowerCase().includes("already registered")) {
+            duplicateCount++;
+            continue;
+          }
+          throw err;
         }
       }
 
-      if (createdCount > 0) {
+      if (createdCount > 0 || duplicateCount > 0) {
         await queryClient.invalidateQueries({ queryKey: ["questions"] });
         await queryClient.invalidateQueries({ queryKey: ["topics"] });
         await queryClient.invalidateQueries({ queryKey: ["subTopics"] });
         setCsvText("");
         setCsvModalOpen(false);
         setAddSubTab(null);
-        setToast(`Successfully imported ${createdCount} questions!`);
+        const dupMsg = duplicateCount > 0 ? ` (${duplicateCount} duplicates skipped)` : "";
+        setToast(`Successfully imported ${createdCount} questions!${dupMsg}`);
         window.setTimeout(() => setToast(""), 2000);
       } else {
         alert("Could not import any questions. Please verify your CSV header columns.");
@@ -1034,6 +1212,12 @@ export const TeacherDashboard = () => {
     });
     setSubQuestions([{ question: "", option1: "", option2: "", option3: "", option4: "", correct_option: "option1", is_msq: false }]);
     setModalIsMsqSwitchOn(question.correct_option?.includes(",") ?? false);
+    if (question.subject) {
+      setSelectedTeacherSubject(question.subject);
+    } else if (question.subject_id) {
+      const foundSub = subjects.find(s => s.id === question.subject_id);
+      if (foundSub) setSelectedTeacherSubject(foundSub.name);
+    }
     setModalOpen(true);
   };
 
@@ -1121,8 +1305,8 @@ export const TeacherDashboard = () => {
           const newPassage = await createPassage({
             title: values.passage_title,
             content: values.passage_content,
-            subject_id: teacherSubject.id,
-            class: values.class,
+            subject_id: isSchool ? teacherSubject.id : (subjects.find(s => s.name === selectedTeacherSubject)?.id || teacherSubject.id),
+            class: isSchool ? values.class : (user?.program_id || ""),
           });
           finalPassageId = newPassage.id;
           await queryClient.invalidateQueries({ queryKey: ["passages"] });
@@ -1144,13 +1328,14 @@ export const TeacherDashboard = () => {
             sub_topic_id: values.sub_topic_id || undefined,
             new_topic_name: values.topic_id === "new" ? values.new_topic_name?.trim() : undefined,
             new_sub_topic_name: (values.topic_id === "new" || values.sub_topic_id === "new") ? values.new_sub_topic_name?.trim() : undefined,
-            subject_id: teacherSubject.id,
+            subject_id: isSchool ? teacherSubject.id : (subjects.find(s => s.name === selectedTeacherSubject)?.id || teacherSubject.id),
+            subject: isSchool ? undefined : selectedTeacherSubject,
             media_url: values.media_url || undefined,
             image_url: values.image_url || "",
             type: "passage_sub_question",
             passage_id: finalPassageId,
             test_id: "",
-            class: values.class,
+            class: isSchool ? values.class : (user?.program_id || ""),
           };
           return createQuestion(payload);
         });
@@ -1180,12 +1365,14 @@ export const TeacherDashboard = () => {
           sub_topic_id: values.sub_topic_id || undefined,
           new_topic_name: values.topic_id === "new" ? values.new_topic_name?.trim() : undefined,
           new_sub_topic_name: (values.topic_id === "new" || values.sub_topic_id === "new") ? values.new_sub_topic_name?.trim() : undefined,
-          subject_id: teacherSubject.id,
+          subject_id: isSchool ? teacherSubject.id : (subjects.find(s => s.name === selectedTeacherSubject)?.id || teacherSubject.id),
+          subject: isSchool ? undefined : selectedTeacherSubject,
           media_url: values.media_url || undefined,
           image_url: values.image_url || "",
           type: values.type || "mcq",
           passage_id: values.type === "passage_sub_question" ? finalPassageId : undefined,
           test_id: "",
+          class: isSchool ? values.class : (user?.program_id || ""),
         };
 
         if (editingQuestionId) {
@@ -1254,7 +1441,10 @@ export const TeacherDashboard = () => {
         return;
       }
 
-      const savePromises = selectedQs.map((q) => {
+      let savedCount = 0;
+      let duplicateCount = 0;
+
+      const savePromises = selectedQs.map(async (q) => {
         const payload: Question = {
           question: q.question,
           option1: q.option1,
@@ -1263,13 +1453,25 @@ export const TeacherDashboard = () => {
           option4: q.option4,
           correct_option: q.correct_option as CorrectOption,
           difficulty: q.difficulty.toLowerCase(),
-          class: q.class,
-          subject_id: teacherSubject.id,
+          class: isSchool ? q.class : (user?.program_id || ""),
+          subject_id: isSchool ? teacherSubject.id : (subjects.find(s => s.name === selectedTeacherSubject)?.id || teacherSubject.id),
+          subject: isSchool ? undefined : selectedTeacherSubject,
           type: "mcq",
           test_id: "",
           new_topic_name: aiTopic.trim() || "AI Generated",
         };
-        return createQuestion(payload);
+        try {
+          const res = await createQuestion(payload);
+          if (res.id) savedCount++;
+          return res;
+        } catch (err: any) {
+          const errMsg = getErrorMessage(err);
+          if (errMsg.toLowerCase().includes("already registered")) {
+            duplicateCount++;
+            return null;
+          }
+          throw err;
+        }
       });
 
       await Promise.all(savePromises);
@@ -1277,7 +1479,8 @@ export const TeacherDashboard = () => {
       await queryClient.invalidateQueries({ queryKey: ["topics"] });
       await queryClient.invalidateQueries({ queryKey: ["subTopics"] });
 
-      setToast(`Successfully saved ${selectedQs.length} questions to the pool`);
+      const dupMsg = duplicateCount > 0 ? ` (${duplicateCount} duplicates skipped)` : "";
+      setToast(`Successfully saved ${savedCount} questions to the pool${dupMsg}`);
       setAddSubTab(null);
       setGeneratedQuestions([]);
       setSelectedGenIds([]);
@@ -1305,13 +1508,13 @@ export const TeacherDashboard = () => {
                     Parikshya Teacher Portal
                   </div>
                   <h1 className="text-3xl font-black tracking-tight">
-                    {orgData?.brandingBannerText || `${teacherSubject.name} Question Bank Hub`}
+                    {orgData?.brandingBannerText || `${subjectsDisplay} Question Bank Hub`}
                   </h1>
                   <p className="mt-2 text-sm text-teal-50 max-w-xl">
-                    Create and manage your question pool for <strong>{teacherSubject.name}</strong>. Monitor class distribution, perform bulk spreadsheet uploads, or add single questions manually.
+                    Create and manage your question pool for <strong>{subjectsDisplay}</strong>. Monitor {isSchool ? "class" : "subject"} distribution, perform bulk spreadsheet uploads, or add single questions manually.
                   </p>
                   <p className="mt-4 text-xs text-indigo-800 bg-white/95 rounded-full px-4 py-1.5 inline-block font-bold shadow-sm dark:bg-slate-900/90 dark:text-indigo-400">
-                    Active Teacher: {user?.name || "Teacher"} ({teacherSubject.name} Specialist)
+                    Active Teacher: {user?.name || "Teacher"} ({subjectsDisplay} Specialist)
                   </p>
                 </div>
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-4xl border border-white/20 shadow-inner">
@@ -1319,15 +1522,32 @@ export const TeacherDashboard = () => {
                 </div>
               </div>
               <div className="absolute -bottom-8 -right-8 h-40 w-40 rounded-full bg-white/5 pointer-events-none" />
-              <div className="absolute -top-8 -left-8 h-40 w-40 rounded-full bg-white/5 pointer-events-none" />
             </div>
 
             {/* Stats Breakdown Grid */}
             <div>
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4">Class Pool Distribution</h2>
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4">
+                {isSchool ? "Class Pool Distribution" : "Subject Pool Distribution"}
+              </h2>
               <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-                {["Class 9", "Class 10", "Class 11", "Class 12"].map((cls, idx) => {
-                  const count = subjectQuestions.filter((q) => q.class === cls).length;
+                {(isSchool ? (Array.isArray(registeredClasses) && registeredClasses.length > 0 ? registeredClasses.map(c => c.name) : ["Class 9", "Class 10", "Class 11", "Class 12"]) : teacherSubjects.map(s => s.name)).map((item, idx) => {
+                  const count = isSchool
+                    ? subjectQuestions.filter((q) => q.class === item).length
+                    : subjectQuestions.filter((q) => {
+                        const filterLower = item.toLowerCase().trim();
+                        const subObj = subjects.find(s => s.name.toLowerCase().trim() === filterLower);
+                        if (!subObj) return false;
+
+                        if (q.subject_id && q.subject_id === subObj.id) return true;
+                        const qSubLower = (q.subject || "").toLowerCase().trim();
+                        if (qSubLower === filterLower) return true;
+
+                        if (q.topic_id) {
+                          const topicObj = rawTopics.find(t => t.id === q.topic_id);
+                          if (topicObj && topicObj.subject_id === subObj.id) return true;
+                        }
+                        return false;
+                      }).length;
                   const totalCount = subjectQuestions.length;
                   const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
                   
@@ -1365,16 +1585,18 @@ export const TeacherDashboard = () => {
                       bar: "from-purple-500 to-pink-500",
                       shadow: "hover:shadow-purple-500/5"
                     }
-                  ][idx];
+                  ][idx % 4];
 
                   return (
                     <div
-                      key={cls}
+                      key={item}
                       className={`rounded-xl border ${theme.border} ${theme.bg} ${theme.hoverBorder} ${theme.shadow} p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between`}
                     >
                       <div>
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Class Level</span>
-                        <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{cls}</h4>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
+                          {isSchool ? "Class Level" : "Subject"}
+                        </span>
+                        <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{item}</h4>
                       </div>
                       <div className="mt-4">
                         <div className="flex items-baseline gap-1">
@@ -1483,7 +1705,9 @@ export const TeacherDashboard = () => {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-2 leading-relaxed">{q.question}</p>
                           <div className="flex items-center gap-2 mt-4">
-                            <Badge tone="blue">{q.class}</Badge>
+                            <Badge tone="blue">
+                              {isSchool ? q.class : (programs.find(p => p.id === q.class)?.code || q.class)}
+                            </Badge>
                             <Badge tone={difficultyColor}>{q.difficulty}</Badge>
                           </div>
                         </div>
@@ -1926,31 +2150,52 @@ export const TeacherDashboard = () => {
 
                   {/* Right Column: Meta & Image */}
                   <div className="space-y-6 lg:border-l lg:border-slate-100 lg:dark:border-slate-800 lg:pl-8">
-                    {/* Class Selection */}
-                    <div className="space-y-2">
-                      <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Class Level</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        {["Class 9", "Class 10", "Class 11", "Class 12"].map((cls) => {
-                          const isActive = watchedClass === cls;
-                          return (
-                            <button
-                              key={cls}
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setValue("class", cls);
-                              }}
-                              className={`py-2.5 px-3.5 rounded-xl text-xs font-bold border transition-all duration-200 ${isActive
-                                  ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]"
-                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                                }`}
-                            >
-                              {cls}
-                            </button>
-                          );
-                        })}
+                    {/* Class Selection / College Program & Semester Selection */}
+                    {isSchool ? (
+                      <div className="space-y-2">
+                        <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Class Level</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(Array.isArray(registeredClasses) && registeredClasses.length > 0 ? registeredClasses.map(c => c.name) : ["Class 9", "Class 10", "Class 11", "Class 12"]).map((cls) => {
+                            const isActive = watchedClass === cls;
+                            return (
+                              <button
+                                key={cls}
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setValue("class", cls);
+                                }}
+                                className={`py-2.5 px-3.5 rounded-xl text-xs font-bold border transition-all duration-200 ${isActive
+                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]"
+                                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                                  }`}
+                              >
+                                {cls}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="space-y-1.5">
+                          <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Subject Domain</span>
+                          <select
+                            value={selectedTeacherSubject}
+                            onChange={(e) => {
+                              setSelectedTeacherSubject(e.target.value);
+                              setValue("topic_id", "");
+                              setValue("sub_topic_id", "");
+                            }}
+                            className="h-10 w-full rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-700 dark:text-slate-350 outline-none transition focus:border-indigo-500"
+                          >
+                            {teacherSubjects.map(s => (
+                              <option key={s.id} value={s.name}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Difficulty Selection */}
                     <div className="space-y-2">
@@ -1983,25 +2228,27 @@ export const TeacherDashboard = () => {
                     </div>
 
                     {/* Topic Selectors */}
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className={isSchool ? "grid gap-4 sm:grid-cols-2" : "w-full"}>
                       <Select
                         label="Topic Category"
                         options={[
                           { label: "Select Topic", value: "" },
-                          ...topics.map((t) => ({ label: t.name, value: t.id })),
+                          ...formTopics.map((t) => ({ label: t.name, value: t.id })),
                           { label: "+ Add New Topic", value: "new" },
                         ]}
                         {...register("topic_id")}
                       />
-                      <Select
-                        label="Sub-topic Category"
-                        options={[
-                          { label: "Select Sub-topic", value: "" },
-                          ...filteredSubTopics.map((st) => ({ label: st.name, value: st.id })),
-                          { label: "+ Add New Sub-topic", value: "new" },
-                        ]}
-                        {...register("sub_topic_id")}
-                      />
+                      {isSchool && (
+                        <Select
+                          label="Sub-topic Category"
+                          options={[
+                            { label: "Select Sub-topic", value: "" },
+                            ...filteredSubTopics.map((st) => ({ label: st.name, value: st.id })),
+                            { label: "+ Add New Sub-topic", value: "new" },
+                          ]}
+                          {...register("sub_topic_id")}
+                        />
+                      )}
                     </div>
 
                     {selectedTopicId === "new" && (
@@ -2013,7 +2260,7 @@ export const TeacherDashboard = () => {
                       />
                     )}
 
-                    {(selectedTopicId === "new" || selectedSubTopicId === "new") && (
+                    {isSchool && (selectedTopicId === "new" || selectedSubTopicId === "new") && (
                       <Input
                         label="New Sub-topic Name"
                         placeholder="Enter new sub-topic name"
@@ -2190,18 +2437,29 @@ export const TeacherDashboard = () => {
                         <div className="space-y-2">
                           <label className="block">
                             <span className="mb-2 block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
-                              Class / Grade
+                              {isSchool ? "Class / Grade" : "Subject"}
                             </span>
-                            <select
-                              value={aiClass}
-                              onChange={(e) => setAiClass(e.target.value)}
-                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-705 dark:text-slate-200 outline-none transition focus:border-indigo-500 cursor-pointer font-semibold"
-                            >
-                              <option value="Class 9">Class 9</option>
-                              <option value="Class 10">Class 10</option>
-                              <option value="Class 11">Class 11</option>
-                              <option value="Class 12">Class 12</option>
-                            </select>
+                            {isSchool ? (
+                              <select
+                                value={aiClass}
+                                onChange={(e) => setAiClass(e.target.value)}
+                                className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-705 dark:text-slate-200 outline-none transition focus:border-indigo-500 cursor-pointer font-semibold"
+                              >
+                                {(Array.isArray(registeredClasses) && registeredClasses.length > 0 ? registeredClasses.map(c => c.name) : ["Class 9", "Class 10", "Class 11", "Class 12"]).map((cls) => (
+                                  <option key={cls} value={cls}>{cls}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <select
+                                value={selectedTeacherSubject}
+                                onChange={(e) => setSelectedTeacherSubject(e.target.value)}
+                                className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-705 dark:text-slate-200 outline-none transition focus:border-indigo-500 cursor-pointer font-semibold"
+                              >
+                                {teacherSubjects.map(s => (
+                                  <option key={s.id} value={s.name}>{s.name}</option>
+                                ))}
+                              </select>
+                            )}
                           </label>
                         </div>
 
@@ -2346,7 +2604,7 @@ export const TeacherDashboard = () => {
                                 <span className="text-xs font-bold text-slate-500">MCQ Question #{idx + 1}</span>
                                 <div className="flex items-center gap-2">
                                   <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-850 border border-slate-200/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 text-[10px] font-bold">
-                                    {q.class}
+                                    {isSchool ? q.class : (programs.find(p => p.id === q.class)?.code || q.class)}
                                   </span>
                                   <span className="px-2.5 py-0.5 rounded-full bg-indigo-50/75 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/30 text-indigo-650 dark:text-indigo-400 text-[10px] font-bold">
                                     {q.difficulty}
@@ -2461,7 +2719,11 @@ export const TeacherDashboard = () => {
                     <textarea
                       value={csvText}
                       onChange={(e) => setCsvText(e.target.value)}
-                      placeholder="question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic&#10;What is 1+1?,2,3,4,5,option1,easy,Class 10,Algebra,Addition"
+                      placeholder={
+                        isSchool
+                          ? "question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic\nWhat is 1+1?,2,3,4,5,option1,easy,Class 10,Algebra,Addition"
+                          : "question,options1,option2,option3,option4,correct_option,difficulty,subject,topic\nWhat is 1+1?,2,3,4,5,option1,easy,Mathematics,Algebra"
+                      }
                       className="h-28 w-full resize-none rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 p-2.5 text-xs font-mono text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -2481,17 +2743,17 @@ export const TeacherDashboard = () => {
                             <div key={idx} className={`rounded border p-3 text-xs shadow-sm ${boxColor}`}>
                               <div className="font-bold text-slate-800">Q{idx + 1}: {q.question}</div>
                               <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[11px] text-slate-500">
-                                <div>Option 1: {q.option1 || "-"}</div>
+                                <div>Option 1: {q.option1 || q.options1 || "-"}</div>
                                 <div>Option 2: {q.option2 || "-"}</div>
                                 <div>Option 3: {q.option3 || "-"}</div>
                                 <div>Option 4: {q.option4 || "-"}</div>
                               </div>
                               <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
                                 <span className="font-semibold text-emerald-600">Correct: {q.correct_option || "-"}</span>
-                                <span className="text-slate-400">Class: {q.class || "Class 10"}</span>
+                                {isSchool && <span className="text-slate-400">Class: {q.class || "Class 10"}</span>}
                                 <span className="text-slate-400">Difficulty: {q.difficulty || "-"}</span>
                                 <span className="text-slate-400">Topic: {q.topic || "-"}</span>
-                                <span className="text-slate-400">Sub-topic: {q.sub_topic || "-"}</span>
+                                {isSchool && <span className="text-slate-400">Sub-topic: {q.sub_topic || "-"}</span>}
                                 {q.subject && <span className="text-slate-400">Subject: {q.subject}</span>}
                               </div>
                             </div>
@@ -2507,7 +2769,10 @@ export const TeacherDashboard = () => {
                       <HelpCircle className="h-3.5 w-3.5 shrink-0" /> Expected CSV Headers:
                     </h4>
                     <p className="font-mono bg-white/70 p-1.5 rounded mb-1.5 text-[9px] overflow-x-auto whitespace-nowrap">
-                      question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic,subject
+                      {isSchool
+                        ? "question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic,subject"
+                        : "question,options1,option2,option3,option4,correct_option,difficulty,subject,topic"
+                      }
                     </p>
                     <span>* Correct option should match A, B, C, D or option1, option2, option3, option4.</span>
                     <br />
@@ -2550,7 +2815,7 @@ export const TeacherDashboard = () => {
                     {selectedClass === "all" ? "All Questions Bank" : `${selectedClass} Questions Bank`}
                   </h1>
                   <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold mt-1">
-                    Subject Domain: <span className="font-bold text-indigo-600 dark:text-indigo-400">{teacherSubject.name}</span>
+                    Subject Domain: <span className="font-bold text-indigo-600 dark:text-indigo-400">{subjectsDisplay}</span>
                   </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -2784,7 +3049,7 @@ export const TeacherDashboard = () => {
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                         {filteredQuestions.map((q, index) => {
-                          const topicName = topics.find(t => t.id === q.topic_id)?.name ?? "General";
+                          const topicName = allTeacherTopics.find(t => t.id === q.topic_id)?.name ?? "General";
                           const diffLower = (q.difficulty || "").toLowerCase().trim();
                           const difficultyColor =
                             diffLower === "easy" ? "green" :
@@ -2872,7 +3137,7 @@ export const TeacherDashboard = () => {
                                 </div>
                                 <div className="mt-2.5 flex flex-wrap items-center gap-3">
                                   <span className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider bg-slate-100 dark:bg-slate-800/60 px-2 py-1 rounded-md">
-                                    Class: {q.class || "Class 10"}
+                                    {isSchool ? `Class: ${q.class || "Class 10"}` : `Program: ${programs.find(p => p.id === q.class)?.code || q.class}`}
                                   </span>
                                   <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md shadow-sm">
                                     <Check className="h-3 w-3 stroke-[3]" />
@@ -2961,6 +3226,20 @@ export const TeacherDashboard = () => {
                     // Filter out tests that are fully completed (time slot has finished)
                     if (test.end_time && new Date(test.end_time).getTime() < now) {
                       return false;
+                    }
+                    if (!isSchool) {
+                      if (user?.program_id && test.class && !test.class.toLowerCase().startsWith(user.program_id.toLowerCase())) {
+                        return false;
+                      }
+                      
+                      const teacherSubjectsNames = teacherSubjects.map(s => s.name.toLowerCase().trim());
+                      const testSubjects = Array.isArray(test.subject)
+                        ? test.subject
+                        : (test.subject ? [test.subject] : []);
+                      const hasCommonSubject = testSubjects.some(sub => teacherSubjectsNames.includes(sub.toLowerCase().trim()));
+                      if (!hasCommonSubject) {
+                        return false;
+                      }
                     }
                     return true;
                   });
@@ -3619,17 +3898,33 @@ export const TeacherDashboard = () => {
             )}
 
             {/* Classification */}
-            <div className="grid gap-4 sm:grid-cols-4">
-              <Select
-                label="Class"
-                options={[
-                  { label: "Class 9", value: "Class 9" },
-                  { label: "Class 10", value: "Class 10" },
-                  { label: "Class 11", value: "Class 11" },
-                  { label: "Class 12", value: "Class 12" },
-                ]}
-                {...register("class")}
-              />
+            <div className={`grid gap-4 ${isSchool ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
+              {isSchool ? (
+                <Select
+                  label="Class"
+                  options={Array.isArray(registeredClasses) && registeredClasses.length > 0
+                    ? registeredClasses.map(c => ({ label: c.name, value: c.name }))
+                    : [
+                        { label: "Class 9", value: "Class 9" },
+                        { label: "Class 10", value: "Class 10" },
+                        { label: "Class 11", value: "Class 11" },
+                        { label: "Class 12", value: "Class 12" },
+                      ]
+                  }
+                  {...register("class")}
+                />
+              ) : (
+                <Select
+                  label="Subject"
+                  options={teacherSubjects.map(s => ({ label: s.name, value: s.name }))}
+                  value={selectedTeacherSubject}
+                  onChange={(e) => {
+                    setSelectedTeacherSubject(e.target.value);
+                    setValue("topic_id", "");
+                    setValue("sub_topic_id", "");
+                  }}
+                />
+              )}
               <Select
                 label="Difficulty Level"
                 options={[
@@ -3643,20 +3938,22 @@ export const TeacherDashboard = () => {
                 label="Topic"
                 options={[
                   { label: "Select Topic", value: "" },
-                  ...topics.map((t) => ({ label: t.name, value: t.id })),
+                  ...formTopics.map((t) => ({ label: t.name, value: t.id })),
                   { label: "+ Add New Topic", value: "new" },
                 ]}
                 {...register("topic_id")}
               />
-              <Select
-                label="Sub-topic"
-                options={[
-                  { label: "Select Sub-topic", value: "" },
-                  ...filteredSubTopics.map((st) => ({ label: st.name, value: st.id })),
-                  { label: "+ Add New Sub-topic", value: "new" },
-                ]}
-                {...register("sub_topic_id")}
-              />
+              {isSchool && (
+                <Select
+                  label="Sub-topic"
+                  options={[
+                    { label: "Select Sub-topic", value: "" },
+                    ...filteredSubTopics.map((st) => ({ label: st.name, value: st.id })),
+                    { label: "+ Add New Sub-topic", value: "new" },
+                  ]}
+                  {...register("sub_topic_id")}
+                />
+              )}
             </div>
 
             {selectedTopicId === "new" && (
@@ -3668,7 +3965,7 @@ export const TeacherDashboard = () => {
               />
             )}
 
-            {(selectedTopicId === "new" || selectedSubTopicId === "new") && (
+            {isSchool && (selectedTopicId === "new" || selectedSubTopicId === "new") && (
               <Input
                 label="New Sub-topic Name"
                 placeholder="Enter new sub-topic name"

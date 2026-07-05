@@ -10,7 +10,7 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { Spinner } from "../components/ui/Spinner";
-import { createTest, getErrorMessage, updateTest, getTopicsBySubject, getAllQuestions, createTestFromCsv } from "../services/api";
+import { createTest, getErrorMessage, updateTest, getTopicsBySubject, getAllQuestions, createTestFromCsv, getMyOrganization, getPrograms, getSemesters, getClasses } from "../services/api";
 import { useSubjects, useSubTopics, useTest } from "../hooks/useTests";
 import { Modal } from "../components/ui/Modal";
 import { TestPayload } from "../types";
@@ -92,6 +92,15 @@ export const CreateEditTestPage = () => {
     total_questions: 0
   });
   const [csvFormErrors, setCsvFormErrors] = useState<Record<string, string>>({});
+  const { data: orgData } = useQuery({ queryKey: ["myOrganization"], queryFn: getMyOrganization });
+  const isSchool = orgData?.orgType !== "College";
+  const { data: programs = [] } = useQuery({ queryKey: ["programs"], queryFn: getPrograms, enabled: !isSchool });
+  const { data: semesters = [] } = useQuery({ queryKey: ["semesters"], queryFn: getSemesters, enabled: !isSchool });
+  const { data: registeredClasses = [] } = useQuery({ queryKey: ["registeredClasses"], queryFn: getClasses, enabled: isSchool });
+
+  const [selectedProgram, setSelectedProgram] = useState("");
+  const [selectedSemester, setSelectedSemester] = useState("");
+
   const { data: subjects = [] } = useSubjects();
   const { data: existingTest, isLoading: isLoadingTest } = useTest(id);
 
@@ -105,6 +114,14 @@ export const CreateEditTestPage = () => {
       }
     }
   }, [existingTest, isEdit, navigate]);
+
+  useEffect(() => {
+    if (isSchool && Array.isArray(registeredClasses) && registeredClasses.length > 0) {
+      if (!csvForm.class || !registeredClasses.some(c => c.name === csvForm.class)) {
+        setCsvForm(prev => ({ ...prev, class: registeredClasses[0].name }));
+      }
+    }
+  }, [isSchool, registeredClasses, csvForm.class]);
 
   const {
     register,
@@ -139,6 +156,15 @@ export const CreateEditTestPage = () => {
     },
   });
 
+  useEffect(() => {
+    if (isSchool && Array.isArray(registeredClasses) && registeredClasses.length > 0 && !isEdit) {
+      const currentClass = watch("class");
+      if (!currentClass || !registeredClasses.some(c => c.name === currentClass)) {
+        setValue("class", registeredClasses[0].name);
+      }
+    }
+  }, [isSchool, registeredClasses, setValue, watch, isEdit]);
+
   const { fields, append, remove } = useFieldArray({
     control,
     name: "sections",
@@ -166,6 +192,16 @@ export const CreateEditTestPage = () => {
     }
   }, [selectedClass, prevClass, setValue]);
 
+  useEffect(() => {
+    if (!isSchool) {
+      if (selectedProgram && selectedSemester) {
+        setValue("class", `${selectedProgram}-sem-${selectedSemester}`, { shouldValidate: true });
+      } else {
+        setValue("class", "");
+      }
+    }
+  }, [selectedProgram, selectedSemester, isSchool, setValue]);
+
   // Fetch topics for all selected subjects in parallel
   const { data: topics = [] } = useQuery({
     queryKey: ["topics", subjectIds],
@@ -178,32 +214,46 @@ export const CreateEditTestPage = () => {
     enabled: subjectIds.length > 0,
   });
 
+  const filteredSubjectsForCollege = useMemo(() => {
+    if (isSchool) return subjects;
+    if (!selectedProgram || !selectedSemester) return [];
+    return subjects.filter((sub: any) => {
+      return sub.program_semesters?.some(
+        (ps: any) => ps.program_id === selectedProgram && Number(ps.semester) === Number(selectedSemester)
+      );
+    });
+  }, [subjects, selectedProgram, selectedSemester, isSchool]);
+
+  const visibleSubjects = isSchool ? subjects : filteredSubjectsForCollege;
+
   // Filter topics dynamically by the selected class questions
   const filteredTopics = useMemo(() => {
-    if (!selectedClass) return [];
+    const activeClass = isSchool ? selectedClass : `${selectedProgram}-sem-${selectedSemester}`;
+    if (!activeClass) return [];
     const activeTopicIds = new Set(
       allQuestions
-        .filter(q => q.class === selectedClass)
+        .filter(q => isSchool ? q.class === activeClass : (q.class === activeClass || q.class === selectedProgram))
         .map(q => q.topic_id)
         .filter(Boolean)
     );
     return topics.filter(t => activeTopicIds.has(t.id));
-  }, [topics, allQuestions, selectedClass]);
+  }, [topics, allQuestions, selectedClass, selectedProgram, selectedSemester, isSchool]);
 
   const { data: subTopics = [] } = useSubTopics(selectedTopics);
   const selectedSubtopics = watch("sub_topics") || [];
 
   // Filter subtopics dynamically by the selected class questions
   const filteredSubTopics = useMemo(() => {
-    if (!selectedClass) return [];
+    const activeClass = isSchool ? selectedClass : `${selectedProgram}-sem-${selectedSemester}`;
+    if (!activeClass) return [];
     const activeSubTopicIds = new Set(
       allQuestions
-        .filter(q => q.class === selectedClass)
+        .filter(q => isSchool ? q.class === activeClass : (q.class === activeClass || q.class === selectedProgram))
         .map(q => q.sub_topic_id)
         .filter(Boolean)
     );
     return subTopics.filter(st => activeSubTopicIds.has(st.id));
-  }, [subTopics, allQuestions, selectedClass]);
+  }, [subTopics, allQuestions, selectedClass, selectedProgram, selectedSemester, isSchool]);
 
   // Automatically select all subtopics that belong to the selected topics
   useEffect(() => {
@@ -283,6 +333,11 @@ export const CreateEditTestPage = () => {
 
   useEffect(() => {
     if (existingTest) {
+      if (!isSchool && existingTest.class && existingTest.class.includes("-sem-")) {
+        const parts = existingTest.class.split("-sem-");
+        setSelectedProgram(parts[0]);
+        setSelectedSemester(parts[1]);
+      }
       let testSubjectIds: string[] = [];
       if (existingTest.subject_ids && existingTest.subject_ids.length > 0) {
         testSubjectIds = existingTest.subject_ids;
@@ -343,6 +398,7 @@ export const CreateEditTestPage = () => {
 
   const buildPayload = (values: TestFormValues): TestPayload => ({
     ...values,
+    class: !isSchool ? `${selectedProgram}-sem-${selectedSemester}` : values.class,
     subject: subjectNames.length === 1 ? subjectNames[0] : subjectNames,
     subject_id: values.subject[0] || undefined,
     subject_ids: values.subject,
@@ -679,6 +735,7 @@ export const CreateEditTestPage = () => {
   return (
     <AppShell>
       <PageWrapper>
+        <div className="test-creation-studio">
         {/* Modern Breadcrumbs & Navigation */}
         <div className="mb-6 flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider text-slate-405 dark:text-slate-500">
           <Link to="/dashboard" className="hover:text-primary-600 dark:hover:text-indigo-405 transition-colors">Dashboard</Link>
@@ -689,7 +746,7 @@ export const CreateEditTestPage = () => {
         </div>
 
         {/* Studio Title Header Card */}
-        <header className="relative overflow-hidden mb-10 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-8 shadow-md text-white border border-slate-800/80">
+        <header className="test-studio-hero relative overflow-hidden mb-10 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-8 shadow-md text-white border border-slate-800/80">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f2937_1px,transparent_1px),linear-gradient(to_bottom,#1f2937_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30" />
           
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -717,7 +774,7 @@ export const CreateEditTestPage = () => {
 
         {showTabs && (
           <div className="mb-8 flex justify-start">
-            <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-950 p-1.5 rounded-2xl border border-slate-205 dark:border-slate-900 shadow-inner">
+            <div className="test-studio-mode-switch flex gap-1.5 bg-slate-100 dark:bg-slate-950 p-1.5 rounded-2xl border border-slate-205 dark:border-slate-900 shadow-inner">
               <button
                 type="button"
                 onClick={() => setMode("manual")}
@@ -751,7 +808,7 @@ export const CreateEditTestPage = () => {
             <Spinner /> <span className="ml-2 font-semibold text-sm">Loading test parameters...</span>
           </div>
         ) : mode === "csv" ? (
-          <div className="space-y-8">
+          <div className="test-csv-flow space-y-8">
             {/* Stepper block */}
             <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/50 backdrop-blur-md p-5 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-center gap-4 sm:gap-12 md:gap-20">
@@ -1032,10 +1089,9 @@ export const CreateEditTestPage = () => {
                             onChange={(e) => setCsvForm(p => ({ ...p, class: e.target.value }))}
                             className="h-12 w-full rounded-xl border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
                           >
-                            <option value="Class 9">Class 9</option>
-                            <option value="Class 10">Class 10</option>
-                            <option value="Class 11">Class 11</option>
-                            <option value="Class 12">Class 12</option>
+                            {(Array.isArray(registeredClasses) && registeredClasses.length > 0 ? registeredClasses.map(c => c.name) : ["Class 9", "Class 10", "Class 11", "Class 12"]).map((cls) => (
+                              <option key={cls} value={cls}>{cls}</option>
+                            ))}
                           </select>
                         </div>
 
@@ -1328,7 +1384,7 @@ export const CreateEditTestPage = () => {
             </Modal>
           </div>
         ) : (
-          <form className="space-y-8" onSubmit={handleSubmit(submit(true))}>
+          <form className="test-manual-form space-y-8" onSubmit={handleSubmit(submit(true))}>
             {/* Category tabs */}
             <Controller
               control={control}
@@ -1362,38 +1418,108 @@ export const CreateEditTestPage = () => {
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-2">
+                  {!isSchool && (
+                    <>
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-330">Program</span>
+                        <select
+                          value={selectedProgram}
+                          onChange={(e) => {
+                            setSelectedProgram(e.target.value);
+                            setSelectedSemester("");
+                            setValue("subject", []);
+                            setValue("topics", []);
+                            setValue("sub_topics", []);
+                          }}
+                          className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 px-4 text-sm text-slate-750 dark:text-slate-350 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
+                        >
+                          <option value="">Select Program</option>
+                          {programs.map((p: any) => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-330">Semester</span>
+                        <select
+                          value={selectedSemester}
+                          onChange={(e) => {
+                            setSelectedSemester(e.target.value);
+                            setValue("subject", []);
+                            setValue("topics", []);
+                            setValue("sub_topics", []);
+                          }}
+                          className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 px-4 text-sm text-slate-750 dark:text-slate-350 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
+                          disabled={!selectedProgram}
+                        >
+                          <option value="">Select Semester</option>
+                          {(() => {
+                            const program = programs.find((p: any) => p.id === selectedProgram);
+                            const totalSems = program?.totalSemesters || 10;
+                            return Array.from({ length: totalSems }, (_, idx) => {
+                              const semNum = idx + 1;
+                              const matchingSem = semesters.find((s: any) => {
+                                const parsedNum = parseInt(s.name.replace(/\D/g, ""), 10);
+                                return parsedNum === semNum;
+                              });
+                              const label = matchingSem?.name || `Semester ${semNum}`;
+                              return (
+                                <option key={semNum} value={String(semNum)}>
+                                  {label}
+                                </option>
+                              );
+                            });
+                          })()}
+                        </select>
+                      </label>
+                    </>
+                  )}
+
                   <Controller
                     name="subject"
                     control={control}
                     render={({ field }) => (
                       <label className="block md:col-span-2">
-                        <span className="mb-2.5 block text-sm font-bold text-slate-700 dark:text-slate-300">Target Subject(s)</span>
+                        <span className="mb-2.5 block text-sm font-bold text-slate-700 dark:text-slate-300">
+                          {!isSchool ? "Linked Subject(s)" : "Target Subject(s)"}
+                        </span>
                         <div className="flex flex-wrap gap-3.5 border border-slate-200 dark:border-slate-805 rounded-xl p-4 bg-white/90 dark:bg-slate-950/90 min-h-12 shadow-inner">
-                          {subjects.map((sub) => {
-                            const isChecked = field.value?.includes(sub.id);
-                            return (
-                              <label key={sub.id} className={`flex items-center gap-2.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                                isChecked
-                                  ? "bg-indigo-50/50 dark:bg-indigo-955/30 border-indigo-500/50 text-indigo-600 dark:text-indigo-400"
-                                  : "bg-slate-50/50 dark:bg-slate-900/30 border-slate-205 dark:border-slate-800 text-slate-600 hover:border-slate-305 dark:hover:border-slate-700"
-                              }`}>
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  className="h-4.5 w-4.5 rounded text-indigo-650 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer border-slate-300 dark:border-slate-700"
-                                  onChange={() => {
-                                    const nextValue = isChecked
-                                      ? field.value.filter((id: string) => id !== sub.id)
-                                      : [...(field.value || []), sub.id];
-                                    field.onChange(nextValue);
-                                    setValue("topics", []);
-                                    setValue("sub_topics", []);
-                                  }}
-                                />
-                                {sub.name}
-                              </label>
-                            );
-                          })}
+                          {!isSchool && (!selectedProgram || !selectedSemester) ? (
+                            <span className="text-xs text-slate-400 dark:text-slate-550 py-1.5 font-medium">
+                              Select a Program and Semester to view subjects
+                            </span>
+                          ) : visibleSubjects.length === 0 ? (
+                            <span className="text-xs text-slate-400 dark:text-slate-550 py-1.5 font-medium">
+                              No subjects linked to this semester combination
+                            </span>
+                          ) : (
+                            visibleSubjects.map((sub) => {
+                              const isChecked = field.value?.includes(sub.id);
+                              return (
+                                <label key={sub.id} className={`flex items-center gap-2.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                                  isChecked
+                                    ? "bg-indigo-50/50 dark:bg-indigo-955/30 border-indigo-500/50 text-indigo-600 dark:text-indigo-400"
+                                    : "bg-slate-50/50 dark:bg-slate-900/30 border-slate-205 dark:border-slate-800 text-slate-600 hover:border-slate-305 dark:hover:border-slate-700"
+                                }`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    className="h-4.5 w-4.5 rounded text-indigo-650 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer border-slate-300 dark:border-slate-700"
+                                    onChange={() => {
+                                      const nextValue = isChecked
+                                        ? field.value.filter((id: string) => id !== sub.id)
+                                        : [...(field.value || []), sub.id];
+                                      field.onChange(nextValue);
+                                      setValue("topics", []);
+                                      setValue("sub_topics", []);
+                                    }}
+                                  />
+                                  {sub.name}
+                                </label>
+                              );
+                            })
+                          )}
                         </div>
                         {errors.subject?.message ? (
                           <span className="mt-1 block text-xs font-semibold text-rose-500">{errors.subject.message}</span>
@@ -1406,28 +1532,29 @@ export const CreateEditTestPage = () => {
                     <Input label="Name of Test" placeholder="Enter custom name for test slot" error={errors.name?.message} {...register("name")} className="rounded-xl border-slate-200 dark:border-slate-800" />
                   </div>
 
-                  <Controller
-                    name="class"
-                    control={control}
-                    render={({ field }) => (
-                      <label className="block">
-                        <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Grade / Class</span>
-                        <select
-                          value={field.value}
-                          onChange={(e) => field.onChange(e.target.value)}
-                          className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 px-4 text-sm text-slate-750 dark:text-slate-350 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
-                        >
-                          <option value="Class 9">Class 9</option>
-                          <option value="Class 10">Class 10</option>
-                          <option value="Class 11">Class 11</option>
-                          <option value="Class 12">Class 12</option>
-                        </select>
-                        {errors.class?.message ? (
-                          <span className="mt-1 block text-xs font-semibold text-rose-550">{errors.class.message}</span>
-                        ) : null}
-                      </label>
-                    )}
-                  />
+                  {isSchool && (
+                    <Controller
+                      name="class"
+                      control={control}
+                      render={({ field }) => (
+                        <label className="block md:col-span-2">
+                          <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-355">Grade / Class</span>
+                          <select
+                            value={field.value}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-955/90 px-4 text-sm text-slate-750 dark:text-slate-350 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
+                          >
+                            {(Array.isArray(registeredClasses) && registeredClasses.length > 0 ? registeredClasses.map(c => c.name) : ["Class 9", "Class 10", "Class 11", "Class 12"]).map((cls) => (
+                              <option key={cls} value={cls}>{cls}</option>
+                            ))}
+                          </select>
+                          {errors.class?.message ? (
+                            <span className="mt-1 block text-xs font-semibold text-rose-550">{errors.class.message}</span>
+                          ) : null}
+                        </label>
+                      )}
+                    />
+                  )}
 
                   <Controller
                     name="topics"
@@ -1809,6 +1936,7 @@ export const CreateEditTestPage = () => {
             </div>
           </form>
         )}
+        </div>
       </PageWrapper>
     </AppShell>
   );

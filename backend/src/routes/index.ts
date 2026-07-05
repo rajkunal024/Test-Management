@@ -8,6 +8,7 @@ import { handleAttemptsRoutes } from "./attemptRoutes.js";
 import { handleUsersRoutes } from "./userRoutes.js";
 import { handleNotificationsRoutes } from "./notificationRoutes.js";
 import { handlePassagesRoutes } from "./passageRoutes.js";
+import { handleAcademicRoutes } from "./academicRoutes.js";
 import { json } from "../middlewares/utils.js";
 import { tenantContext } from "../utils/context.js";
 import { resolveTenant } from "../middlewares/tenant.js";
@@ -117,6 +118,18 @@ export const routeRequest = async (request: IncomingMessage, response: ServerRes
     // Notifications routes
     if (path.startsWith("/api/notifications")) {
       await handleNotificationsRoutes(request, response, path, method);
+      return;
+    }
+
+    // Academic / Session / Class / Program / Promotion routes
+    if (
+      path.startsWith("/api/classes") || 
+      path.startsWith("/api/sessions") || 
+      path.startsWith("/api/programs") || 
+      path.startsWith("/api/semesters") || 
+      path.startsWith("/api/students/promote")
+    ) {
+      await handleAcademicRoutes(request, response, path, method);
       return;
     }
 

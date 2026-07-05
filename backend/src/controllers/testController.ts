@@ -89,6 +89,45 @@ export const getTests = async (request: IncomingMessage, response: ServerRespons
         if (now >= start) {
           test.status = "live";
           await test.save();
+
+          try {
+            let studentQuery = {};
+            if (test.class) {
+              if (test.class.includes("-sem-")) {
+                const parts = test.class.split("-sem-");
+                const program_id = parts[0];
+                const semester = parseInt(parts[1], 10);
+                studentQuery = {
+                  $or: [
+                    { class: test.class },
+                    { program_id, semester }
+                  ]
+                };
+              } else {
+                studentQuery = { class: test.class };
+              }
+            }
+            const students = await StudentModel.find(studentQuery);
+            for (const student of students) {
+              const existingNotification = await NotificationModel.findOne({
+                user_id: student.userId,
+                test_id: test.id,
+                type: "test_live"
+              });
+              if (!existingNotification) {
+                await NotificationModel.create({
+                  user_id: student.userId,
+                  message: `A new test '${test.name}' is now live! Attempt it before it ends.`,
+                  type: "test_live",
+                  test_id: test.id,
+                  test_name: test.name,
+                  organization_id: test.organization_id || student.organization_id
+                });
+              }
+            }
+          } catch (err) {
+            console.error("Failed to create live test notification on transition:", err);
+          }
         }
       }
     }
@@ -168,7 +207,22 @@ export const createTest = async (request: IncomingMessage, response: ServerRespo
 
     if (newTest.status === "live" && !isUpcomingTest) {
       try {
-        const query = newTest.class ? { class: newTest.class } : {};
+        let query = {};
+        if (newTest.class) {
+          if (newTest.class.includes("-sem-")) {
+            const parts = newTest.class.split("-sem-");
+            const program_id = parts[0];
+            const semester = parseInt(parts[1], 10);
+            query = {
+              $or: [
+                { class: newTest.class },
+                { program_id, semester }
+              ]
+            };
+          } else {
+            query = { class: newTest.class };
+          }
+        }
         const students = await StudentModel.find(query);
         for (const student of students) {
           await NotificationModel.create({
@@ -291,7 +345,22 @@ export const updateTest = async (request: IncomingMessage, response: ServerRespo
 
       if (isNowLive && !isUpcomingTest) {
         try {
-          const query = test.class ? { class: test.class } : {};
+          let query = {};
+          if (test.class) {
+            if (test.class.includes("-sem-")) {
+              const parts = test.class.split("-sem-");
+              const program_id = parts[0];
+              const semester = parseInt(parts[1], 10);
+              query = {
+                $or: [
+                  { class: test.class },
+                  { program_id, semester }
+                ]
+              };
+            } else {
+              query = { class: test.class };
+            }
+          }
           const students = await StudentModel.find(query);
           for (const student of students) {
             await NotificationModel.create({

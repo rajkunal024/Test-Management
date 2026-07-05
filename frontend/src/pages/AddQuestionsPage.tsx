@@ -28,6 +28,7 @@ import {
   fetchBulkQuestions,
   getAllQuestions,
   updateTest,
+  getMyOrganization
 } from "../services/api";
 import { useTest, useSubTopics, useTopics, useSubjects } from "../hooks/useTests";
 import { Question } from "../types";
@@ -53,6 +54,8 @@ export const AddQuestionsPage = () => {
   // Queries
   const { data: test, isLoading: isLoadingTest } = useTest(id);
   const { data: subjects = [] } = useSubjects();
+  const { data: orgData } = useQuery({ queryKey: ["myOrganization"], queryFn: getMyOrganization });
+  const isSchool = orgData?.orgType !== "College";
 
   useEffect(() => {
     if (test) {
@@ -155,11 +158,13 @@ export const AddQuestionsPage = () => {
     const testTopics = test?.topics ?? [];
     return globalPool.filter((q) => {
       const belongsToSelectedTopics = q.topic_id && testTopics.includes(q.topic_id);
-      const matchesClass = q.class === test?.class;
+      const matchesClass = isSchool
+        ? q.class === test?.class
+        : (test?.class && q.class ? test.class.startsWith(q.class) : false);
       const notLinked = !linkedIds.has(q.id ?? "");
       return belongsToSelectedTopics && matchesClass && notLinked;
     });
-  }, [globalPool, test?.questions, test?.topics, test?.class]);
+  }, [globalPool, test?.questions, test?.topics, test?.class, isSchool]);
 
   const testSubjects = useMemo(() => {
     if (!test) return [];

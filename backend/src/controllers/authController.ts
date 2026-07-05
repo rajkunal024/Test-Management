@@ -153,6 +153,9 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
                 userId: teacher.userId,
                 role: "Teacher",
                 subject: teacher.subject,
+                subjects: teacher.subjects,
+                program_id: teacher.program_id,
+                program_ids: teacher.program_ids,
                 gender: teacher.gender,
                 email: teacher.email,
                 dob: teacher.dob,
@@ -199,6 +202,9 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
                 email: student.email,
                 dob: student.dob,
                 class: student.class || "Class 10",
+                session: student.session,
+                program_id: student.program_id,
+                semester: student.semester,
                 gender: student.gender,
                 requiresPasswordChange: student.requiresPasswordChange,
                 profilePicture: student.profilePicture,
@@ -595,6 +601,56 @@ export const uploadProfilePicture = async (request: IncomingMessage, response: S
   }
 };
 
+export const getMe = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const user = getUserFromRequest(request);
+    if (!user) {
+      json(response, 401, { success: false, message: "Unauthorized" });
+      return;
+    }
+
+    let userDoc: any = null;
+    if (user.role === "Admin") {
+      userDoc = await AdminModel.findOne({ userId: user.userId });
+    } else if (user.role === "Teacher") {
+      userDoc = await TeacherModel.findOne({ userId: user.userId });
+    } else if (user.role === "Student") {
+      userDoc = await StudentModel.findOne({ userId: user.userId });
+    }
+
+    if (!userDoc) {
+      json(response, 404, { success: false, message: "User not found" });
+      return;
+    }
+
+    json(response, 200, {
+      success: true,
+      data: {
+        id: userDoc.id,
+        name: userDoc.name,
+        email: userDoc.email,
+        role: user.role,
+        userId: userDoc.userId,
+        gender: userDoc.gender,
+        dob: userDoc.dob,
+        joinedAt: userDoc.createdAt || userDoc.joinedAt,
+        organization_id: userDoc.organization_id,
+         profilePicture: userDoc.profilePicture || "",
+         session: userDoc.session,
+         class: userDoc.class,
+         program_id: userDoc.program_id,
+         semester: userDoc.semester,
+         subject: userDoc.subject,
+         subjects: userDoc.subjects || [],
+         program_ids: userDoc.program_ids || []
+       }
+    });
+  } catch (e) {
+    console.error("Error in getMe controller:", e);
+    json(response, 500, { success: false, message: "Internal server error" });
+  }
+};
+
 const generateCaptchaSvg = (code: string): string => {
   const width = 150;
   const height = 48;
@@ -749,6 +805,9 @@ export const loginStudentWithCaptcha = async (request: IncomingMessage, response
             email: student.email,
             dob: student.dob,
             class: student.class || "Class 10",
+            session: student.session,
+            program_id: student.program_id,
+            semester: student.semester,
             gender: student.gender,
             requiresPasswordChange: student.requiresPasswordChange,
             profilePicture: student.profilePicture,
@@ -829,6 +888,9 @@ export const loginTeacherWithCaptcha = async (request: IncomingMessage, response
             userId: teacher.userId,
             role: "Teacher",
             subject: teacher.subject,
+            subjects: teacher.subjects,
+            program_id: teacher.program_id,
+            program_ids: teacher.program_ids,
             gender: teacher.gender,
             email: teacher.email,
             dob: teacher.dob,

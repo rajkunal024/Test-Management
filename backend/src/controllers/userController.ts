@@ -2,6 +2,7 @@ import { IncomingMessage, ServerResponse } from "node:http";
 import { json, readBody } from "../middlewares/utils.js";
 import { StudentModel, TeacherModel } from "../models/index.js";
 import { hashPassword } from "../utils/crypto.js";
+import { checkRole } from "../middlewares/auth.js";
 
 export const getUsers = async (request: IncomingMessage, response: ServerResponse) => {
   try {
@@ -17,6 +18,9 @@ export const getUsers = async (request: IncomingMessage, response: ServerRespons
         dob: s.dob,
         role: "Student",
         class: s.class,
+        session: s.session,
+        program_id: s.program_id,
+        semester: s.semester,
         gender: s.gender,
         requiresPasswordChange: s.requiresPasswordChange,
         joined_at: (s.toObject({ defaults: false } as any) as any).joined_at || s._id.getTimestamp(),
@@ -45,7 +49,7 @@ export const getUsers = async (request: IncomingMessage, response: ServerRespons
 export const createUser = async (request: IncomingMessage, response: ServerResponse) => {
   try {
     const body = JSON.parse(await readBody(request));
-    const { role, name, email, dob, password, subject, gender } = body;
+    const { role, name, email, dob, password, subject, subjects, gender, program_id, program_ids, semester, session } = body;
     
     if (!role || !name || !email || !dob || !gender) {
       json(response, 400, { success: false, message: "Missing required fields (role, name, email, dob, gender)" });
@@ -59,23 +63,24 @@ export const createUser = async (request: IncomingMessage, response: ServerRespo
     }
     
     if (role === "Teacher") {
-      if (!subject) {
-        json(response, 400, { success: false, message: "Subject is required for teachers" });
-        return;
-      }
-      
       const existingTeacher = await TeacherModel.findOne({ $or: [{ userId: email }, { email }] });
       if (existingTeacher) {
         json(response, 400, { success: false, message: "Teacher with this email already exists" });
         return;
       }
       
+      const teacherProgramIds = program_ids || (program_id ? [program_id] : []);
+      const teacherSubjects = subjects || (subject ? [subject] : []);
+
       const newTeacher = new TeacherModel({
         userId: email,
         password: hashPassword(password || "abc123"),
         name,
         role: "Teacher",
-        subject,
+        subject: subject || (teacherSubjects[0] || ""),
+        subjects: teacherSubjects,
+        program_id: program_id || (teacherProgramIds[0] || null),
+        program_ids: teacherProgramIds,
         email,
         dob,
         gender: cleanGender,
@@ -97,7 +102,10 @@ export const createUser = async (request: IncomingMessage, response: ServerRespo
         role: "Student",
         email,
         dob,
-        class: body.class || "Class 10",
+        class: program_id ? `${program_id}-sem-${semester || 1}` : (body.class || null),
+        session: session || null,
+        program_id: program_id || null,
+        semester: semester || null,
         gender: cleanGender,
         requiresPasswordChange: true,
         joined_at: body.joined_at ? new Date(body.joined_at) : new Date(),
@@ -126,7 +134,7 @@ export const bulkCreateUsers = async (request: IncomingMessage, response: Server
 
     for (let i = 0; i < users.length; i++) {
       const u = users[i];
-      const { role, name, email, dob, gender, subject, class: className } = u;
+      const { role, name, email, dob, gender, subject, subjects, program_ids, class: className, program_id, semester, session } = u;
 
       if (!role || !name || !email || !dob || !gender) {
         errors.push(`Row ${i + 1}: Missing required fields (role, name, email, dob, gender)`);
@@ -147,23 +155,24 @@ export const bulkCreateUsers = async (request: IncomingMessage, response: Server
       }
 
       if (cleanRole === "Teacher") {
-        if (!subject) {
-          errors.push(`Row ${i + 1}: Subject is required for teachers`);
-          continue;
-        }
-
         const existingTeacher = await TeacherModel.findOne({ $or: [{ userId: email }, { email }] });
         if (existingTeacher) {
           errors.push(`Row ${i + 1}: Teacher with email ${email} already exists`);
           continue;
         }
 
+        const teacherProgramIds = program_ids || (program_id ? (typeof program_id === "string" ? program_id.split(";").map((s: string) => s.trim()) : [program_id]) : []);
+        const teacherSubjects = subjects || (subject ? (typeof subject === "string" ? subject.split(";").map((s: string) => s.trim()) : [subject]) : []);
+
         const newTeacher = new TeacherModel({
           userId: email,
           password: hashPassword("abc123"),
           name,
           role: "Teacher",
-          subject,
+          subject: subject || (teacherSubjects[0] || ""),
+          subjects: teacherSubjects,
+          program_id: program_id || (teacherProgramIds[0] || null),
+          program_ids: teacherProgramIds,
           email,
           dob,
           gender: cleanGender,
@@ -186,7 +195,10 @@ export const bulkCreateUsers = async (request: IncomingMessage, response: Server
           email,
           dob,
           gender: cleanGender,
-          class: className || "Class 10",
+          class: program_id ? `${program_id}-sem-${semester || 1}` : (className || null),
+          session: session || null,
+          program_id: program_id || null,
+          semester: semester || null,
           results: [],
           requiresPasswordChange: true,
           joined_at: u.joined_at ? new Date(u.joined_at) : new Date()
@@ -203,5 +215,79 @@ export const bulkCreateUsers = async (request: IncomingMessage, response: Server
     });
   } catch (e) {
     json(response, 400, { success: false, message: "Invalid JSON body or bulk import error" });
+  }
+};
+
+export const updateUser = async (request: IncomingMessage, response: ServerResponse, userId: string) => {
+  if (!checkRole(request, ["Admin"])) {
+    json(response, 403, { success: false, message: "Unauthorized: Admins only" });
+    return;
+  }
+  try {
+    const body = JSON.parse(await readBody(request));
+    const { role, name, email, dob, gender, subject, subjects, program_id, program_ids, class: className, session, semester } = body;
+
+    let updatedDoc = null;
+    if (role === "Teacher") {
+      updatedDoc = await TeacherModel.findOneAndUpdate(
+        { userId },
+        {
+          name,
+          email,
+          dob,
+          gender,
+          subject,
+          subjects,
+          program_ids
+        },
+        { new: true }
+      );
+    } else if (role === "Student") {
+      updatedDoc = await StudentModel.findOneAndUpdate(
+        { userId },
+        {
+          name,
+          email,
+          dob,
+          gender,
+          class: className,
+          session,
+          program_id,
+          semester
+        },
+        { new: true }
+      );
+    }
+
+    if (!updatedDoc) {
+      json(response, 404, { success: false, message: "User not found" });
+      return;
+    }
+
+    json(response, 200, { success: true, data: updatedDoc });
+  } catch (e) {
+    console.error("Update user error:", e);
+    json(response, 500, { success: false, message: "Internal server error" });
+  }
+};
+
+export const deleteUser = async (request: IncomingMessage, response: ServerResponse, userId: string) => {
+  if (!checkRole(request, ["Admin"])) {
+    json(response, 403, { success: false, message: "Unauthorized: Admins only" });
+    return;
+  }
+  try {
+    const teacherDeleted = await TeacherModel.findOneAndDelete({ userId });
+    const studentDeleted = await StudentModel.findOneAndDelete({ userId });
+
+    if (!teacherDeleted && !studentDeleted) {
+      json(response, 404, { success: false, message: "User not found" });
+      return;
+    }
+
+    json(response, 200, { success: true, message: "User deleted successfully" });
+  } catch (e) {
+    console.error("Delete user error:", e);
+    json(response, 500, { success: false, message: "Internal server error" });
   }
 };
