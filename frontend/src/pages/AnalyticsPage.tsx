@@ -64,14 +64,11 @@ export const AnalyticsPage = () => {
 
   // Compile calculations & filter dynamic data
   const stats = useMemo(() => {
-    // 1. Get base attempts that belong to this student and class
+    // 1. Get base attempts that belong to this student
     const baseAttempts = attempts.filter((att) => {
       if (att.user_id !== user?.userId) return false;
       const testObj = tests.find((t) => t.id === att.test_id);
       if (!testObj) return false;
-      if (user?.class && testObj.class !== user.class) {
-        return false;
-      }
       return true;
     });
 

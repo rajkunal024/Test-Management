@@ -3,6 +3,9 @@ import { tenantContext } from "../utils/context.js";
 
 // Global Mongoose Multi-Tenancy Plugin
 mongoose.plugin((schema: any) => {
+  // Disable default Mongoose virtual "id" to prevent it from overriding our custom string "id" fields
+  schema.set("id", false);
+
   // Intercept all queries and count actions to filter by tenant context organization_id
   schema.pre(['find', 'findOne', 'countDocuments', 'estimatedDocumentCount', 'updateOne', 'updateMany', 'deleteOne', 'deleteMany', 'findOneAndUpdate', 'findOneAndDelete', 'replaceOne'], function (this: any, next: any) {
     const store = tenantContext.getStore();
@@ -81,7 +84,6 @@ export const ParikshyaAdminModel = mongoose.model("ParikshyaAdmin", ParikshyaAdm
 export const SubjectSchema = new Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
-  program_id: { type: String, default: null },
   program_ids: { type: [String], default: [] },
   program_semesters: {
     type: [{
@@ -398,7 +400,7 @@ export const NotificationSchema = new Schema({
   test_name: { type: String, required: true },
   read_by: { type: [String], default: [] },
   cleared_by: { type: [String], default: [] },
-  created_at: { type: Date, default: Date.now },
+  created_at: { type: Date, default: Date.now, expires: 86400 },
   organization_id: { type: String, required: true }
 });
 export const NotificationModel = mongoose.model("Notification", NotificationSchema);
@@ -448,7 +450,8 @@ export const MaterialSchema = new Schema({
   description: { type: String },
   file_url: { type: String },
   readme_content: { type: String },
-  resource_type: { type: String, enum: ["document", "video", "link", "readme"], default: "document" },
+  html_content: { type: String },
+  resource_type: { type: String, enum: ["document", "video", "link", "readme", "html"], default: "document" },
   organization_id: { type: String, required: true },
   program_id: { type: String, required: true },
   semester: { type: Number, required: true },

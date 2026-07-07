@@ -37,6 +37,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   clearAuth: () => {
     localStorage.removeItem("parikshya_token");
     localStorage.removeItem("parikshya_user");
+    localStorage.removeItem("parikshya_student_lms_view_mode");
     set({ token: null, user: null });
   },
 }));

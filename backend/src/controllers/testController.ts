@@ -96,11 +96,15 @@ export const getTests = async (request: IncomingMessage, response: ServerRespons
               if (test.class.includes("-sem-")) {
                 const parts = test.class.split("-sem-");
                 const program_id = parts[0];
+                const clean_program_id = program_id.startsWith("program-") ? program_id.replace("program-", "") : program_id;
+                const prefixed_program_id = `program-${clean_program_id}`;
                 const semester = parseInt(parts[1], 10);
                 studentQuery = {
                   $or: [
                     { class: test.class },
-                    { program_id, semester }
+                    { program_id: program_id, semester },
+                    { program_id: clean_program_id, semester },
+                    { program_id: prefixed_program_id, semester }
                   ]
                 };
               } else {
@@ -212,11 +216,15 @@ export const createTest = async (request: IncomingMessage, response: ServerRespo
           if (newTest.class.includes("-sem-")) {
             const parts = newTest.class.split("-sem-");
             const program_id = parts[0];
+            const clean_program_id = program_id.startsWith("program-") ? program_id.replace("program-", "") : program_id;
+            const prefixed_program_id = `program-${clean_program_id}`;
             const semester = parseInt(parts[1], 10);
             query = {
               $or: [
                 { class: newTest.class },
-                { program_id, semester }
+                { program_id: program_id, semester },
+                { program_id: clean_program_id, semester },
+                { program_id: prefixed_program_id, semester }
               ]
             };
           } else {
@@ -350,11 +358,15 @@ export const updateTest = async (request: IncomingMessage, response: ServerRespo
             if (test.class.includes("-sem-")) {
               const parts = test.class.split("-sem-");
               const program_id = parts[0];
+              const clean_program_id = program_id.startsWith("program-") ? program_id.replace("program-", "") : program_id;
+              const prefixed_program_id = `program-${clean_program_id}`;
               const semester = parseInt(parts[1], 10);
               query = {
                 $or: [
                   { class: test.class },
-                  { program_id, semester }
+                  { program_id: program_id, semester },
+                  { program_id: clean_program_id, semester },
+                  { program_id: prefixed_program_id, semester }
                 ]
               };
             } else {

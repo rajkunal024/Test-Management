@@ -72,31 +72,7 @@ export const getAttempts = async (request: IncomingMessage, response: ServerResp
     }
     let filter = {};
     if (user.role === "Student") {
-      const studentDoc = await StudentModel.findOne({ userId: user.userId });
-      if (studentDoc && studentDoc.class) {
-        const classTests = await TestModel.find({ class: studentDoc.class });
-        const rawStudent = studentDoc.toObject({ defaults: false } as any) as any;
-        const studentJoined = rawStudent.joined_at
-          ? new Date(rawStudent.joined_at).getTime()
-          : studentDoc._id.getTimestamp().getTime();
-
-        const classTestIds = classTests
-          .filter((t: any) => {
-            if (t.start_time) {
-              const start = new Date(t.start_time).getTime();
-              return start >= studentJoined;
-            }
-            return true;
-          })
-          .map((t: any) => t.id);
-
-        filter = {
-          user_id: user.userId,
-          test_id: { $in: classTestIds }
-        };
-      } else {
-        filter = { user_id: user.userId };
-      }
+      filter = { user_id: user.userId };
     }
     const attempts = await ResultModel.find(filter);
     json(response, 200, {

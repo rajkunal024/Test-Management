@@ -283,7 +283,6 @@ export const AdminRegisterPage: React.FC = () => {
     }));
     subjectMutation.mutate({
       name: subjName,
-      program_id: !isSchool && subjPrograms.length > 0 ? subjPrograms[0] : undefined,
       program_ids: !isSchool ? subjPrograms : [],
       program_semesters: !isSchool ? program_semesters : []
     });
@@ -725,7 +724,7 @@ export const AdminRegisterPage: React.FC = () => {
                     <div className="registration-inventory-icon"><BookOpen className="h-4 w-4"/></div>
                     <div className="registration-inventory-primary">
                       <b>{item.name}</b>
-                      {!isSchool && (item.program_semesters?.length || item.program_ids?.length || item.program_id) ? (
+                      {!isSchool && (item.program_semesters?.length || item.program_ids?.length) ? (
                         <span className="text-[10px] text-[#4B52DC] font-semibold mt-0.5 block">
                           Linked to: {
                             item.program_semesters && item.program_semesters.length > 0
@@ -735,7 +734,7 @@ export const AdminRegisterPage: React.FC = () => {
                                 }).join(", ")
                               : item.program_ids && item.program_ids.length > 0
                                 ? item.program_ids.map((pid: string) => programs.find(p => p.id === pid)?.name || pid).join(", ")
-                                : (programs.find(p => p.id === item.program_id)?.name || item.program_id)
+                                : "—"
                           }
                         </span>
                       ) : (
@@ -751,7 +750,7 @@ export const AdminRegisterPage: React.FC = () => {
                           setSubjName(item.name);
                           const linkedProgs = item.program_semesters 
                             ? item.program_semesters.map((ps: any) => ps.program_id) 
-                            : (item.program_ids || (item.program_id ? [item.program_id] : []));
+                            : (item.program_ids || []);
                           setSubjPrograms(linkedProgs);
                           const semsObj: Record<string, number> = {};
                           item.program_semesters?.forEach((ps: any) => {
@@ -1012,7 +1011,7 @@ export const AdminRegisterPage: React.FC = () => {
                             options={[
                               { label: "Select Subject", value: "" },
                               ...subjects
-                                .filter(s => !regProgram || s.program_ids?.includes(regProgram) || s.program_id === regProgram)
+                                .filter(s => !regProgram || s.program_ids?.includes(regProgram) || s.program_semesters?.some((ps: any) => ps.program_id === regProgram))
                                 .map(s => ({ label: s.name, value: s.name }))
                             ]}
                             value={regSubject}
@@ -1026,7 +1025,7 @@ export const AdminRegisterPage: React.FC = () => {
                             </label>
                             <div className="grid grid-cols-2 gap-2 border border-slate-200 dark:border-slate-800/85 p-4 rounded-xl bg-white/50 dark:bg-slate-900/20 max-h-40 overflow-y-auto">
                               {(() => {
-                                const availableSubjects = subjects.filter(s => !regProgram || s.program_ids?.includes(regProgram) || s.program_id === regProgram || s.program_semesters?.some((ps: any) => ps.program_id === regProgram));
+                                const availableSubjects = subjects.filter(s => !regProgram || s.program_ids?.includes(regProgram) || s.program_semesters?.some((ps: any) => ps.program_id === regProgram));
                                 if (availableSubjects.length === 0) {
                                   return <span className="col-span-2 text-xs text-slate-400 font-medium">No subjects found for this program</span>;
                                 }

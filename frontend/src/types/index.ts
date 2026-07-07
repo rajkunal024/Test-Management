@@ -38,7 +38,6 @@ export interface AuthResponse {
 export interface Subject {
   id: string;
   name: string;
-  program_id?: string;
   program_ids?: string[];
   program_semesters?: { program_id: string; semester: number }[];
 }
@@ -261,7 +260,8 @@ export interface LmsMaterial {
   description?: string;
   file_url: string;
   readme_content?: string;
-  resource_type: "document" | "video" | "link" | "readme";
+  html_content?: string;
+  resource_type: "document" | "video" | "link" | "readme" | "html";
   organization_id: string;
   program_id: string;
   semester: number;

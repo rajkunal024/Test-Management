@@ -24,6 +24,7 @@ import {
   Download,
   ExternalLink,
   FileText,
+  Code
 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -59,7 +60,8 @@ import {
   getMaterialsApi,
   uploadMaterialApi,
   createMaterialUrlApi,
-  deleteMaterialApi
+  deleteMaterialApi,
+  updateMaterialApi
 } from "../services/api";
 import { useSubTopics, useTopics } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
@@ -428,14 +430,18 @@ export const TeacherDashboard = () => {
 
   const [lmsSubTab, setLmsSubTab] = useState<"library" | "publish">("library");
   const [isEditingReadme, setIsEditingReadme] = useState(false);
+  const [isEditingHtml, setIsEditingHtml] = useState(false);
+  const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
+  const [lmsFilterSubjectId, setLmsFilterSubjectId] = useState<string>("all");
   const [lmsTitle, setLmsTitle] = useState("");
   const [lmsDescription, setLmsDescription] = useState("");
-  const [lmsResourceType, setLmsResourceType] = useState<"document" | "video" | "link" | "readme">("document");
+  const [lmsResourceType, setLmsResourceType] = useState<"document" | "video" | "link" | "readme" | "html">("document");
   const [lmsSubjectId, setLmsSubjectId] = useState("");
   const [lmsProgramSemesterStr, setLmsProgramSemesterStr] = useState("");
   const [lmsFileUrl, setLmsFileUrl] = useState("");
   const [lmsUploadType, setLmsUploadType] = useState<"file" | "url">("file");
   const [lmsReadmeContent, setLmsReadmeContent] = useState("");
+  const [lmsHtmlContent, setLmsHtmlContent] = useState("");
   const [selectedLmsFile, setSelectedLmsFile] = useState<File | null>(null);
   const [lmsSubmitLoading, setLmsSubmitLoading] = useState(false);
 
@@ -474,62 +480,80 @@ export const TeacherDashboard = () => {
 
     setLmsSubmitLoading(true);
     try {
-      if (lmsResourceType === "readme") {
-        if (!lmsReadmeContent.trim()) {
-          setToast("Please write MarkDown File content before publishing");
-          setLmsSubmitLoading(false);
-          return;
-        }
-        await createMaterialUrlApi({
+      if (editingMaterialId) {
+        await updateMaterialApi(editingMaterialId, {
           title: lmsTitle,
           description: lmsDescription,
-          resource_type: "readme",
           program_id: progId,
           semester: semNum,
           subject_id: lmsSubjectId,
-          file_url: "",
-          readme_content: lmsReadmeContent
+          readme_content: lmsResourceType === "readme" ? lmsReadmeContent : undefined,
+          html_content: lmsResourceType === "html" ? lmsHtmlContent : undefined
         });
-      } else if (lmsUploadType === "file" && selectedLmsFile) {
-        const formData = new FormData();
-        formData.append("title", lmsTitle);
-        formData.append("description", lmsDescription);
-        formData.append("resource_type", lmsResourceType);
-        formData.append("program_id", progId);
-        formData.append("semester", String(semNum));
-        formData.append("subject_id", lmsSubjectId);
-        formData.append("file", selectedLmsFile);
-
-        await uploadMaterialApi(formData);
+        setToast("Study Material updated successfully");
       } else {
-        if (!lmsFileUrl.trim()) {
-          setToast("File URL link is required");
-          setLmsSubmitLoading(false);
-          return;
+        if (lmsResourceType === "readme") {
+          if (!lmsReadmeContent.trim()) {
+            setToast("Please write MarkDown File content before publishing");
+            setLmsSubmitLoading(false);
+            return;
+          }
+          await createMaterialUrlApi({
+            title: lmsTitle,
+            description: lmsDescription,
+            resource_type: "readme",
+            program_id: progId,
+            semester: semNum,
+            subject_id: lmsSubjectId,
+            file_url: "",
+            readme_content: lmsReadmeContent
+          });
+        } else if (lmsUploadType === "file" && selectedLmsFile) {
+          const formData = new FormData();
+          formData.append("title", lmsTitle);
+          formData.append("description", lmsDescription);
+          formData.append("resource_type", lmsResourceType);
+          formData.append("program_id", progId);
+          formData.append("semester", String(semNum));
+          formData.append("subject_id", lmsSubjectId);
+          formData.append("file", selectedLmsFile);
+
+          await uploadMaterialApi(formData);
+        } else {
+          if (lmsResourceType !== "html" && !lmsFileUrl.trim()) {
+            setToast("File URL link is required");
+            setLmsSubmitLoading(false);
+            return;
+          }
+          await createMaterialUrlApi({
+            title: lmsTitle,
+            description: lmsDescription,
+            resource_type: lmsResourceType,
+            program_id: progId,
+            semester: semNum,
+            subject_id: lmsSubjectId,
+            file_url: lmsResourceType === "html" ? "" : lmsFileUrl,
+            readme_content: lmsReadmeContent,
+            html_content: lmsHtmlContent
+          });
         }
-        await createMaterialUrlApi({
-          title: lmsTitle,
-          description: lmsDescription,
-          resource_type: lmsResourceType,
-          program_id: progId,
-          semester: semNum,
-          subject_id: lmsSubjectId,
-          file_url: lmsFileUrl
-        });
+        setToast("Study Material uploaded successfully");
       }
 
-      setToast("Study Material uploaded successfully");
       setLmsTitle("");
       setLmsDescription("");
       setLmsFileUrl("");
       setLmsReadmeContent("");
+      setLmsHtmlContent("");
       setSelectedLmsFile(null);
       setLmsProgramSemesterStr("");
       setLmsSubjectId("");
+      setEditingMaterialId(null);
       const fileInput = document.getElementById("lms-file-input") as HTMLInputElement;
       if (fileInput) fileInput.value = "";
 
       setIsEditingReadme(false);
+      setIsEditingHtml(false);
       setLmsSubTab("library");
       refetchLmsMaterials();
     } catch (err: any) {
@@ -550,7 +574,11 @@ export const TeacherDashboard = () => {
       setToast("Material Title is required");
       return;
     }
-    setIsEditingReadme(true);
+    if (lmsResourceType === "html") {
+      setIsEditingHtml(true);
+    } else {
+      setIsEditingReadme(true);
+    }
   };
 
   const handleLmsSubmitFromEditor = (e: React.MouseEvent) => {
@@ -566,6 +594,37 @@ export const TeacherDashboard = () => {
       refetchLmsMaterials();
     } catch (err: any) {
       setToast("Failed to delete study material");
+    }
+  };
+
+  const handleLmsCancel = () => {
+    setIsEditingReadme(false);
+    setIsEditingHtml(false);
+    setEditingMaterialId(null);
+    setLmsTitle("");
+    setLmsDescription("");
+    setLmsFileUrl("");
+    setLmsReadmeContent("");
+    setLmsHtmlContent("");
+    setSelectedLmsFile(null);
+    setLmsProgramSemesterStr("");
+    setLmsSubjectId("");
+  };
+
+  const handleLmsEdit = (material: LmsMaterial) => {
+    setEditingMaterialId(material.id);
+    setLmsTitle(material.title);
+    setLmsDescription(material.description || "");
+    setLmsResourceType(material.resource_type);
+    setLmsSubjectId(material.subject_id);
+    setLmsProgramSemesterStr(`${material.program_id}|${material.semester}`);
+    
+    if (material.resource_type === "readme") {
+      setLmsReadmeContent(material.readme_content || "");
+      setIsEditingReadme(true);
+    } else if (material.resource_type === "html") {
+      setLmsHtmlContent(material.html_content || "");
+      setIsEditingHtml(true);
     }
   };
 
@@ -3775,7 +3834,7 @@ export const TeacherDashboard = () => {
                         <select
                           value={lmsResourceType}
                           onChange={(e) => {
-                            const nextType = e.target.value as "document" | "video" | "link" | "readme";
+                            const nextType = e.target.value as "document" | "video" | "link" | "readme" | "html";
                             setLmsResourceType(nextType);
                             if (nextType === "video" || nextType === "link") {
                               setLmsUploadType("url");
@@ -3787,14 +3846,15 @@ export const TeacherDashboard = () => {
                           required
                         >
                           <option value="document">PDF Document</option>
-                          <option value="readme">Markdown Note</option>
+                          <option value="readme">README.md file</option>
+                          <option value="html">HTML Article</option>
                           <option value="video">Video URL (YouTube/Vimeo)</option>
                           <option value="link">Other URL Link</option>
                         </select>
                       </label>
                     </div>
 
-                    {lmsResourceType === "readme" ? null : (lmsResourceType === "document" && lmsUploadType === "file") ? (
+                    {lmsResourceType === "readme" || lmsResourceType === "html" ? null : (lmsResourceType === "document" && lmsUploadType === "file") ? (
                       <div className="mt-4">
                         <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Upload PDF / Document</span>
                         <div className="flex h-32 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-400 transition bg-slate-50 dark:border-slate-850 dark:bg-slate-950 relative cursor-pointer">
@@ -3852,6 +3912,14 @@ export const TeacherDashboard = () => {
                       >
                         Continue to Markdown Editor
                       </Button>
+                    ) : lmsResourceType === "html" ? (
+                      <Button
+                        type="button"
+                        className="mt-6 h-12 w-full rounded-2xl bg-teal-500 hover:bg-teal-600 text-sm font-black text-black shadow-lg shadow-teal-500/20 flex items-center justify-center cursor-pointer"
+                        onClick={handleContinueToEditor}
+                      >
+                        Continue to HTML Editor
+                      </Button>
                     ) : (
                       <Button
                         type="submit"
@@ -3879,10 +3947,29 @@ export const TeacherDashboard = () => {
                       Review, open, or remove study resources you have published.
                     </p>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Filter:</span>
+                    <select
+                      value={lmsFilterSubjectId}
+                      onChange={(e) => setLmsFilterSubjectId(e.target.value)}
+                      className="h-10 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 min-w-[180px]"
+                    >
+                      <option value="all">All Subjects</option>
+                      {teacherSubjects.map((sub) => (
+                        <option key={sub.id} value={sub.id}>
+                          {sub.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 {(() => {
-                  const myMaterials = lmsMaterials.filter(m => m.uploaded_by === user?.userId);
+                  const myMaterials = lmsMaterials.filter(m => {
+                    const matchesUser = m.uploaded_by === user?.userId;
+                    const matchesSubject = lmsFilterSubjectId === "all" || m.subject_id === lmsFilterSubjectId;
+                    return matchesUser && matchesSubject;
+                  });
 
                   if (myMaterials.length === 0) {
                     return (
@@ -3897,99 +3984,137 @@ export const TeacherDashboard = () => {
                   }
 
                   return (
-                    <div className="grid gap-4 p-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {myMaterials.map((mat) => {
-                        const isDoc = mat.resource_type === "document";
-                        const isVideo = mat.resource_type === "video";
-                        const isReadme = mat.resource_type === "readme";
-                        const isPdf = isDoc && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf');
-                        
-                        let ResourceIcon = FileText;
-                        if (isVideo) ResourceIcon = Youtube;
-                        else if (isReadme) ResourceIcon = FileText;
-                        else if (mat.resource_type === "link") ResourceIcon = Link2;
+                    <div className="overflow-x-auto p-5">
+                      <table className="w-full border-collapse text-left">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                            <th className="pb-3 pl-3">Resource</th>
+                            <th className="pb-3">Subject</th>
+                            <th className="pb-3">Audience</th>
+                            <th className="pb-3 text-right pr-3">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                          {myMaterials.map((mat) => {
+                            const isDoc = mat.resource_type === "document";
+                            const isVideo = mat.resource_type === "video";
+                            const isReadme = mat.resource_type === "readme";
+                            const isHtml = mat.resource_type === "html";
+                            const isPdf = isDoc && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf');
+                            
+                            let ResourceIcon = FileText;
+                            if (isVideo) ResourceIcon = Youtube;
+                            else if (isReadme) ResourceIcon = FileText;
+                            else if (isHtml) ResourceIcon = Code;
+                            else if (mat.resource_type === "link") ResourceIcon = Link2;
 
-                        const subObj = subjects.find(s => s.id === mat.subject_id);
-                        const progName = programs.find(p => p.id === mat.program_id)?.code || mat.program_id;
+                            const subObj = subjects.find(s => s.id === mat.subject_id);
+                            const progName = programs.find(p => p.id === mat.program_id)?.code || mat.program_id;
 
-                        return (
-                          <article
-                            key={mat.id}
-                            className="group flex min-h-[240px] flex-col justify-between rounded-3xl border border-slate-200/80 bg-slate-50/80 p-5 transition duration-200 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-xl hover:shadow-slate-200/70 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-indigo-700 dark:hover:shadow-black/20"
-                          >
-                            <div>
-                              <div className="mb-4 flex items-start justify-between gap-3">
-                                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
-                                  isVideo
-                                    ? "bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
-                                    : isReadme
-                                      ? "bg-amber-100 text-amber-650 dark:bg-amber-950/40 dark:text-amber-300"
-                                    : isDoc
-                                      ? "bg-emerald-100 text-emerald-650 dark:bg-emerald-950/40 dark:text-emerald-300"
-                                      : "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
-                                }`}>
-                                  <ResourceIcon className="h-6 w-6" />
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleLmsDelete(mat.id)}
-                                  className="rounded-xl p-2 text-rose-500 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/25 cursor-pointer"
-                                  title="Delete study material"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
+                            return (
+                              <tr key={mat.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors">
+                                <td className="py-4 pl-3">
+                                  <div className="flex items-center gap-3.5">
+                                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                                      isVideo
+                                        ? "bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
+                                        : isReadme
+                                          ? "bg-amber-100 text-amber-650 dark:bg-amber-950/40 dark:text-amber-300"
+                                        : isHtml
+                                          ? "bg-teal-100 text-teal-650 dark:bg-teal-950/40 dark:text-teal-300"
+                                        : isDoc
+                                          ? "bg-emerald-100 text-emerald-650 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                          : "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
+                                    }`}>
+                                      <ResourceIcon className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate max-w-[280px]">
+                                          {mat.title}
+                                        </h4>
+                                        <Badge tone="slate" className="rounded-full text-[8px] font-black uppercase tracking-wider scale-90 origin-left">
+                                          {mat.resource_type}
+                                        </Badge>
+                                      </div>
+                                      {mat.description && (
+                                        <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500 truncate max-w-[340px]">
+                                          {mat.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                  {subObj?.name || mat.subject_id}
+                                </td>
+                                <td className="py-4 text-xs font-bold text-slate-500">
+                                  <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300">
+                                    {progName} · Sem {mat.semester}
+                                  </span>
+                                </td>
+                                <td className="py-4 text-right pr-3">
+                                  <div className="flex items-center justify-end gap-2">
+                                    {isReadme ? (
+                                      <Link to={`/lms/subjects/${encodeURIComponent(mat.subject_id)}/readme/${encodeURIComponent(mat.id)}`}>
+                                        <Button className="h-8 rounded-xl text-[10px] font-bold px-3 flex items-center gap-1.5 shadow-sm">
+                                          <FileText className="h-3 w-3" /> Preview
+                                        </Button>
+                                      </Link>
+                                    ) : isHtml ? (
+                                      <Link to={`/lms/subjects/${encodeURIComponent(mat.subject_id)}/html/${encodeURIComponent(mat.id)}`}>
+                                        <Button className="h-8 rounded-xl text-[10px] font-bold px-3 flex items-center gap-1.5 shadow-sm bg-teal-500 hover:bg-teal-650 text-black">
+                                          <Code className="h-3 w-3" /> Preview
+                                        </Button>
+                                      </Link>
+                                    ) : isPdf ? (
+                                      <div className="flex items-center gap-1">
+                                        <Link to={`/lms/subjects/${encodeURIComponent(mat.subject_id)}/pdf/${encodeURIComponent(mat.id)}`}>
+                                          <Button className="h-8 rounded-xl text-[10px] font-bold px-3 flex items-center gap-1.5 shadow-sm">
+                                            <FileText className="h-3 w-3" /> Preview
+                                          </Button>
+                                        </Link>
+                                        <a href={mat.file_url} target="_blank" rel="noopener noreferrer">
+                                          <Button variant="secondary" className="h-8 w-8 rounded-xl p-0 flex items-center justify-center shadow-sm" title="Download File">
+                                            <Download className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </a>
+                                      </div>
+                                    ) : (
+                                      <a href={mat.file_url} target="_blank" rel="noopener noreferrer">
+                                        <Button className="h-8 rounded-xl text-[10px] font-bold px-3 flex items-center gap-1.5 shadow-sm">
+                                          {mat.resource_type === "document" ? <Download className="h-3 w-3" /> : <ExternalLink className="h-3 w-3" />}
+                                          {mat.resource_type === "document" ? "Download" : "Open Link"}
+                                        </Button>
+                                      </a>
+                                    )}
 
-                              <Badge tone="slate" className="mb-3 rounded-full text-[9px] font-black uppercase tracking-wider">
-                                {mat.resource_type}
-                              </Badge>
-                              <h4 className="text-lg font-black leading-tight text-slate-900 dark:text-white line-clamp-2">
-                                {mat.title}
-                              </h4>
+                                    {(isReadme || isHtml) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleLmsEdit(mat)}
+                                        className="rounded-xl p-2 text-indigo-500 transition hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950/25 cursor-pointer"
+                                        title="Edit study material"
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
 
-                              {mat.description && (
-                                <p className="mt-3 line-clamp-3 text-sm font-medium leading-relaxed text-slate-500 dark:text-slate-400">
-                                  {mat.description}
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="mt-5 border-t border-slate-200 dark:border-slate-800 pt-4">
-                              <div className="mb-4 flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                                <span className="truncate">{subObj?.name || mat.subject_id}</span>
-                                <span>{progName} · Sem {mat.semester}</span>
-                              </div>
-                              {isReadme ? (
-                                <Link to={`/lms/subjects/${encodeURIComponent(mat.subject_id)}/readme/${encodeURIComponent(mat.id)}`}>
-                                  <Button className="h-10 w-full rounded-2xl text-[11px] font-black shadow-sm flex items-center justify-center gap-2">
-                                    <FileText className="h-3.5 w-3.5" /> Preview Markdown
-                                  </Button>
-                                </Link>
-                              ) : isPdf ? (
-                                <div className="flex gap-2 w-full">
-                                  <Link to={`/lms/subjects/${encodeURIComponent(mat.subject_id)}/pdf/${encodeURIComponent(mat.id)}`} className="flex-1">
-                                    <Button className="h-10 w-full rounded-2xl text-[11px] font-black shadow-sm flex items-center justify-center gap-2">
-                                      <FileText className="h-3.5 w-3.5" /> Preview PDF
-                                    </Button>
-                                  </Link>
-                                  <a href={mat.file_url} target="_blank" rel="noopener noreferrer">
-                                    <Button variant="secondary" className="h-10 rounded-2xl px-3 flex items-center justify-center shadow-sm" title="Download File">
-                                      <Download className="h-4 w-4" />
-                                    </Button>
-                                  </a>
-                                </div>
-                              ) : (
-                                <a href={mat.file_url} target="_blank" rel="noopener noreferrer">
-                                  <Button className="h-10 w-full rounded-2xl text-[11px] font-black shadow-sm flex items-center justify-center gap-2">
-                                    {mat.resource_type === "document" ? <Download className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
-                                    {mat.resource_type === "document" ? "Get File" : "Visit Link"}
-                                  </Button>
-                                </a>
-                              )}
-                            </div>
-                          </article>
-                        );
-                      })}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleLmsDelete(mat.id)}
+                                      className="rounded-xl p-2 text-rose-500 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/25 cursor-pointer"
+                                      title="Delete study material"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   );
                 })()}
@@ -4016,7 +4141,7 @@ export const TeacherDashboard = () => {
                   type="button"
                   variant="ghost"
                   className="rounded-2xl border border-white/10 text-white hover:bg-white/10 h-10 px-5"
-                  onClick={() => setIsEditingReadme(false)}
+                  onClick={handleLmsCancel}
                 >
                   Back to Details
                 </Button>
@@ -4055,7 +4180,72 @@ export const TeacherDashboard = () => {
                   <span>LIVE PREVIEW</span>
                 </div>
                 <div className="flex-1 p-6 overflow-y-auto max-w-none prose prose-invert bg-[#1c1c1b] rounded-b-2xl">
-                  <MarkdownPreview content={lmsReadmeContent || "*Start typing to see preview...*"} variant="reader" />
+                  <MarkdownPreview content={lmsReadmeContent || "*Start typing to see preview...*"} variant="reader" isHtml={false} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fullscreen HTML Editor overlay */}
+        {isEditingHtml && (
+          <div className="fixed inset-0 z-[110] bg-[#0c1619] flex flex-col p-6 animate-fade-in text-white">
+            {/* Header */}
+            <div className="flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <span className="mb-2 inline-flex items-center gap-2 rounded-full bg-teal-500/10 border border-teal-500/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-teal-400">
+                  <Code className="h-3.5 w-3.5" />
+                  HTML Article Editor
+                </span>
+                <h2 className="text-xl font-black text-white">{lmsTitle}</h2>
+                <p className="mt-0.5 text-xs text-zinc-400">{lmsDescription || "No description provided"}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="rounded-2xl border border-white/10 text-white hover:bg-white/10 h-10 px-5"
+                  onClick={handleLmsCancel}
+                >
+                  Back to Details
+                </Button>
+                <Button
+                  type="button"
+                  className="rounded-2xl bg-teal-500 hover:bg-teal-600 text-black font-black h-10 px-6 flex items-center gap-2 cursor-pointer"
+                  onClick={handleLmsSubmitFromEditor}
+                  disabled={lmsSubmitLoading}
+                >
+                  {lmsSubmitLoading && <Spinner className="h-4 w-4 mr-2" />}
+                  Publish Material
+                </Button>
+              </div>
+            </div>
+
+            {/* Editor Body */}
+            <div className="flex-1 grid grid-cols-2 gap-6 mt-6 min-h-0">
+              {/* Left: Input Textarea */}
+              <div className="flex flex-col h-full bg-[#080d0f] border border-white/10 rounded-2xl overflow-hidden">
+                <div className="border-b border-white/5 bg-[#101b1e] px-4 py-2.5 flex items-center justify-between text-xs font-bold text-teal-400">
+                  <span>HTML SOURCE CODE</span>
+                  <span>{lmsHtmlContent.length} characters</span>
+                </div>
+                <textarea
+                  value={lmsHtmlContent}
+                  onChange={(e) => setLmsHtmlContent(e.target.value)}
+                  placeholder="<h2>Section Heading</h2>&#10;<p>Write your article paragraphs here...</p>&#10;<table>&#10;  <tr><th>Header</th></tr>&#10;  <tr><td>Data</td></tr>&#10;</table>"
+                  className="flex-1 w-full bg-transparent p-6 font-mono text-sm leading-relaxed text-zinc-200 outline-none resize-none overflow-y-auto"
+                  autoFocus
+                />
+              </div>
+
+              {/* Right: Live Preview */}
+              <div className="flex flex-col h-full bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-inner">
+                <div className="border-b border-zinc-200 bg-zinc-100 px-4 py-2.5 flex items-center justify-between text-xs font-bold text-zinc-700">
+                  <span>LIVE HTML ARTICLE PREVIEW</span>
+                  <span className="text-[10px] font-black uppercase bg-teal-500/10 text-teal-700 px-2 py-0.5 rounded">Article Mode</span>
+                </div>
+                <div className="flex-1 p-8 overflow-y-auto max-w-none bg-white rounded-b-2xl">
+                  <MarkdownPreview content={lmsHtmlContent || "<p style='color: #a1a1aa;'>Start typing HTML code to see preview...</p>"} variant="light" isHtml={true} />
                 </div>
               </div>
             </div>
@@ -4797,7 +4987,7 @@ export const TeacherDashboard = () => {
           </Modal>
         )}
 
-        {toast ? <Toast>{toast}</Toast> : null}
+        {toast ? <Toast onClose={() => setToast("")}>{toast}</Toast> : null}
       </PageWrapper>
     </AppShell>
   );

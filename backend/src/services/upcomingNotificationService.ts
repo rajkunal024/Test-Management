@@ -17,7 +17,11 @@ export const startUpcomingNotificationJob = () => {
         const start = new Date(test.start_time).getTime();
         if (isNaN(start)) continue;
 
-        // 1. Send upcoming notification (5 minutes before start)
+        const lateEntryMinutes = test.lateEntryTime !== undefined ? Number(test.lateEntryTime) : 0;
+        const lateEntryCutoff = start + lateEntryMinutes * 60 * 1000;
+        if (now > lateEntryCutoff) {
+          continue;
+        }
         if (start > now && start <= fiveMinutesFromNow) {
           const alreadyNotifiedUpcoming = await NotificationModel.findOne({
             test_id: test.id,
@@ -26,7 +30,26 @@ export const startUpcomingNotificationJob = () => {
 
           if (!alreadyNotifiedUpcoming) {
             console.log(`Sending upcoming notification (5 mins before) for test: ${test.name}`);
-            const query = test.class ? { class: test.class } : {};
+            let query = {};
+            if (test.class) {
+              if (test.class.includes("-sem-")) {
+                const parts = test.class.split("-sem-");
+                const program_id = parts[0];
+                const clean_program_id = program_id.startsWith("program-") ? program_id.replace("program-", "") : program_id;
+                const prefixed_program_id = `program-${clean_program_id}`;
+                const semester = parseInt(parts[1], 10);
+                query = {
+                  $or: [
+                    { class: test.class },
+                    { program_id: program_id, semester },
+                    { program_id: clean_program_id, semester },
+                    { program_id: prefixed_program_id, semester }
+                  ]
+                };
+              } else {
+                query = { class: test.class };
+              }
+            }
             const students = await StudentModel.find(query);
             for (const student of students) {
               const rawStudent = student.toObject({ defaults: false } as any) as any;
@@ -56,7 +79,26 @@ export const startUpcomingNotificationJob = () => {
 
           if (!alreadyNotifiedLive) {
             console.log(`Sending live notification (2 mins before) for test: ${test.name}`);
-            const query = test.class ? { class: test.class } : {};
+            let query = {};
+            if (test.class) {
+              if (test.class.includes("-sem-")) {
+                const parts = test.class.split("-sem-");
+                const program_id = parts[0];
+                const clean_program_id = program_id.startsWith("program-") ? program_id.replace("program-", "") : program_id;
+                const prefixed_program_id = `program-${clean_program_id}`;
+                const semester = parseInt(parts[1], 10);
+                query = {
+                  $or: [
+                    { class: test.class },
+                    { program_id: program_id, semester },
+                    { program_id: clean_program_id, semester },
+                    { program_id: prefixed_program_id, semester }
+                  ]
+                };
+              } else {
+                query = { class: test.class };
+              }
+            }
             const students = await StudentModel.find(query);
             for (const student of students) {
               const rawStudent = student.toObject({ defaults: false } as any) as any;

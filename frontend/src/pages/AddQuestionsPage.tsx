@@ -507,7 +507,7 @@ export const AddQuestionsPage = () => {
           </aside>
         </div>
 
-        {toast ? <Toast>{toast}</Toast> : null}
+        {toast ? <Toast onClose={() => setToast("")}>{toast}</Toast> : null}
       </PageWrapper>
     </AppShell>
   );

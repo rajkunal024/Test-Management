@@ -11,7 +11,26 @@ export const performShareResults = async (testId: string) => {
     await test.save();
 
     try {
-      const query = test.class ? { class: test.class } : {};
+      let query = {};
+      if (test.class) {
+        if (test.class.includes("-sem-")) {
+          const parts = test.class.split("-sem-");
+          const program_id = parts[0];
+          const clean_program_id = program_id.startsWith("program-") ? program_id.replace("program-", "") : program_id;
+          const prefixed_program_id = `program-${clean_program_id}`;
+          const semester = parseInt(parts[1], 10);
+          query = {
+            $or: [
+              { class: test.class },
+              { program_id: program_id, semester },
+              { program_id: clean_program_id, semester },
+              { program_id: prefixed_program_id, semester }
+            ]
+          };
+        } else {
+          query = { class: test.class };
+        }
+      }
       const students = await StudentModel.find(query);
       for (const student of students) {
         await NotificationModel.create({

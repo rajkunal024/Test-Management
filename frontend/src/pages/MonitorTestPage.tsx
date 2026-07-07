@@ -477,7 +477,7 @@ export const MonitorTestPage = () => {
           )}
         </Modal>
 
-        {toast ? <Toast>{toast}</Toast> : null}
+        {toast ? <Toast onClose={() => setToast("")}>{toast}</Toast> : null}
       </PageWrapper>
     </AppShell>
   );

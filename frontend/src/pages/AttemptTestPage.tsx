@@ -758,7 +758,7 @@ export const AttemptTestPage = () => {
     if (warningMessage) {
       const timer = setTimeout(() => {
         setWarningMessage(null);
-      }, 5000);
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [warningMessage]);
@@ -1072,7 +1072,7 @@ export const AttemptTestPage = () => {
         setRestoreMessage(`✓ Session restored. Resumed from Question #${currentIdx + 1} (${solvedCount} answers loaded)`);
         const timer = setTimeout(() => {
           setRestoreMessage(null);
-        }, 5000);
+        }, 2000);
         return () => clearTimeout(timer);
       }
     }
@@ -2956,8 +2956,8 @@ export const AttemptTestPage = () => {
         </div>
       </Modal>
 
-      {warningMessage && <Toast tone="error">{warningMessage}</Toast>}
-      {restoreMessage && <Toast tone="success">{restoreMessage}</Toast>}
+      {warningMessage && <Toast tone="error" onClose={() => setWarningMessage(null)}>{warningMessage}</Toast>}
+      {restoreMessage && <Toast tone="success" onClose={() => setRestoreMessage(null)}>{restoreMessage}</Toast>}
 
       {/* Section Timeout Modal */}
       <Modal

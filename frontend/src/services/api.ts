@@ -138,13 +138,13 @@ export const getSubjects = async (): Promise<Subject[]> => {
   return unwrap(data);
 };
 
-export const createSubject = async (payload: string | { name: string; program_id?: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[] }): Promise<Subject> => {
+export const createSubject = async (payload: string | { name: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[] }): Promise<Subject> => {
   const body = typeof payload === "string" ? { name: payload } : payload;
   const { data } = await api.post<ApiEnvelope<Subject> | Subject>("/subjects", body);
   return unwrap(data);
 };
 
-export const updateSubject = async (subjectId: string, payload: { name: string; program_id?: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[] }): Promise<Subject> => {
+export const updateSubject = async (subjectId: string, payload: { name: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[] }): Promise<Subject> => {
   const { data } = await api.put<ApiEnvelope<Subject> | Subject>(`/subjects/${subjectId}`, payload);
   return unwrap(data);
 };
@@ -586,6 +586,7 @@ export const createMaterialUrlApi = async (payload: {
   semester: number;
   subject_id: string;
   readme_content?: string;
+  html_content?: string;
 }): Promise<LmsMaterial> => {
   const { data } = await api.post<ApiEnvelope<LmsMaterial> | LmsMaterial>("/lms/materials", payload);
   return unwrap(data);
@@ -593,4 +594,20 @@ export const createMaterialUrlApi = async (payload: {
 
 export const deleteMaterialApi = async (materialId: string): Promise<void> => {
   await api.delete(`/lms/materials/${materialId}`);
+};
+
+export const updateMaterialApi = async (
+  materialId: string,
+  payload: {
+    title: string;
+    description?: string;
+    program_id: string;
+    semester: number;
+    subject_id: string;
+    readme_content?: string;
+    html_content?: string;
+  }
+): Promise<LmsMaterial> => {
+  const { data } = await api.put<ApiEnvelope<LmsMaterial> | LmsMaterial>(`/lms/materials/${materialId}`, payload);
+  return unwrap(data);
 };

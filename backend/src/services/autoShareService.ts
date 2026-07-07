@@ -75,24 +75,44 @@ export const checkAndShareResults = async (testId: string) => {
     const officialEndTimeMs = startTimeMs + durationMs;
     const now = Date.now();
 
-    // 1. Check if official timeslot has completed (timeslot completed == true)
-    if (now < officialEndTimeMs) {
-      return;
+    // Resolve college cohort query matching structure
+    let query = {};
+    if (test.class) {
+      if (test.class.includes("-sem-")) {
+        const parts = test.class.split("-sem-");
+        const program_id = parts[0];
+        const clean_program_id = program_id.startsWith("program-") ? program_id.replace("program-", "") : program_id;
+        const prefixed_program_id = `program-${clean_program_id}`;
+        const semester = parseInt(parts[1], 10);
+        query = {
+          $or: [
+            { class: test.class },
+            { program_id: program_id, semester },
+            { program_id: clean_program_id, semester },
+            { program_id: prefixed_program_id, semester }
+          ]
+        };
+      } else {
+        query = { class: test.class };
+      }
     }
-
-    // 2. Check if all assigned students have completed or their entry window has expired
-    const query = test.class ? { class: test.class } : {};
     const students = await StudentModel.find(query);
+
+    const lateEntryMins = test.lateEntryTime !== undefined ? Number(test.lateEntryTime) : 0;
+    const entryExpirationMs = startTimeMs + (lateEntryMins * 60 * 1000);
+    const graceLimitMins = Number(test.graceTime ?? 0);
+    const maxEndTimeMs = startTimeMs + (graceLimitMins * 60 * 1000) + durationMs;
+
+    let allFinished = true;
 
     for (const student of students) {
       const attempt = await ResultModel.findOne({ test_id: testId, user_id: student.userId });
-      const graceLimitMins = Number(test.graceTime ?? 0);
-      const maxEndTimeMs = startTimeMs + (graceLimitMins * 60 * 1000) + durationMs;
 
       if (!attempt) {
-        // Did not attempt. We must wait if they could still start/write.
-        if (now < maxEndTimeMs) {
-          return;
+        // Did not attempt. If they can still start/enter, we cannot share yet.
+        if (now < entryExpirationMs) {
+          allFinished = false;
+          break;
         }
       } else if (attempt.status === "draft") {
         // Unfinished draft attempt. If writing window expired, auto-submit.
@@ -187,13 +207,28 @@ export const checkAndShareResults = async (testId: string) => {
           });
         } else {
           // Bounded writing window still active. Wait.
-          return;
+          allFinished = false;
+          break;
         }
+      } else if (attempt.status !== "submitted") {
+        allFinished = false;
+        break;
       }
     }
 
-    // Both conditions met -> Share results!
-    console.log(`Auto-share conditions met for test '${test.name}' (${test.id}). Sharing results...`);
+    if (students.length > 0 && allFinished) {
+      console.log(`Auto-share conditions met for test '${test.name}' (${test.id}) - all students completed or absent. Sharing results...`);
+      await performShareResults(testId);
+      return;
+    }
+
+    // Fallback: If not all finished, check if official timeslot has completed
+    if (now < officialEndTimeMs) {
+      return;
+    }
+
+    // Share results!
+    console.log(`Auto-share conditions met for test '${test.name}' (${test.id}) after official timeslot completion. Sharing results...`);
     await performShareResults(testId);
   } catch (err) {
     console.error(`Error in checkAndShareResults for test ${testId}:`, err);

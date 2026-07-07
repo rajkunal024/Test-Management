@@ -178,6 +178,30 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
   const [uploadError, setUploadError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target as Node)
+      ) {
+        setDropdownOpen(false);
+      }
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target as Node)
+      ) {
+        setProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   // States for Profile Photo Cropping & Upload flow
   const [cropStep, setCropStep] = useState<"view" | "crop" | "preview">("view");
   const [selectedImage, setSelectedImage] = useState("");
@@ -590,7 +614,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
             )}
           </button>
 
-          <div className="relative">
+          <div ref={notificationRef} className="relative">
             <button
               onClick={() => {
                 setDropdownOpen(!dropdownOpen);
@@ -678,7 +702,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
               </div>
             )}
           </div>
-          <div className="relative">
+          <div ref={profileRef} className="relative">
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-3 text-left focus:outline-none hover:opacity-85 transition group cursor-pointer"

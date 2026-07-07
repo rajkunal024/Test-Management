@@ -18,7 +18,7 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Spinner } from "../components/ui/Spinner";
-import { getAdminUsers, getAllAttempts, getAllTests } from "../services/api";
+import { getAdminUsers, getAllAttempts, getAllTests, getSubjects, getPrograms } from "../services/api";
 
 export const AdminStudentsPage = () => {
   const [search, setSearch] = useState("");
@@ -37,6 +37,16 @@ export const AdminStudentsPage = () => {
   const { data: tests = [], isLoading: isLoadingTests } = useQuery({
     queryKey: ["tests"],
     queryFn: getAllTests,
+  });
+
+  const { data: subjects = [] } = useQuery({
+    queryKey: ["subjects"],
+    queryFn: getSubjects,
+  });
+
+  const { data: programs = [] } = useQuery({
+    queryKey: ["programs"],
+    queryFn: getPrograms,
   });
 
   const students = useMemo(() => {
@@ -306,9 +316,20 @@ export const AdminStudentsPage = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <Badge tone={classTone} className="font-bold py-1 px-2.5 rounded-full">
-                            {student.class || "Class 10"}
-                          </Badge>
+                          {student.program_id && student.semester ? (
+                            (() => {
+                              const progCode = programs.find(p => p.id === student.program_id)?.code || student.program_id;
+                              return (
+                                <Badge tone="blue" className="font-bold py-1 px-2.5 rounded-full uppercase">
+                                  {progCode} · Sem {student.semester}
+                                </Badge>
+                              );
+                            })()
+                          ) : (
+                            <Badge tone={classTone} className="font-bold py-1 px-2.5 rounded-full">
+                              {student.class || "Class 10"}
+                            </Badge>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-slate-500 dark:text-slate-400 font-semibold text-xs">
                           <span className="inline-flex items-center gap-1.5">

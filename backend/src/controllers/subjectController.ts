@@ -1,7 +1,7 @@
 import { IncomingMessage, ServerResponse } from "node:http";
 import { json, readBody } from "../middlewares/utils.js";
 import { checkRole, getUserFromRequest } from "../middlewares/auth.js";
-import { SubjectModel, TopicModel, SubTopicModel } from "../models/index.js";
+import { SubjectModel, TopicModel, SubTopicModel, OrganizationModel } from "../models/index.js";
 
 export const getSubjects = async (request: IncomingMessage, response: ServerResponse) => {
   try {
@@ -21,7 +21,7 @@ export const createSubject = async (request: IncomingMessage, response: ServerRe
   }
   try {
     const body = JSON.parse(await readBody(request));
-    const { name, program_id, program_ids, program_semesters } = body;
+    const { name, program_ids, program_semesters } = body;
     
     if (!name || !name.trim()) {
       json(response, 400, { success: false, message: "Subject name is required" });
@@ -34,18 +34,50 @@ export const createSubject = async (request: IncomingMessage, response: ServerRe
       return;
     }
     
-    const subjectId = `sub-${Date.now()}`;
-    
     const adminUser = getUserFromRequest(request);
     const organization_id = adminUser?.organization_id || "";
 
-    const resolvedProgramIds = program_ids || (program_semesters ? program_semesters.map((ps: any) => ps.program_id) : (program_id ? [program_id] : []));
-    const resolvedProgramId = program_id || (resolvedProgramIds[0] || null);
+    // Generate custom ID prefix based on organization initials
+    let orgPrefix = "org";
+    if (organization_id) {
+      const org = await OrganizationModel.findOne({ id: organization_id });
+      if (org && org.name) {
+        const orgWords = org.name.trim().split(/\s+/);
+        if (orgWords.length > 0) {
+          const firstWord = orgWords[0];
+          const lastWord = orgWords[orgWords.length - 1];
+          orgPrefix = (firstWord[0] + (orgWords.length > 1 ? lastWord[0] : "")).toLowerCase();
+        }
+      }
+    }
+
+    const words = name.trim().split(/\s+/);
+    const subSlug = words.length > 1
+      ? words.map((w: string) => w[0]).join("").toLowerCase()
+      : words[0].toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+    // Generate unique 3-digit code
+    let subjectId = "";
+    let isUnique = false;
+    let attempts = 0;
+    while (!isUnique && attempts < 100) {
+      const randNum = Math.floor(100 + Math.random() * 900); // 100 to 999
+      subjectId = `${orgPrefix}_${subSlug}-${randNum}`;
+      const exists = await SubjectModel.findOne({ id: subjectId });
+      if (!exists) {
+        isUnique = true;
+      }
+      attempts++;
+    }
+    if (!isUnique) {
+      subjectId = `${orgPrefix}_${subSlug}-${Date.now()}`;
+    }
+
+    const resolvedProgramIds = program_ids || (program_semesters ? program_semesters.map((ps: any) => ps.program_id) : []);
 
     const newSubject = new SubjectModel({
       id: subjectId,
       name: name.trim(),
-      program_id: resolvedProgramId,
       program_ids: resolvedProgramIds,
       program_semesters: program_semesters || [],
       organization_id
@@ -84,20 +116,18 @@ export const updateSubject = async (request: IncomingMessage, response: ServerRe
   }
   try {
     const body = JSON.parse(await readBody(request));
-    const { name, program_id, program_ids, program_semesters } = body;
+    const { name, program_ids, program_semesters } = body;
     if (!name || !name.trim()) {
       json(response, 400, { success: false, message: "Subject name is required" });
       return;
     }
 
-    const resolvedProgramIds = program_ids || (program_semesters ? program_semesters.map((ps: any) => ps.program_id) : (program_id ? [program_id] : []));
-    const resolvedProgramId = program_id || (resolvedProgramIds[0] || null);
+    const resolvedProgramIds = program_ids || (program_semesters ? program_semesters.map((ps: any) => ps.program_id) : []);
 
     const updated = await SubjectModel.findOneAndUpdate(
       { id: subjectId },
       {
         name: name.trim(),
-        program_id: resolvedProgramId,
         program_ids: resolvedProgramIds,
         program_semesters: program_semesters || []
       },

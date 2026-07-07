@@ -1,5 +1,5 @@
 import { IncomingMessage, ServerResponse } from "node:http";
-import { getMaterials, createMaterial, deleteMaterial } from "../controllers/lmsController.js";
+import { getMaterials, createMaterial, deleteMaterial, updateMaterial } from "../controllers/lmsController.js";
 import { json } from "../middlewares/utils.js";
 
 export const handleLmsRoutes = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
@@ -9,6 +9,11 @@ export const handleLmsRoutes = async (request: IncomingMessage, response: Server
   }
   if (path.startsWith("/api/lms/materials") && method === "POST") {
     await createMaterial(request, response);
+    return;
+  }
+  if (path.startsWith("/api/lms/materials/") && method === "PUT") {
+    const materialId = path.replace("/api/lms/materials/", "");
+    await updateMaterial(request, response, materialId);
     return;
   }
   if (path.startsWith("/api/lms/materials/") && method === "DELETE") {

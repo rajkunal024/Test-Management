@@ -208,7 +208,7 @@ export const PreviewPublishPage = () => {
           {error ? <p className="mt-3 text-sm font-semibold text-rose-600">{error}</p> : null}
         </Modal>
 
-        {toast ? <Toast>{toast}</Toast> : null}
+        {toast ? <Toast onClose={() => setToast("")}>{toast}</Toast> : null}
       </PageWrapper>
     </AppShell>
   );

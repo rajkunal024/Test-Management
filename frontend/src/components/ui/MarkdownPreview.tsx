@@ -15,6 +15,47 @@ const inlineParts = (text: string, isReader: boolean) => {
   });
 };
 
+const highlightCode = (code: string, language: string = "") => {
+  let escaped = code
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  const tokenRegex = new RegExp(
+    [
+      // Comments (Group 1)
+      `(\\/{2,}.*|#[^\\n]*)`,
+      // Strings (Group 2)
+      `("(?:\\\\.|[^"])*"|'(?:\\\\.|[^'])*')`,
+      // Keywords (Group 3)
+      `\\b(class|interface|private|public|protected|void|int|double|float|char|boolean|new|this|return|if|else|for|while|do|break|continue|static|final|import|package|def|elif|in|const|let|var|function|export|from|null|undefined|true|false|True|False|None)\\b`,
+      // Numbers (Group 4)
+      `\\b(\\d+)\\b`,
+      // Function calls (Group 5)
+      `\\b([a-zA-Z_]\\w*)(?=\\()`,
+      // Types / Class Names (Group 6)
+      `\\b([A-Z][a-zA-Z0-9_]*)\\b`
+    ].join("|"),
+    "g"
+  );
+
+  return escaped.replace(tokenRegex, (match, comment, str, keyword, num, func, type) => {
+    if (comment !== undefined) return `<span style="color: #6a9955;">${comment}</span>`;
+    if (str !== undefined) return `<span style="color: #ce9178;">${str}</span>`;
+    if (keyword !== undefined) {
+      const controlFlow = ["return", "if", "else", "for", "while", "do", "break", "continue"];
+      if (controlFlow.includes(keyword)) {
+        return `<span style="color: #c586c0;">${keyword}</span>`;
+      }
+      return `<span style="color: #569cd6;">${keyword}</span>`;
+    }
+    if (num !== undefined) return `<span style="color: #b5cea8;">${num}</span>`;
+    if (func !== undefined) return `<span style="color: #dcdcaa;">${func}</span>`;
+    if (type !== undefined) return `<span style="color: #4ec9b0;">${type}</span>`;
+    return match;
+  });
+};
+
 const isTableRow = (line: string) => /^\s*\|.+\|\s*$/.test(line);
 
 const isTableDivider = (line: string) => {
@@ -33,7 +74,30 @@ const parseTableCells = (line: string) =>
     .split("|")
     .map((cell) => cell.trim());
 
-export const MarkdownPreview = ({ content, variant = "default" }: { content: string; variant?: "default" | "reader" }) => {
+export const MarkdownPreview = ({ content, variant = "default", isHtml }: { content: string; variant?: "default" | "reader" | "light" | "sepia"; isHtml?: boolean }) => {
+  const isReader = variant === "reader" || variant === "light" || variant === "sepia";
+
+  if (isHtml) {
+    if (!content.trim()) {
+      return <p className="text-sm font-semibold text-slate-400">Preview will appear here.</p>;
+    }
+    const proseClass = 
+      variant === "light"
+        ? "prose max-w-none text-zinc-950 font-serif text-[1.1rem] leading-relaxed prose-headings:font-serif prose-headings:text-zinc-950"
+        : variant === "sepia"
+          ? "prose max-w-none text-[#5b4636] font-serif text-[1.1rem] leading-relaxed prose-headings:font-serif prose-headings:text-[#3d2f24]"
+          : variant === "reader"
+            ? "prose prose-invert max-w-none text-zinc-100 font-serif text-[1.1rem] leading-relaxed"
+            : "prose dark:prose-invert max-w-none text-sm text-slate-750 dark:text-slate-200";
+
+    return (
+      <div 
+        className={`${proseClass} lms-html-prose`}
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+    );
+  }
+
   const lines = content.split(/\r?\n/);
   const blocks: JSX.Element[] = [];
   let listItems: { text: string; ordered: boolean }[] = [];
@@ -41,7 +105,6 @@ export const MarkdownPreview = ({ content, variant = "default" }: { content: str
   let codeLines: string[] = [];
   let inCodeBlock = false;
   let codeLanguage = "";
-  const isReader = variant === "reader";
 
   const flushList = () => {
     if (!listItems.length) return;
@@ -94,14 +157,17 @@ export const MarkdownPreview = ({ content, variant = "default" }: { content: str
   };
 
   const flushCode = () => {
+    const rawCode = codeLines.join("\n");
+    const highlightedHtml = highlightCode(rawCode, codeLanguage);
+
     blocks.push(
-      <div key={`code-${blocks.length}`} className={isReader ? "my-7 overflow-hidden rounded-2xl border border-white/10 bg-[#242424]" : "my-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-950 dark:border-slate-800"}>
+      <div key={`code-${blocks.length}`} className={isReader ? "my-7 overflow-hidden rounded-2xl border border-white/10 bg-[#1e1e1e]" : "my-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-950 dark:border-slate-800"}>
         <div className={isReader ? "flex items-center justify-between border-b border-white/10 px-5 py-3 font-mono text-sm text-zinc-400" : "flex items-center justify-between border-b border-white/10 px-3 py-2 font-mono text-xs text-slate-400"}>
           <span>{codeLanguage || "code"}</span>
           <span className="text-lg leading-none text-zinc-400">⧉</span>
         </div>
         <pre className={isReader ? "overflow-x-auto p-5 font-mono text-[1rem] leading-8 text-zinc-200" : "overflow-x-auto p-3 font-mono text-xs leading-6 text-slate-100"}>
-          <code>{codeLines.join("\n")}</code>
+          <code dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
         </pre>
       </div>
     );

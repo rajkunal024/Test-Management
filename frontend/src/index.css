@@ -745,3 +745,204 @@ main.dashboard-expanded [class*="rounded-3xl"][class*="border"] {
   .registration-choice-card { min-height: 155px; }
   .registration-modal > footer { padding: 12px 18px; }
 }
+
+/* Premium LMS HTML Article overrides */
+.lms-html-prose {
+  font-family: Georgia, Cambria, "Times New Roman", Times, serif !important;
+}
+
+/* Headings with vertical left accent border for HTML Articles */
+.lms-html-prose h1,
+.lms-html-prose h2,
+.lms-html-prose h3,
+.lms-html-prose h4 {
+  font-family: Georgia, Cambria, "Times New Roman", Times, serif !important;
+  font-weight: 700 !important;
+}
+
+.lms-html-prose h2,
+.lms-html-prose h3 {
+  border-left: 4px solid #1d72b8 !important;
+  padding-left: 14px !important;
+  color: #1e3a5f !important;
+  margin-top: 2rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.dark .lms-html-prose h2,
+.dark .lms-html-prose h3 {
+  border-left: 4px solid #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+/* Article title horizontal rule separator for HTML Articles */
+.lms-html-prose hr {
+  border-top: 2px solid #2d4a60 !important;
+  margin: 2rem 0 !important;
+  opacity: 0.9 !important;
+}
+
+.dark .lms-html-prose hr {
+  border-top: 2px solid #3b82f6 !important;
+}
+
+/* Blockquotes / Callout Boxes */
+.lms-html-prose blockquote {
+  background-color: #f0f7ff !important;
+  border-left: 4px solid #2563eb !important;
+  padding: 1.25rem 1.5rem !important;
+  margin: 1.5rem 0 !important;
+  border-radius: 0 12px 12px 0 !important;
+  font-style: normal !important;
+  color: #1e293b !important;
+}
+
+.dark .lms-html-prose blockquote {
+  background-color: #0c1a24 !important;
+  border-left: 4px solid #3b82f6 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Amber/Goal Blockquote Variant */
+.lms-html-prose blockquote.warning,
+.lms-html-prose blockquote.goal,
+.lms-html-prose blockquote.amber {
+  background-color: #fffbeb !important;
+  border-left: 4px solid #d97706 !important;
+  color: #451a03 !important;
+}
+
+.dark .lms-html-prose blockquote.warning,
+.dark .lms-html-prose blockquote.goal,
+.dark .lms-html-prose blockquote.amber {
+  background-color: #241d0f !important;
+  border-left: 4px solid #f59e0b !important;
+  color: #fef3c7 !important;
+}
+
+/* Premium HTML Article Table Outlines (Centered Header, Solid Grid Border) */
+.lms-html-prose table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin: 2rem 0 !important;
+  border: 1px solid #cbd5e1 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.lms-html-prose th {
+  border: 1px solid #cbd5e1 !important;
+  padding: 12px 16px !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  background-color: #2d4a60 !important;
+  color: #ffffff !important;
+  font-size: 0.95rem !important;
+}
+
+.lms-html-prose td {
+  border: 1px solid #cbd5e1 !important;
+  padding: 12px 16px !important;
+  text-align: left !important;
+  font-size: 0.95rem !important;
+  color: #334155 !important; /* Default dark text */
+}
+
+/* General Dark Mode Table overrides for HTML Articles */
+.dark .lms-html-prose table {
+  border: 1px solid #3f3f46 !important;
+  background-color: #0c1315 !important;
+}
+
+.dark .lms-html-prose th {
+  border: 1px solid #3f3f46 !important;
+  background-color: #101b1e !important;
+  color: #ffffff !important;
+}
+
+.dark .lms-html-prose td {
+  border: 1px solid #3f3f46 !important;
+  color: #e2e8f0 !important; /* Light text in dark mode */
+}
+
+/* Explicit Comfort Reading Mode Overrides for HTML Articles */
+
+/* Light Mode Comfort theme: forced white background, dark text */
+.lms-html-prose.text-zinc-950 table {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+.lms-html-prose.text-zinc-950 td {
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+.lms-html-prose.text-zinc-950 th {
+  background-color: #2d4a60 !important;
+  color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* Sepia Mode Comfort theme: warm background, dark brown text */
+.lms-html-prose.text-\[\#5b4636\] table {
+  background-color: #fcf8ed !important;
+  border: 1px solid #e4dcc8 !important;
+}
+.lms-html-prose.text-\[\#5b4636\] td {
+  color: #5b4636 !important;
+  border: 1px solid #e4dcc8 !important;
+}
+.lms-html-prose.text-\[\#5b4636\] th {
+  background-color: #5b4636 !important;
+  color: #fcf8ed !important;
+  border: 1px solid #e4dcc8 !important;
+}
+
+/* Dark Mode Comfort theme: dark teal background, light text */
+.lms-html-prose.text-zinc-100 table {
+  background-color: #121b1e !important;
+  border: 1px solid #2d3f43 !important;
+}
+.lms-html-prose.text-zinc-100 td {
+  color: #e2e8f0 !important;
+  border: 1px solid #2d3f43 !important;
+}
+.lms-html-prose.text-zinc-100 th {
+  background-color: #1a2a2e !important;
+  color: #ffffff !important;
+  border: 1px solid #2d3f43 !important;
+}
+
+/* Code block highlight inside tables or text for HTML Articles */
+.lms-html-prose code {
+  background-color: #f1f5f9 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-size: 0.9em !important;
+  font-family: monospace !important;
+  color: #0f172a !important;
+}
+
+.dark .lms-html-prose code {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+/* Bullet points and list styling for HTML Articles */
+.lms-html-prose ul {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.lms-html-prose ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.lms-html-prose li {
+  margin-bottom: 0.25rem !important;
+  list-style: inherit !important;
+}

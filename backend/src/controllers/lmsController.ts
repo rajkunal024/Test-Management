@@ -150,7 +150,7 @@ export const createMaterial = async (request: IncomingMessage, response: ServerR
       payload = JSON.parse(await readBody(request));
     }
 
-    const { title, description, resource_type, program_id, semester, subject_id, readme_content } = payload;
+    const { title, description, resource_type, program_id, semester, subject_id, readme_content, html_content } = payload;
     const finalFileUrl = fileUrl || payload.file_url || "";
     const finalResourceType = resource_type || "document";
 
@@ -166,7 +166,11 @@ export const createMaterial = async (request: IncomingMessage, response: ServerR
       json(response, 400, { success: false, message: "README.md content is required" });
       return;
     }
-    if (finalResourceType !== "readme" && !finalFileUrl.trim()) {
+    if (finalResourceType === "html" && !String(html_content || "").trim()) {
+      json(response, 400, { success: false, message: "HTML Article content is required" });
+      return;
+    }
+    if (finalResourceType !== "readme" && finalResourceType !== "html" && !finalFileUrl.trim()) {
       json(response, 400, { success: false, message: "File or URL is required" });
       return;
     }
@@ -193,6 +197,7 @@ export const createMaterial = async (request: IncomingMessage, response: ServerR
       description: description ? description.trim() : "",
       file_url: finalFileUrl,
       readme_content: readme_content ? String(readme_content).trim() : "",
+      html_content: html_content ? String(html_content).trim() : "",
       resource_type: finalResourceType,
       organization_id: user.organization_id,
       program_id,
@@ -235,5 +240,70 @@ export const deleteMaterial = async (request: IncomingMessage, response: ServerR
   } catch (e: any) {
     console.error("DELETE MATERIAL EXCEPTION:", e);
     json(response, 500, { success: false, message: "Server error" });
+  }
+};
+
+export const updateMaterial = async (request: IncomingMessage, response: ServerResponse, materialId: string) => {
+  const user = await getUserFromRequest(request);
+  if (!user || (user.role !== "Teacher" && user.role !== "Admin")) {
+    json(response, 403, { success: false, message: "Forbidden" });
+    return;
+  }
+
+  try {
+    const material = await MaterialModel.findOne({ id: materialId });
+    if (!material) {
+      json(response, 404, { success: false, message: "Material not found" });
+      return;
+    }
+
+    if (material.resource_type !== "readme" && material.resource_type !== "html") {
+      json(response, 400, { success: false, message: "Only README and HTML materials can be edited" });
+      return;
+    }
+
+    if (user.role === "Teacher" && material.uploaded_by !== user.userId) {
+      json(response, 403, { success: false, message: "Forbidden: You did not upload this material" });
+      return;
+    }
+
+    const payload = JSON.parse(await readBody(request));
+    const { title, description, readme_content, html_content, program_id, semester, subject_id } = payload;
+
+    if (!title || !title.trim()) {
+      json(response, 400, { success: false, message: "Title is required" });
+      return;
+    }
+    if (!program_id || !semester || !subject_id) {
+      json(response, 400, { success: false, message: "Program, Semester, and Subject are required" });
+      return;
+    }
+
+    if (material.resource_type === "readme" && !String(readme_content || "").trim()) {
+      json(response, 400, { success: false, message: "README.md content is required" });
+      return;
+    }
+    if (material.resource_type === "html" && !String(html_content || "").trim()) {
+      json(response, 400, { success: false, message: "HTML Article content is required" });
+      return;
+    }
+
+    material.title = title.trim();
+    material.description = description ? description.trim() : "";
+    material.program_id = program_id;
+    material.semester = Number(semester);
+    material.subject_id = subject_id;
+    
+    if (material.resource_type === "readme") {
+      material.readme_content = String(readme_content).trim();
+    } else if (material.resource_type === "html") {
+      material.html_content = String(html_content).trim();
+    }
+
+    await material.save();
+    json(response, 200, { success: true, data: material });
+  } catch (e: any) {
+    console.error("UPDATE MATERIAL EXCEPTION:", e);
+    json(response, 500, { success: false, message: e.message || "Server error" });
   }
 };

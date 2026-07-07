@@ -230,7 +230,34 @@ export const createOrganization = async (request: IncomingMessage, response: Ser
     }
 
     // Generate unique ID
-    const orgId = `org-${Date.now()}`;
+    const words = name.trim().split(/\s+/);
+    let orgId = "";
+    
+    // Ensure uniqueness
+    let isUnique = false;
+    let attempts = 0;
+    while (!isUnique && attempts < 100) {
+      const randNum = Math.floor(100 + Math.random() * 900); // 100 to 999
+      if (words.length > 1) {
+        const codeSlug = code.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
+        orgId = `org_${codeSlug}-${randNum}`;
+      } else {
+        const nameSlug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
+        orgId = `${nameSlug}-${randNum}`;
+      }
+      
+      const exists = await OrganizationModel.findOne({ id: orgId });
+      if (!exists) {
+        isUnique = true;
+      }
+      attempts++;
+    }
+    if (!isUnique) {
+      const fallbackSuffix = Date.now();
+      orgId = words.length > 1 
+        ? `org_${code.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}-${fallbackSuffix}`
+        : `${name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}-${fallbackSuffix}`;
+    }
 
     const newOrg = new OrganizationModel({
       id: orgId,
