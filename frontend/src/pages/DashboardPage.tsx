@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Pencil, Plus, Search, Trash2, Users, UserPlus, Sparkles, BookOpen, ClipboardList, GraduationCap, FileSpreadsheet, ChevronLeft, ShieldCheck, Check } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/layout/AppShell";
+import { DynamicLogo } from "../components/layout/DynamicLogo";
 import { PageWrapper } from "../components/layout/PageWrapper";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -903,7 +904,7 @@ const AdminDashboard = () => {
               <div className="lg:col-span-1 p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-6 flex flex-col items-center text-center">
                 <div className="w-24 h-24 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-extrabold text-3xl shadow-md overflow-hidden shrink-0">
                   {orgData?.logo ? (
-                    <img src={orgData.logo} alt={orgData.name} className="w-full h-full object-contain p-2" />
+                    <DynamicLogo src={orgData.logo} alt={orgData.name || "Organization Logo"} className="w-full h-full object-contain p-2" />
                   ) : (
                     (orgData?.name || "O").slice(0, 2).toUpperCase()
                   )}

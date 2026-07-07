@@ -390,21 +390,22 @@ export const StudentDashboard = () => {
               <p className="mt-3 text-sm text-slate-400 max-w-xl leading-relaxed font-medium">
                 Elevate your exam preparation. Monitor scheduled slots, attempt mock tests under live security, and trace detailed analytics.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3.5">
+              <div className="mt-6 flex max-w-full flex-col gap-3.5 sm:flex-row sm:flex-wrap">
                 <Link
                   to="/analytics"
-                  className="inline-flex items-center gap-2 px-5.5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-[#6c7df7] text-white hover:scale-[1.03] active:scale-[0.98] hover:shadow-lg hover:shadow-indigo-500/25 text-xs font-bold transition-all duration-300"
+                  className="inline-flex max-w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-[#6c7df7] px-4 py-2.5 text-center text-xs font-bold leading-snug text-white transition-all duration-300 hover:scale-[1.03] hover:shadow-lg hover:shadow-indigo-500/25 active:scale-[0.98] sm:w-auto sm:px-5"
                 >
-                  <TrendingUp className="h-4 w-4" /> View Performance Charts
+                  <TrendingUp className="h-4 w-4 shrink-0" />
+                  <span className="min-w-0 whitespace-normal break-words">View Performance Charts</span>
                 </Link>
                 <button
                   onClick={() => {
                     const el = document.getElementById("exams-list-section");
                     el?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="inline-flex items-center gap-1.5 px-5.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-bold border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
+                  className="inline-flex max-w-full items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-center text-xs font-bold leading-snug text-slate-200 transition-all duration-300 hover:scale-[1.03] hover:border-white/20 hover:bg-white/10 active:scale-[0.98] sm:w-auto sm:px-5"
                 >
-                  Browse Exams
+                  <span className="min-w-0 whitespace-normal break-words">Browse Exams</span>
                 </button>
               </div>
             </div>

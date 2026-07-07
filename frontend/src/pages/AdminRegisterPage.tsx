@@ -45,6 +45,7 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { AppShell } from "../components/layout/AppShell";
+import { DynamicLogo } from "../components/layout/DynamicLogo";
 import { PageWrapper } from "../components/layout/PageWrapper";
 
 export const AdminRegisterPage: React.FC = () => {
@@ -487,7 +488,7 @@ export const AdminRegisterPage: React.FC = () => {
         </div>
         <div className="admin-registration-org">
           {orgData?.logo ? (
-            <img src={orgData.logo} alt={orgData.name || "Organization"} />
+            <DynamicLogo src={orgData.logo} alt={orgData.name || "Organization"} />
           ) : (
             <span className="admin-registration-org-fallback">
               {(orgData?.name || "O").charAt(0).toUpperCase()}

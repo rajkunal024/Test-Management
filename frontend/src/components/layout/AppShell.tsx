@@ -38,6 +38,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Logo } from "./Logo";
+import { DynamicLogo } from "./DynamicLogo";
 import { useAuthStore } from "../../store/authStore";
 import { logout as apiLogout, getNotifications, markNotificationsRead, clearAllNotifications, changePassword, uploadProfilePicture, getErrorMessage, getMyOrganization, getPrograms, getMe, getClasses } from "../../services/api";
 import { Modal } from "../ui/Modal";
@@ -566,23 +567,13 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
         className="fixed left-0 right-0 top-0 z-40 flex h-[100px] items-center justify-between border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 px-7"
       >
         <div className="flex items-center gap-4">
-          {/* Toggle Button for Navigation Panel */}
-          <button
-            onClick={toggleNav}
-            className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-200 text-slate-700 transition focus:outline-none cursor-pointer shrink-0"
-            title={navHidden ? "Show Navigation" : "Hide Navigation"}
-            id="nav-visibility-toggle"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-
           {orgLogo ? (
             <Link
               to="/dashboard"
               className="cursor-pointer hover:opacity-85 transition flex items-center justify-center max-h-[80px] animate-fade-in"
               title={orgName || "Home"}
             >
-              <img
+              <DynamicLogo
                 src={orgLogo}
                 alt={orgName || "Home"}
                 className="max-h-[60px] max-w-[150px] object-contain"
@@ -597,6 +588,16 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
               <Home className="h-5.5 w-5.5" />
             </Link>
           )}
+
+          {/* Toggle Button for Navigation Panel */}
+          <button
+            onClick={toggleNav}
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-200 text-slate-700 transition focus:outline-none cursor-pointer shrink-0"
+            title={navHidden ? "Show Navigation" : "Hide Navigation"}
+            id="nav-visibility-toggle"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
         </div>
 
         <div className="flex items-center gap-4 animate-fade-in">
