@@ -2,6 +2,52 @@ import { ServerResponse, IncomingMessage } from "node:http";
 
 export const frontendOrigin = process.env.FRONTEND_ORIGIN ?? "http://127.0.0.1:5173";
 
+export const getCorsOrigin = (origin?: string): string => {
+  if (!origin) return frontendOrigin;
+
+  const allowedOriginsEnv = process.env.FRONTEND_ORIGIN
+    ? process.env.FRONTEND_ORIGIN.split(",").map((o) => o.trim()).filter(Boolean)
+    : [];
+
+  const defaultAllowed = [
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://127.0.0.1:4200",
+    "http://localhost:4200",
+    ...allowedOriginsEnv
+  ];
+
+  if (defaultAllowed.includes(origin)) {
+    return origin;
+  }
+
+  // Allow Vercel deployments (*.vercel.app)
+  if (origin.endsWith(".vercel.app") || origin.includes(".vercel.app")) {
+    return origin;
+  }
+
+  // Allow Render services (*.onrender.com)
+  if (origin.endsWith(".onrender.com")) {
+    return origin;
+  }
+
+  // Allow VS Code Dev Tunnels & GitHub Codespaces
+  if (
+    origin.endsWith(".devtunnels.ms") ||
+    origin.endsWith(".github.dev") ||
+    origin.endsWith(".app.github.dev")
+  ) {
+    return origin;
+  }
+
+  // Allow local network IP addresses (e.g. 192.168.x.x, 10.x.x.x)
+  if (/^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+    return origin;
+  }
+
+  return frontendOrigin;
+};
+
 export const json = (
   response: ServerResponse,
   statusCode: number,
@@ -10,20 +56,13 @@ export const json = (
 ) => {
   const request = (response as any).req;
   const origin = request?.headers?.origin;
-  const allowedOrigins = [
-    process.env.FRONTEND_ORIGIN,
-    "http://127.0.0.1:5173",
-    "http://localhost:5173",
-    "http://127.0.0.1:4200",
-    "http://localhost:4200"
-  ].filter(Boolean);
-  
-  const corsOrigin = (origin && allowedOrigins.includes(origin)) ? origin : frontendOrigin;
+  const corsOrigin = getCorsOrigin(origin);
 
   response.writeHead(statusCode, {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": corsOrigin,
     "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Headers": "authorization, content-type, x-tenant-id, cache-control, pragma",
     ...additionalHeaders
   });
   response.end(JSON.stringify(body));

@@ -88,7 +88,7 @@ export const MarkdownPreview = ({ content, variant = "default", isHtml }: { cont
           ? "prose max-w-none text-[#5b4636] font-serif text-[1.1rem] leading-relaxed prose-headings:font-serif prose-headings:text-[#3d2f24]"
           : variant === "reader"
             ? "prose prose-invert max-w-none text-zinc-100 font-serif text-[1.1rem] leading-relaxed"
-            : "prose dark:prose-invert max-w-none text-sm text-slate-750 dark:text-slate-200";
+            : "prose dark:prose-invert max-w-none text-sm text-slate-700 dark:text-slate-200";
 
     return (
       <div 

@@ -737,8 +737,8 @@ export const CreateEditTestPage = () => {
       <PageWrapper>
         <div className="test-creation-studio">
         {/* Modern Breadcrumbs & Navigation */}
-        <div className="mb-6 flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider text-slate-405 dark:text-slate-500">
-          <Link to="/dashboard" className="hover:text-primary-600 dark:hover:text-indigo-405 transition-colors">Dashboard</Link>
+        <div className="mb-6 flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <Link to="/dashboard" className="hover:text-primary-600 dark:hover:text-indigo-400 transition-colors">Dashboard</Link>
           <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-700" />
           <span className="text-slate-500 dark:text-slate-400">{isEdit ? "Edit Test Slot" : "New Test Slot"}</span>
           <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-700" />
@@ -746,19 +746,19 @@ export const CreateEditTestPage = () => {
         </div>
 
         {/* Studio Title Header Card */}
-        <header className="test-studio-hero relative overflow-hidden mb-10 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-8 shadow-md text-white border border-slate-800/80">
+        <header className="test-studio-hero relative overflow-hidden mb-8 sm:mb-10 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-5 sm:p-8 shadow-md text-white border border-slate-800/80">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f2937_1px,transparent_1px),linear-gradient(to_bottom,#1f2937_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30" />
           
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-2.5">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/15 border border-indigo-400/30 px-3.5 py-1.5 text-xs font-bold text-indigo-300">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/15 border border-indigo-400/30 px-3 py-1 sm:px-3.5 sm:py-1.5 text-xs font-bold text-indigo-300">
                 <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
                 <span>Test Configuration Studio</span>
               </div>
-              <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-200 bg-clip-text text-transparent">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-200 bg-clip-text text-transparent">
                 {isEdit ? `Edit Configuration: ${existingTest?.name || "Test"}` : "Configure New Test Slot"}
               </h1>
-              <p className="text-sm text-slate-300/80 max-w-xl">
+              <p className="text-xs sm:text-sm text-slate-300/80 max-w-xl">
                 {isEdit 
                   ? "Adjust slot attributes, timing configurations, or marking policies for this upcoming test instance." 
                   : "Establish exam parameters, schedule testing slots, set up scoring structures, or batch import question matrices via CSV."
@@ -766,38 +766,38 @@ export const CreateEditTestPage = () => {
               </p>
             </div>
             
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 border border-indigo-400/20 text-indigo-300 shadow-inner md:mr-4 flex-shrink-0">
+            <div className="hidden md:flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 border border-indigo-400/20 text-indigo-300 shadow-inner md:mr-4 flex-shrink-0">
               <Settings className="h-7 w-7 animate-[spin_16s_linear_infinite]" />
             </div>
           </div>
         </header>
 
         {showTabs && (
-          <div className="mb-8 flex justify-start">
-            <div className="test-studio-mode-switch flex gap-1.5 bg-slate-100 dark:bg-slate-950 p-1.5 rounded-2xl border border-slate-205 dark:border-slate-900 shadow-inner">
+          <div className="mb-8 flex justify-start w-full">
+            <div className="test-studio-mode-switch flex gap-1.5 bg-slate-100 dark:bg-slate-950 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-900 shadow-inner w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setMode("manual")}
-                className={`py-2.5 px-6 rounded-xl text-sm font-bold transition-all duration-250 flex items-center gap-2 ${
+                className={`flex-1 sm:flex-none py-2.5 px-3.5 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 ${
                   mode === "manual"
-                    ? "bg-white dark:bg-slate-900 text-primary-605 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-800"
-                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-350 border border-transparent"
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-800"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
                 }`}
               >
-                <Edit3 className="h-4 w-4" />
-                Manual Configuration
+                <Edit3 className="h-4 w-4 shrink-0" />
+                <span>Manual Configuration</span>
               </button>
               <button
                 type="button"
                 onClick={() => setMode("csv")}
-                className={`py-2.5 px-6 rounded-xl text-sm font-bold transition-all duration-250 flex items-center gap-2 ${
+                className={`flex-1 sm:flex-none py-2.5 px-3.5 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 ${
                   mode === "csv"
-                    ? "bg-white dark:bg-slate-900 text-primary-605 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-800"
-                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-350 border border-transparent"
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-800"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border border-transparent"
                 }`}
               >
-                <FileSpreadsheet className="h-4 w-4" />
-                CSV Import Wizard
+                <FileSpreadsheet className="h-4 w-4 shrink-0" />
+                <span>CSV Import Wizard</span>
               </button>
             </div>
           </div>
@@ -815,13 +815,13 @@ export const CreateEditTestPage = () => {
                 <div className="flex items-center gap-3">
                   <div className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold text-sm transition-all duration-300 ${
                     csvStep === 1 
-                      ? "bg-indigo-650 text-white shadow-md shadow-indigo-500/20 scale-105" 
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-105" 
                       : "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900"
                   }`}>
                     {csvStep > 1 ? <Check className="h-5 w-5" /> : "1"}
                   </div>
                   <div>
-                    <h3 className={`text-sm font-bold ${csvStep === 1 ? "text-indigo-600 dark:text-indigo-400" : "text-slate-750 dark:text-slate-300"}`}>
+                    <h3 className={`text-sm font-bold ${csvStep === 1 ? "text-indigo-600 dark:text-indigo-400" : "text-slate-700 dark:text-slate-300"}`}>
                       Upload & Preview
                     </h3>
                     <p className="text-xs text-slate-400 dark:text-slate-500">Provide CSV and parse questions</p>
@@ -833,7 +833,7 @@ export const CreateEditTestPage = () => {
                 <div className="flex items-center gap-3">
                   <div className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold text-sm transition-all duration-300 ${
                     csvStep === 2 
-                      ? "bg-indigo-650 text-white shadow-md shadow-indigo-500/20 scale-105" 
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-105" 
                       : "bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500"
                   }`}>
                     2
@@ -852,13 +852,13 @@ export const CreateEditTestPage = () => {
               <div className="space-y-6">
                 <div className="grid gap-6 md:grid-cols-2">
                   {/* File Upload Zone */}
-                  <div className="rounded-2xl border-2 border-dashed border-slate-300/80 dark:border-slate-800/80 p-8 text-center bg-white/60 dark:bg-slate-900/30 hover:bg-white dark:hover:bg-slate-900/60 hover:border-indigo-550 dark:hover:border-indigo-400 transition-all duration-350 shadow-sm flex flex-col items-center justify-center min-h-[220px] group">
+                  <div className="rounded-2xl border-2 border-dashed border-slate-300/80 dark:border-slate-800/80 p-8 text-center bg-white/60 dark:bg-slate-900/30 hover:bg-white dark:hover:bg-slate-900/60 hover:border-indigo-500 dark:hover:border-indigo-400 transition-all duration-350 shadow-sm flex flex-col items-center justify-center min-h-[220px] group">
                     <label className="cursor-pointer flex flex-col items-center justify-center space-y-3 w-full h-full">
-                      <div className="p-4 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-605 dark:text-indigo-400 rounded-2xl group-hover:scale-110 group-hover:bg-indigo-100/50 dark:group-hover:bg-indigo-950/70 transition-all duration-300">
+                      <div className="p-4 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-2xl group-hover:scale-110 group-hover:bg-indigo-100/50 dark:group-hover:bg-indigo-950/70 transition-all duration-300">
                         <UploadCloud className="w-8 h-8" />
                       </div>
                       <div className="space-y-1">
-                        <span className="font-bold text-slate-850 dark:text-slate-200 text-sm block">Upload Question CSV</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200 text-sm block">Upload Question CSV</span>
                         <span className="text-xs text-slate-400 dark:text-slate-500 block">Required: question, correct_option, subject, option1, option2</span>
                       </div>
                       <div className="inline-flex px-4 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-xs font-semibold text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 hover:bg-indigo-100/50 transition-colors">
@@ -885,9 +885,9 @@ export const CreateEditTestPage = () => {
                   </div>
 
                   {/* Paste CSV Values */}
-                  <div className="flex flex-col bg-white/60 dark:bg-slate-900/30 border border-slate-205 dark:border-slate-850 rounded-2xl p-5 shadow-sm">
-                    <span className="mb-2 block text-sm font-bold text-slate-750 dark:text-slate-300 flex items-center gap-2">
-                      <FileSpreadsheet className="h-4 w-4 text-indigo-505" />
+                  <div className="flex flex-col bg-white/60 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+                    <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                      <FileSpreadsheet className="h-4 w-4 text-indigo-500" />
                       Or Paste Raw CSV Values
                     </span>
                     <textarea
@@ -897,13 +897,13 @@ export const CreateEditTestPage = () => {
                         setCsvText(e.target.value);
                         handleParseCsv(e.target.value);
                       }}
-                      className="h-[148px] w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-955/90 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 outline-none focus:border-indigo-505 focus:ring-2 focus:ring-indigo-500/20 transition-all scrollbar-thin"
+                      className="h-[148px] w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 p-4 text-xs font-mono text-slate-700 dark:text-slate-300 outline-none focus:border-indigo-505 focus:ring-2 focus:ring-indigo-500/20 transition-all scrollbar-thin"
                     />
                   </div>
                 </div>
 
                 {parseErrorMsg && (
-                  <div className="rounded-2xl bg-rose-50/50 dark:bg-rose-955/20 p-4 text-sm text-rose-600 dark:text-rose-400 border border-rose-105 dark:border-rose-900/50 font-medium flex items-start gap-3 shadow-sm">
+                  <div className="rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 p-4 text-sm text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50 font-medium flex items-start gap-3 shadow-sm">
                     <AlertCircle className="h-5 w-5 text-rose-500 flex-shrink-0 mt-0.5" />
                     <div>
                       <strong className="block font-bold mb-0.5">Parse Failure</strong>
@@ -913,13 +913,13 @@ export const CreateEditTestPage = () => {
                 )}
 
                 {parsedErrors.length > 0 && (
-                  <div className="rounded-2xl bg-rose-50/50 dark:bg-rose-955/20 p-5 border border-rose-105 dark:border-rose-900/50 shadow-sm flex items-start gap-3">
+                  <div className="rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 p-5 border border-rose-100 dark:border-rose-900/50 shadow-sm flex items-start gap-3">
                     <AlertCircle className="h-5 w-5 text-rose-505 flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-bold text-rose-700 dark:text-rose-450 block">
+                      <span className="text-sm font-bold text-rose-700 dark:text-rose-400 block">
                         Question Validation Failures ({parsedErrors.length})
                       </span>
-                      <p className="text-xs text-rose-500 dark:text-rose-450 mt-1">The following rows have missing fields and will be skipped during import:</p>
+                      <p className="text-xs text-rose-500 dark:text-rose-400 mt-1">The following rows have missing fields and will be skipped during import:</p>
                       <div className="mt-3 max-h-40 overflow-y-auto text-xs text-rose-600 dark:text-rose-400 space-y-1.5 scrollbar-thin pr-2">
                         {parsedErrors.map((err, idx) => (
                           <div key={idx} className="flex gap-2 items-baseline bg-rose-100/30 dark:bg-rose-950/40 p-2 rounded-lg border border-rose-200/30 dark:border-rose-900/20">
@@ -933,22 +933,22 @@ export const CreateEditTestPage = () => {
                 )}
 
                 {parsedRows.length > 0 && (
-                  <div className="rounded-2xl border border-slate-205 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-5">
+                  <div className="rounded-2xl border border-slate-200 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-5">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                       <div>
                         <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
                           <CheckCircle2 className="h-5 w-5 text-emerald-500 animate-pulse" />
                           Valid Question Pool ({parsedRows.length})
                         </h3>
-                        <p className="text-xs text-slate-450 dark:text-slate-500 mt-1">
-                          Questions to import: <span className="font-bold text-indigo-500 dark:text-indigo-405">{selectedRowIds.length}</span>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                          Questions to import: <span className="font-bold text-indigo-500 dark:text-indigo-400">{selectedRowIds.length}</span>
                         </p>
                       </div>
                       <div className="flex gap-2">
                         <Button
                           type="button"
                           variant="secondary"
-                          className="h-9 rounded-xl px-4 text-xs font-bold bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-205"
+                          className="h-9 rounded-xl px-4 text-xs font-bold bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
                           onClick={() => setSelectedRowIds(parsedRows.map(r => r.id))}
                         >
                           Select All
@@ -956,7 +956,7 @@ export const CreateEditTestPage = () => {
                         <Button
                           type="button"
                           variant="secondary"
-                          className="h-9 rounded-xl px-4 text-xs font-bold bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-205"
+                          className="h-9 rounded-xl px-4 text-xs font-bold bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
                           onClick={() => setSelectedRowIds([])}
                         >
                           Clear Selection
@@ -964,10 +964,10 @@ export const CreateEditTestPage = () => {
                       </div>
                     </div>
 
-                    <div className="border border-slate-150 dark:border-slate-800/60 rounded-xl overflow-hidden shadow-sm max-h-[360px] overflow-y-auto scrollbar-thin">
+                    <div className="border border-slate-200 dark:border-slate-800/60 rounded-xl overflow-auto shadow-sm max-h-[360px] scrollbar-thin">
                       <table className="w-full border-collapse text-left text-xs relative">
                         <thead>
-                          <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-150 dark:border-slate-800/60 sticky top-0 z-10">
+                          <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800/60 sticky top-0 z-10">
                             <th className="p-3.5 w-12 text-center bg-slate-50 dark:bg-slate-950">Select</th>
                             <th className="p-3.5 w-16 bg-slate-50 dark:bg-slate-950">Index</th>
                             <th className="p-3.5 min-w-[200px] bg-slate-50 dark:bg-slate-950">Question Statement</th>
@@ -977,7 +977,7 @@ export const CreateEditTestPage = () => {
                             <th className="p-3.5 min-w-[150px] bg-slate-50 dark:bg-slate-950">Topic Node</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-350">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                           {parsedRows.map((row) => {
                             const isSelected = selectedRowIds.includes(row.id);
                             return (
@@ -1002,10 +1002,10 @@ export const CreateEditTestPage = () => {
                                 </td>
                                 <td className="p-3.5 text-slate-500 dark:text-slate-400 truncate max-w-xs" title={`1: ${row.option1} | 2: ${row.option2} ${row.option3 && `| 3: ${row.option3}`} ${row.option4 && `| 4: ${row.option4}`}`}>
                                   <span className="inline-flex gap-1.5">
-                                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-750 font-bold scale-90">A</span> {row.option1}
-                                    <span className="ml-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-750 font-bold scale-90">B</span> {row.option2}
-                                    {row.option3 && <><span className="ml-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-750 font-bold scale-90">C</span> {row.option3}</>}
-                                    {row.option4 && <><span className="ml-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-750 font-bold scale-90">D</span> {row.option4}</>}
+                                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold scale-90">A</span> {row.option1}
+                                    <span className="ml-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold scale-90">B</span> {row.option2}
+                                    {row.option3 && <><span className="ml-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold scale-90">C</span> {row.option3}</>}
+                                    {row.option4 && <><span className="ml-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold scale-90">D</span> {row.option4}</>}
                                   </span>
                                 </td>
                                 <td className="p-3.5">
@@ -1016,7 +1016,7 @@ export const CreateEditTestPage = () => {
                                 <td className="p-3.5">
                                   <Badge tone="blue" className="font-semibold">{row.subject}</Badge>
                                 </td>
-                                <td className="p-3.5 text-slate-450 dark:text-slate-500 max-w-[180px] truncate" title={`${row.topic} / ${row.sub_topic}`}>
+                                <td className="p-3.5 text-slate-400 dark:text-slate-500 max-w-[180px] truncate" title={`${row.topic} / ${row.sub_topic}`}>
                                   {row.topic} <span className="mx-1">→</span> {row.sub_topic}
                                 </td>
                               </tr>
@@ -1035,7 +1035,7 @@ export const CreateEditTestPage = () => {
                     type="button"
                     variant="secondary"
                     onClick={() => navigate("/dashboard")}
-                    className="rounded-xl shadow-sm border border-slate-200 hover:border-slate-350 dark:border-slate-800 dark:hover:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-900 transition-all text-xs font-bold px-5 py-2.5"
+                    className="rounded-xl shadow-sm border border-slate-200 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-900 transition-all text-xs font-bold px-5 py-2.5"
                   >
                     Cancel
                   </Button>
@@ -1074,7 +1074,7 @@ export const CreateEditTestPage = () => {
                           placeholder="Enter name of Test"
                           value={csvForm.name}
                           onChange={(e) => setCsvForm(p => ({ ...p, name: e.target.value }))}
-                          className="h-12 w-full rounded-xl border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
+                          className="h-12 w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
                         />
                         {csvFormErrors.name && (
                           <span className="mt-1 block text-xs font-semibold text-rose-500">{csvFormErrors.name}</span>
@@ -1087,7 +1087,7 @@ export const CreateEditTestPage = () => {
                           <select
                             value={csvForm.class}
                             onChange={(e) => setCsvForm(p => ({ ...p, class: e.target.value }))}
-                            className="h-12 w-full rounded-xl border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
+                            className="h-12 w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
                           >
                             {(Array.isArray(registeredClasses) && registeredClasses.length > 0 ? registeredClasses.map(c => c.name) : ["Class 9", "Class 10", "Class 11", "Class 12"]).map((cls) => (
                               <option key={cls} value={cls}>{cls}</option>
@@ -1100,7 +1100,7 @@ export const CreateEditTestPage = () => {
                           <select
                             value={csvForm.type}
                             onChange={(e) => setCsvForm(p => ({ ...p, type: e.target.value }))}
-                            className="h-12 w-full rounded-xl border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-955 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
+                            className="h-12 w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
                           >
                             <option value="practice">Chapter Wise</option>
                             <option value="previous_year">PYQ</option>
@@ -1127,7 +1127,7 @@ export const CreateEditTestPage = () => {
                             const val = e.target.value as "live_now" | "live_until";
                             setCsvForm(p => ({ ...p, schedulingType: val, start_time: "", end_time: "" }));
                           }}
-                          className="h-12 w-full rounded-xl border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
+                          className="h-12 w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
                         >
                           <option value="live_now">Live Today</option>
                           <option value="live_until">Live Until</option>
@@ -1143,7 +1143,7 @@ export const CreateEditTestPage = () => {
                               placeholder="Minutes"
                               value={csvForm.total_time}
                               onChange={(e) => setCsvForm(p => ({ ...p, total_time: Number(e.target.value) }))}
-                              className="h-12 w-full rounded-xl border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
+                              className="h-12 w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
                             />
                             {csvFormErrors.total_time && (
                               <span className="mt-1 block text-xs font-semibold text-rose-500">{csvFormErrors.total_time}</span>
@@ -1165,7 +1165,7 @@ export const CreateEditTestPage = () => {
                                   setCsvForm(p => ({ ...p, start_time: "" }));
                                 }
                               }}
-                              className="h-12 w-full rounded-xl border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
+                              className="h-12 w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
                             />
                             {csvFormErrors.start_time && (
                               <span className="mt-1 block text-xs font-semibold text-rose-500">{csvFormErrors.start_time}</span>
@@ -1177,7 +1177,7 @@ export const CreateEditTestPage = () => {
                               type="time"
                               value={csvForm.end_time ? csvForm.end_time.split("T")[1]?.substring(0, 5) : ""}
                               readOnly
-                              className="h-12 w-full rounded-xl border border-slate-250 dark:border-slate-850 bg-slate-50 dark:bg-slate-900/50 px-4 text-sm text-slate-400 dark:text-slate-500 outline-none cursor-not-allowed"
+                              className="h-12 w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 text-sm text-slate-400 dark:text-slate-500 outline-none cursor-not-allowed"
                             />
                           </div>
                         </div>
@@ -1191,7 +1191,7 @@ export const CreateEditTestPage = () => {
                                 min={getMinStartTime()}
                                 value={csvForm.start_time}
                                 onChange={(e) => setCsvForm(p => ({ ...p, start_time: e.target.value }))}
-                                className="h-12 w-full rounded-xl border border-slate-250 dark:border-slate-855 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
+                                className="h-12 w-full rounded-xl border border-slate-300 dark:border-slate-855 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
                               />
                               {csvFormErrors.start_time && (
                                 <span className="mt-1 block text-xs font-semibold text-rose-500">{csvFormErrors.start_time}</span>
@@ -1204,7 +1204,7 @@ export const CreateEditTestPage = () => {
                                 min={csvForm.start_time || getMinStartTime()}
                                 value={csvForm.end_time}
                                 onChange={(e) => setCsvForm(p => ({ ...p, end_time: e.target.value }))}
-                                className="h-12 w-full rounded-xl border border-slate-250 dark:border-slate-855 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
+                                className="h-12 w-full rounded-xl border border-slate-300 dark:border-slate-855 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
                               />
                               {csvFormErrors.end_time && (
                                 <span className="mt-1 block text-xs font-semibold text-rose-500">{csvFormErrors.end_time}</span>
@@ -1218,7 +1218,7 @@ export const CreateEditTestPage = () => {
                               placeholder="Enter the duration"
                               value={csvForm.total_time}
                               onChange={(e) => setCsvForm(p => ({ ...p, total_time: Number(e.target.value) }))}
-                              className="h-12 w-full rounded-xl border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
+                              className="h-12 w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-805 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10"
                             />
                             {csvFormErrors.total_time && (
                               <span className="mt-1 block text-xs font-semibold text-rose-500">{csvFormErrors.total_time}</span>
@@ -1238,8 +1238,8 @@ export const CreateEditTestPage = () => {
                   </div>
                   
                   <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-                    <div className="p-4 rounded-xl border border-slate-150 dark:border-slate-805 bg-white dark:bg-slate-950 border-l-4 border-l-rose-500 transition-all hover:shadow-sm">
-                      <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider">Wrong Answer Penalty</span>
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 border-l-4 border-l-rose-500 transition-all hover:shadow-sm">
+                      <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Wrong Answer Penalty</span>
                       <input
                         type="number"
                         value={csvForm.wrong_marks}
@@ -1251,21 +1251,21 @@ export const CreateEditTestPage = () => {
                       )}
                     </div>
                     
-                    <div className="p-4 rounded-xl border border-slate-150 dark:border-slate-805 bg-white dark:bg-slate-950 border-l-4 border-l-slate-400 transition-all hover:shadow-sm">
-                      <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider">Unattempted Score</span>
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 border-l-4 border-l-slate-400 transition-all hover:shadow-sm">
+                      <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Unattempted Score</span>
                       <input
                         type="number"
                         value={csvForm.unattempt_marks}
                         onChange={(e) => setCsvForm(p => ({ ...p, unattempt_marks: Number(e.target.value) }))}
-                        className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 px-3 text-sm font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-slate-450 focus:ring-2 focus:ring-slate-500/10 transition-all"
+                        className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 px-3 text-sm font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-500/10 transition-all"
                       />
                       {csvFormErrors.unattempt_marks && (
                         <span className="mt-1 block text-xs font-semibold text-rose-505">{csvFormErrors.unattempt_marks}</span>
                       )}
                     </div>
 
-                    <div className="p-4 rounded-xl border border-slate-150 dark:border-slate-805 bg-white dark:bg-slate-950 border-l-4 border-l-emerald-500 transition-all hover:shadow-sm">
-                      <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider">Correct Answer Award</span>
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 border-l-4 border-l-emerald-500 transition-all hover:shadow-sm">
+                      <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Correct Answer Award</span>
                       <input
                         type="number"
                         value={csvForm.correct_marks}
@@ -1277,8 +1277,8 @@ export const CreateEditTestPage = () => {
                       )}
                     </div>
 
-                    <div className="p-4 rounded-xl border border-slate-155 dark:border-slate-805 bg-white dark:bg-slate-955 border-l-4 border-l-indigo-500 transition-all hover:shadow-sm">
-                      <span className="mb-2 block text-xs font-bold text-slate-505 dark:text-slate-450 uppercase tracking-wider">No of Questions</span>
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 border-l-4 border-l-indigo-500 transition-all hover:shadow-sm">
+                      <span className="mb-2 block text-xs font-bold text-slate-505 dark:text-slate-400 uppercase tracking-wider">No of Questions</span>
                       <input
                         type="number"
                         value={csvForm.total_questions}
@@ -1290,7 +1290,7 @@ export const CreateEditTestPage = () => {
                       )}
                     </div>
 
-                    <div className="p-4 rounded-xl border border-slate-155 dark:border-slate-855 bg-slate-50/50 dark:bg-slate-950 border-l-4 border-l-purple-500 transition-all select-none">
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-855 bg-slate-50/50 dark:bg-slate-950 border-l-4 border-l-purple-500 transition-all select-none">
                       <span className="mb-2 block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Aggregated Marks</span>
                       <input
                         type="number"
@@ -1304,12 +1304,12 @@ export const CreateEditTestPage = () => {
 
                 {formError ? <Badge tone="red">{formError}</Badge> : null}
 
-                <div className="flex justify-end gap-3.5 pt-4 border-t border-slate-150 dark:border-slate-800">
+                <div className="flex justify-end gap-3.5 pt-4 border-t border-slate-200 dark:border-slate-800">
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={() => setCsvStep(1)}
-                    className="rounded-xl shadow-sm border border-slate-200 hover:border-slate-350 dark:border-slate-800 dark:hover:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-900 transition-all text-xs font-bold px-5 py-2.5"
+                    className="rounded-xl shadow-sm border border-slate-200 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-900 transition-all text-xs font-bold px-5 py-2.5"
                   >
                     Back
                   </Button>
@@ -1344,36 +1344,36 @@ export const CreateEditTestPage = () => {
               }
             >
               <div className="space-y-4">
-                <p className="text-sm text-slate-605 dark:text-slate-400">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
                   CSV questions parsing and DB matrix generation completed successfully:
                 </p>
-                <div className="grid grid-cols-2 gap-4 rounded-xl bg-slate-50 dark:bg-slate-950 p-4.5 border border-slate-150 dark:border-slate-850/80 text-sm">
-                  <div className="font-semibold text-slate-605 dark:text-slate-400">Total Rows Processed:</div>
+                <div className="grid grid-cols-2 gap-4 rounded-xl bg-slate-50 dark:bg-slate-950 p-4.5 border border-slate-200 dark:border-slate-800/80 text-sm">
+                  <div className="font-semibold text-slate-600 dark:text-slate-400">Total Rows Processed:</div>
                   <div className="text-slate-900 dark:text-slate-100 font-bold">{summaryData.totalRows}</div>
 
-                  <div className="font-semibold text-slate-605 dark:text-slate-400">New Subjects Created:</div>
+                  <div className="font-semibold text-slate-600 dark:text-slate-400">New Subjects Created:</div>
                   <div className="text-emerald-600 dark:text-emerald-400 font-bold">{summaryData.newSubjects}</div>
 
-                  <div className="font-semibold text-slate-605 dark:text-slate-400">New Topics Created:</div>
+                  <div className="font-semibold text-slate-600 dark:text-slate-400">New Topics Created:</div>
                   <div className="text-emerald-600 dark:text-emerald-400 font-bold">{summaryData.newTopics}</div>
 
-                  <div className="font-semibold text-slate-605 dark:text-slate-400">New Sub-Topics Created:</div>
+                  <div className="font-semibold text-slate-600 dark:text-slate-400">New Sub-Topics Created:</div>
                   <div className="text-emerald-600 dark:text-emerald-400 font-bold">{summaryData.newSubTopics}</div>
 
-                  <div className="font-semibold text-slate-605 dark:text-slate-400">New Questions Created:</div>
+                  <div className="font-semibold text-slate-600 dark:text-slate-400">New Questions Created:</div>
                   <div className="text-emerald-600 dark:text-emerald-400 font-bold">{summaryData.newQuestions}</div>
 
-                  <div className="font-semibold text-slate-605 dark:text-slate-400">Existing Questions Reused:</div>
+                  <div className="font-semibold text-slate-600 dark:text-slate-400">Existing Questions Reused:</div>
                   <div className="text-indigo-600 dark:text-indigo-400 font-bold">{summaryData.reusedQuestions}</div>
 
-                  <div className="font-semibold text-slate-605 dark:text-slate-400">Failed Rows:</div>
-                  <div className="text-rose-600 dark:text-rose-450 font-bold">{summaryData.failedRows}</div>
+                  <div className="font-semibold text-slate-600 dark:text-slate-400">Failed Rows:</div>
+                  <div className="text-rose-600 dark:text-rose-400 font-bold">{summaryData.failedRows}</div>
                 </div>
 
                 {summaryData.failedRows > 0 && (
                   <div className="mt-4">
                     <span className="text-xs font-bold text-rose-600 block">Failed Row Details:</span>
-                    <div className="mt-1.5 max-h-32 overflow-y-auto text-xs text-rose-600 bg-rose-50/50 dark:bg-rose-955/20 p-2.5 rounded border border-rose-100 dark:border-rose-900/50 space-y-1 scrollbar-thin">
+                    <div className="mt-1.5 max-h-32 overflow-y-auto text-xs text-rose-600 bg-rose-50/50 dark:bg-rose-950/20 p-2.5 rounded border border-rose-100 dark:border-rose-900/50 space-y-1 scrollbar-thin">
                       {summaryData.errors?.map((err: any, idx: number) => (
                         <div key={idx}>• Row {err.row}: {err.error}</div>
                       ))}
@@ -1390,7 +1390,7 @@ export const CreateEditTestPage = () => {
               control={control}
               name="type"
               render={({ field }) => (
-                <div className="inline-flex bg-slate-100/80 dark:bg-slate-950 p-1.5 rounded-2xl border border-slate-205 dark:border-slate-900 shadow-inner">
+                <div className="inline-flex bg-slate-100/80 dark:bg-slate-950 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-900 shadow-inner">
                   {testTypeTabs.map((tab) => (
                     <button
                       key={tab.value}
@@ -1414,7 +1414,7 @@ export const CreateEditTestPage = () => {
               <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-6 shadow-sm space-y-6 lg:col-span-2">
                 <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
                   <ClipboardList className="h-5 w-5 text-indigo-500" />
-                  <h3 className="text-base font-extrabold text-slate-850 dark:text-slate-100 tracking-tight">General Setup</h3>
+                  <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">General Setup</h3>
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-2">
@@ -1431,7 +1431,7 @@ export const CreateEditTestPage = () => {
                             setValue("topics", []);
                             setValue("sub_topics", []);
                           }}
-                          className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 px-4 text-sm text-slate-750 dark:text-slate-350 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
+                          className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
                         >
                           <option value="">Select Program</option>
                           {programs.map((p: any) => (
@@ -1450,7 +1450,7 @@ export const CreateEditTestPage = () => {
                             setValue("topics", []);
                             setValue("sub_topics", []);
                           }}
-                          className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 px-4 text-sm text-slate-750 dark:text-slate-350 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
+                          className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
                           disabled={!selectedProgram}
                         >
                           <option value="">Select Semester</option>
@@ -1484,13 +1484,13 @@ export const CreateEditTestPage = () => {
                         <span className="mb-2.5 block text-sm font-bold text-slate-700 dark:text-slate-300">
                           {!isSchool ? "Linked Subject(s)" : "Target Subject(s)"}
                         </span>
-                        <div className="flex flex-wrap gap-3.5 border border-slate-200 dark:border-slate-805 rounded-xl p-4 bg-white/90 dark:bg-slate-950/90 min-h-12 shadow-inner">
+                        <div className="flex flex-wrap gap-3.5 border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-white/90 dark:bg-slate-950/90 min-h-12 shadow-inner">
                           {!isSchool && (!selectedProgram || !selectedSemester) ? (
-                            <span className="text-xs text-slate-400 dark:text-slate-550 py-1.5 font-medium">
+                            <span className="text-xs text-slate-400 dark:text-slate-500 py-1.5 font-medium">
                               Select a Program and Semester to view subjects
                             </span>
                           ) : visibleSubjects.length === 0 ? (
-                            <span className="text-xs text-slate-400 dark:text-slate-550 py-1.5 font-medium">
+                            <span className="text-xs text-slate-400 dark:text-slate-500 py-1.5 font-medium">
                               No subjects linked to this semester combination
                             </span>
                           ) : (
@@ -1499,13 +1499,13 @@ export const CreateEditTestPage = () => {
                               return (
                                 <label key={sub.id} className={`flex items-center gap-2.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                                   isChecked
-                                    ? "bg-indigo-50/50 dark:bg-indigo-955/30 border-indigo-500/50 text-indigo-600 dark:text-indigo-400"
-                                    : "bg-slate-50/50 dark:bg-slate-900/30 border-slate-205 dark:border-slate-800 text-slate-600 hover:border-slate-305 dark:hover:border-slate-700"
+                                    ? "bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-500/50 text-indigo-600 dark:text-indigo-400"
+                                    : "bg-slate-50/50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-305 dark:hover:border-slate-700"
                                 }`}>
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
-                                    className="h-4.5 w-4.5 rounded text-indigo-650 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer border-slate-300 dark:border-slate-700"
+                                    className="h-4.5 w-4.5 rounded text-indigo-600 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer border-slate-300 dark:border-slate-700"
                                     onChange={() => {
                                       const nextValue = isChecked
                                         ? field.value.filter((id: string) => id !== sub.id)
@@ -1542,14 +1542,14 @@ export const CreateEditTestPage = () => {
                           <select
                             value={field.value}
                             onChange={(e) => field.onChange(e.target.value)}
-                            className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-955/90 px-4 text-sm text-slate-750 dark:text-slate-350 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
+                            className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
                           >
                             {(Array.isArray(registeredClasses) && registeredClasses.length > 0 ? registeredClasses.map(c => c.name) : ["Class 9", "Class 10", "Class 11", "Class 12"]).map((cls) => (
                               <option key={cls} value={cls}>{cls}</option>
                             ))}
                           </select>
                           {errors.class?.message ? (
-                            <span className="mt-1 block text-xs font-semibold text-rose-550">{errors.class.message}</span>
+                            <span className="mt-1 block text-xs font-semibold text-rose-500">{errors.class.message}</span>
                           ) : null}
                         </label>
                       )}
@@ -1562,22 +1562,22 @@ export const CreateEditTestPage = () => {
                     render={({ field }) => (
                       <label className="block md:col-span-2">
                         <span className="mb-2.5 block text-sm font-bold text-slate-700 dark:text-slate-300">Topic Node(s)</span>
-                        <div className="flex flex-wrap gap-3.5 border border-slate-200 dark:border-slate-805 rounded-xl p-4 bg-white/90 dark:bg-slate-950/90 min-h-12 shadow-inner">
+                        <div className="flex flex-wrap gap-3.5 border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-white/90 dark:bg-slate-950/90 min-h-12 shadow-inner">
                           {filteredTopics.length === 0 ? (
-                            <span className="text-xs text-slate-400 dark:text-slate-550 py-1.5 font-medium">No topics available for selected Grade & Subjects combination</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500 py-1.5 font-medium">No topics available for selected Grade & Subjects combination</span>
                           ) : (
                             filteredTopics.map((topic) => {
                               const isChecked = field.value?.includes(topic.id);
                               return (
                                 <label key={topic.id} className={`flex items-center gap-2.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                                   isChecked
-                                    ? "bg-indigo-50/50 dark:bg-indigo-955/30 border-indigo-500/50 text-indigo-605 dark:text-indigo-400"
-                                    : "bg-slate-50/50 dark:bg-slate-900/30 border-slate-205 dark:border-slate-800 text-slate-600 hover:border-slate-300 dark:hover:border-slate-700"
+                                    ? "bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-500/50 text-indigo-600 dark:text-indigo-400"
+                                    : "bg-slate-50/50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300 dark:hover:border-slate-700"
                                 }`}>
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
-                                    className="h-4.5 w-4.5 rounded text-indigo-650 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer border-slate-300 dark:border-slate-700"
+                                    className="h-4.5 w-4.5 rounded text-indigo-600 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer border-slate-300 dark:border-slate-700"
                                     onChange={() => {
                                       const nextValue = isChecked
                                         ? field.value.filter((id: string) => id !== topic.id)
@@ -1603,8 +1603,8 @@ export const CreateEditTestPage = () => {
               {/* Card 2: Scheduling Timing Details */}
               <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-6 shadow-sm space-y-6">
                 <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-indigo-505" />
-                  <h3 className="text-base font-extrabold text-slate-850 dark:text-slate-100 tracking-tight">Schedule & Window</h3>
+                  <Clock className="h-5 w-5 text-indigo-500" />
+                  <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Schedule & Window</h3>
                 </div>
 
                 <div className="space-y-6">
@@ -1619,7 +1619,7 @@ export const CreateEditTestPage = () => {
                         setValue("end_time", "");
                         setValue("total_time", "" as any);
                       }}
-                      className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 px-4 text-sm text-slate-750 dark:text-slate-350 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
+                      className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none transition focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/10 cursor-pointer"
                     >
                       <option value="live_now">Live Today</option>
                       <option value="live_until">Live Until</option>
@@ -1634,7 +1634,7 @@ export const CreateEditTestPage = () => {
                           type="number"
                           error={errors.total_time?.message}
                           {...register("total_time")}
-                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/10"
                         />
                         <Input
                           label="Start (Today)"
@@ -1652,7 +1652,7 @@ export const CreateEditTestPage = () => {
                               setValue("start_time", "");
                             }
                           }}
-                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/10"
                         />
                         <Input
                           label="End (Today)"
@@ -1670,7 +1670,7 @@ export const CreateEditTestPage = () => {
                           type="number"
                           error={errors.lateEntryTime?.message}
                           {...register("lateEntryTime", { valueAsNumber: true })}
-                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/10"
                         />
                         <Input
                           label="Grace Time (Minutes)"
@@ -1678,7 +1678,7 @@ export const CreateEditTestPage = () => {
                           type="number"
                           error={errors.graceTime?.message}
                           {...register("graceTime", { valueAsNumber: true })}
-                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/10"
                         />
                         <Input
                           label="Tab Switching Allowed"
@@ -1686,7 +1686,7 @@ export const CreateEditTestPage = () => {
                           type="number"
                           error={errors.tabSwitchLimit?.message}
                           {...register("tabSwitchLimit", { valueAsNumber: true })}
-                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/10"
                         />
                       </div>
                     </div>
@@ -1699,7 +1699,7 @@ export const CreateEditTestPage = () => {
                           min={getMinStartTime()}
                           error={errors.start_time?.message}
                           {...register("start_time")}
-                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/10"
                         />
                         <Input
                           label="End Time Slot"
@@ -1707,7 +1707,7 @@ export const CreateEditTestPage = () => {
                           min={startTime || getMinStartTime()}
                           error={errors.end_time?.message}
                           {...register("end_time")}
-                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/10"
                         />
                       </div>
                       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -1717,7 +1717,7 @@ export const CreateEditTestPage = () => {
                           type="number"
                           error={errors.total_time?.message}
                           {...register("total_time")}
-                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/10"
                         />
                         <Input
                           label="Late Entry (Minutes)"
@@ -1725,7 +1725,7 @@ export const CreateEditTestPage = () => {
                           type="number"
                           error={errors.lateEntryTime?.message}
                           {...register("lateEntryTime", { valueAsNumber: true })}
-                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/10"
                         />
                         <Input
                           label="Grace Time (Minutes)"
@@ -1733,7 +1733,7 @@ export const CreateEditTestPage = () => {
                           type="number"
                           error={errors.graceTime?.message}
                           {...register("graceTime", { valueAsNumber: true })}
-                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/10"
                         />
                         <Input
                           label="Tab Switching Allowed"
@@ -1741,7 +1741,7 @@ export const CreateEditTestPage = () => {
                           type="number"
                           error={errors.tabSwitchLimit?.message}
                           {...register("tabSwitchLimit", { valueAsNumber: true })}
-                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-550 focus:ring-indigo-550/10"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/10"
                         />
                       </div>
                     </div>
@@ -1754,7 +1754,7 @@ export const CreateEditTestPage = () => {
                 <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Settings className="h-5 w-5 text-indigo-500 animate-spin-slow" />
-                    <h3 className="text-base font-extrabold text-slate-850 dark:text-slate-100 tracking-tight">Sectional Timers</h3>
+                    <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Sectional Timers</h3>
                   </div>
                   
                   {/* Stylish Switch */}
@@ -1771,7 +1771,7 @@ export const CreateEditTestPage = () => {
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-850 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-650 peer-checked:bg-indigo-600"></div>
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
                   </label>
                 </div>
 
@@ -1782,7 +1782,7 @@ export const CreateEditTestPage = () => {
                       <Button
                         type="button"
                         onClick={() => append({ name: "", subject: subjectNames[0] || "", duration: 0, questions_count: 0 })}
-                        className="h-8 rounded-lg px-3 text-xs bg-indigo-50 dark:bg-indigo-955/40 border border-indigo-200/30 text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1.5 hover:bg-indigo-100/50"
+                        className="h-8 rounded-lg px-3 text-xs bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/30 text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1.5 hover:bg-indigo-100/50"
                       >
                         Add Section
                       </Button>
@@ -1795,7 +1795,7 @@ export const CreateEditTestPage = () => {
                     ) : (
                       <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin">
                         {fields.map((fieldItem, idx) => (
-                          <div key={fieldItem.id} className="p-4 rounded-xl border border-slate-150 dark:border-slate-800 bg-white/50 dark:bg-slate-950/40 space-y-3 relative group">
+                          <div key={fieldItem.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-950/40 space-y-3 relative group">
                             <button
                               type="button"
                               onClick={() => remove(idx)}
@@ -1809,12 +1809,12 @@ export const CreateEditTestPage = () => {
 
                             <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                               <div>
-                                <span className="mb-1 block text-xs font-bold text-slate-655 dark:text-slate-400">Section Name</span>
+                                <span className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">Section Name</span>
                                 <input
                                   type="text"
                                   placeholder="e.g. Section A: Physics"
                                   {...register(`sections.${idx}.name` as const)}
-                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-550"
+                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
                                 />
                                 {errors.sections?.[idx]?.name && (
                                   <span className="mt-1 block text-[10px] font-semibold text-rose-500">{errors.sections[idx]?.name?.message}</span>
@@ -1822,10 +1822,10 @@ export const CreateEditTestPage = () => {
                               </div>
 
                               <div>
-                                <span className="mb-1 block text-xs font-bold text-slate-655 dark:text-slate-400">Subject Category</span>
+                                <span className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">Subject Category</span>
                                 <select
                                   {...register(`sections.${idx}.subject` as const)}
-                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-550 cursor-pointer"
+                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 cursor-pointer"
                                 >
                                   {subjectNames.map((name) => (
                                     <option key={name} value={name}>{name}</option>
@@ -1837,12 +1837,12 @@ export const CreateEditTestPage = () => {
                               </div>
 
                               <div>
-                                <span className="mb-1 block text-xs font-bold text-slate-655 dark:text-slate-400">Duration (Minutes)</span>
+                                <span className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">Duration (Minutes)</span>
                                 <input
                                   type="number"
                                   placeholder="Minutes"
                                   {...register(`sections.${idx}.duration` as const)}
-                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-550"
+                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
                                 />
                                 {errors.sections?.[idx]?.duration && (
                                   <span className="mt-1 block text-[10px] font-semibold text-rose-500">{errors.sections[idx]?.duration?.message}</span>
@@ -1850,12 +1850,12 @@ export const CreateEditTestPage = () => {
                               </div>
 
                               <div>
-                                <span className="mb-1 block text-xs font-bold text-slate-655 dark:text-slate-400">Question Count</span>
+                                <span className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-400">Question Count</span>
                                 <input
                                   type="number"
                                   placeholder="Questions"
                                   {...register(`sections.${idx}.questions_count` as const)}
-                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-550"
+                                  className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
                                 />
                                 {errors.sections?.[idx]?.questions_count && (
                                   <span className="mt-1 block text-[10px] font-semibold text-rose-500">{errors.sections[idx]?.questions_count?.message}</span>
@@ -1868,7 +1868,7 @@ export const CreateEditTestPage = () => {
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-500 dark:text-slate-450">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Enable sectional timers to segment the exam into discrete subjects, each containing its own countdown timer and lock progression.
                   </p>
                 )}
@@ -1879,28 +1879,28 @@ export const CreateEditTestPage = () => {
             {/* Card 4: Scoring Setup */}
             <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-6 shadow-sm">
               <div className="border-b border-slate-100 dark:border-slate-800 pb-3 mb-6 flex items-center gap-2">
-                <Percent className="h-5 w-5 text-indigo-505" />
+                <Percent className="h-5 w-5 text-indigo-500" />
                 <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Scoring Policy</h3>
               </div>
               
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-                <div className="p-4 rounded-xl border border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-950 border-l-4 border-l-rose-500 transition-all hover:shadow-sm">
+                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 border-l-4 border-l-rose-500 transition-all hover:shadow-sm">
                   <Input label="Wrong Answer" type="number" error={errors.wrong_marks?.message} {...register("wrong_marks")} className="h-10 rounded-lg border border-slate-200 dark:border-slate-800/80 focus:border-rose-500 focus:ring-rose-500/10" />
                 </div>
                 
-                <div className="p-4 rounded-xl border border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-950 border-l-4 border-l-slate-400 transition-all hover:shadow-sm">
+                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 border-l-4 border-l-slate-400 transition-all hover:shadow-sm">
                   <Input label="Unattempted" type="number" error={errors.unattempt_marks?.message} {...register("unattempt_marks")} className="h-10 rounded-lg border border-slate-200 dark:border-slate-800/80 focus:border-slate-500 focus:ring-slate-500/10" />
                 </div>
 
-                <div className="p-4 rounded-xl border border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-950 border-l-4 border-l-emerald-500 transition-all hover:shadow-sm">
+                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 border-l-4 border-l-emerald-500 transition-all hover:shadow-sm">
                   <Input label="Correct Answer" type="number" error={errors.correct_marks?.message} {...register("correct_marks")} className="h-10 rounded-lg border border-slate-200 dark:border-slate-800/80 focus:border-emerald-500 focus:ring-emerald-500/10" />
                 </div>
 
-                <div className="p-4 rounded-xl border border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-955 border-l-4 border-l-indigo-500 transition-all hover:shadow-sm">
+                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 border-l-4 border-l-indigo-500 transition-all hover:shadow-sm">
                   <Input label="No of Questions" type="number" placeholder="Ex: 50" error={errors.total_questions?.message} {...register("total_questions")} className="h-10 rounded-lg border-slate-200 dark:border-slate-800/80 focus:border-indigo-500 focus:ring-indigo-500/10" />
                 </div>
 
-                <div className="p-4 rounded-xl border border-slate-155 dark:border-slate-855 bg-slate-50/50 dark:bg-slate-950 border-l-4 border-l-purple-500 transition-all select-none">
+                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-855 bg-slate-50/50 dark:bg-slate-950 border-l-4 border-l-purple-500 transition-all select-none">
                   <Input label="Total Marks" type="number" placeholder="Ex: 200" error={errors.total_marks?.message} {...register("total_marks")} readOnly className="h-10 rounded-lg border-slate-200 dark:border-slate-900 bg-slate-100 dark:bg-slate-900 text-purple-600 dark:text-purple-400 font-bold cursor-not-allowed" />
                 </div>
               </div>
@@ -1913,7 +1913,7 @@ export const CreateEditTestPage = () => {
                 type="button"
                 variant="secondary"
                 onClick={() => navigate("/dashboard")}
-                className="rounded-xl shadow-sm border border-slate-200 hover:border-slate-350 dark:border-slate-800 dark:hover:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-900 transition-all text-xs font-bold px-5 py-2.5"
+                className="rounded-xl shadow-sm border border-slate-200 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-900 transition-all text-xs font-bold px-5 py-2.5"
               >
                 Cancel
               </Button>
@@ -1922,7 +1922,7 @@ export const CreateEditTestPage = () => {
                 variant="secondary"
                 disabled={saveMutation.isPending}
                 onClick={handleSubmit(submit(false))}
-                className="rounded-xl shadow-sm border border-slate-200 hover:border-slate-350 dark:border-slate-800 dark:hover:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-900 transition-all text-xs font-bold px-5 py-2.5"
+                className="rounded-xl shadow-sm border border-slate-200 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-900 transition-all text-xs font-bold px-5 py-2.5"
               >
                 Save as Draft
               </Button>

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "npm run build && node dist/server.js",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "migrate": "tsc -p tsconfig.json && node dist/db/migrate.js"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

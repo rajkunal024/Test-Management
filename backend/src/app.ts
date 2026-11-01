@@ -1,26 +1,21 @@
 import { IncomingMessage, ServerResponse } from "node:http";
 import { routeRequest } from "./routes/index.js";
-import { json, frontendOrigin } from "./middlewares/utils.js";
+import { json, getCorsOrigin } from "./middlewares/utils.js";
 
 export const handleRequest = async (request: IncomingMessage, response: ServerResponse) => {
+  (response as any).req = request;
   const method = request.method ?? "GET";
 
   if (method === "OPTIONS") {
     const origin = request.headers.origin;
-    const allowedOrigins = [
-      process.env.FRONTEND_ORIGIN,
-      "http://127.0.0.1:5173",
-      "http://localhost:5173",
-      "http://127.0.0.1:4200",
-      "http://localhost:4200"
-    ].filter(Boolean);
-    const corsOrigin = (origin && allowedOrigins.includes(origin)) ? origin : frontendOrigin;
+    const corsOrigin = getCorsOrigin(origin);
 
     response.writeHead(204, {
       "Access-Control-Allow-Origin": corsOrigin,
       "Access-Control-Allow-Credentials": "true",
-      "Access-Control-Allow-Headers": "authorization, content-type",
+      "Access-Control-Allow-Headers": "authorization, content-type, x-tenant-id, cache-control, pragma",
       "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+      "Access-Control-Max-Age": "86400",
     });
     response.end();
     return;

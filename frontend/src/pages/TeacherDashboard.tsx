@@ -24,7 +24,9 @@ import {
   Download,
   ExternalLink,
   FileText,
-  Code
+  Code,
+  ArrowRight,
+  ChevronRight,
 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -215,17 +217,21 @@ export const TeacherDashboard = () => {
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       
-      let host = "127.0.0.1:4000";
+      let host = window.location.host;
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
       if (apiBaseUrl) {
         try {
-          const parsed = new URL(apiBaseUrl);
-          host = parsed.host;
+          if (apiBaseUrl.startsWith("http://") || apiBaseUrl.startsWith("https://")) {
+            const parsed = new URL(apiBaseUrl);
+            host = parsed.host;
+          } else {
+            host = window.location.host;
+          }
         } catch (e) {
-          host = `${window.location.hostname}:4000`;
+          host = window.location.host;
         }
       } else {
-        host = `${window.location.hostname}:4000`;
+        host = window.location.host;
       }
       
       const wsUrl = `${protocol}//${host}/api/proctor/stream?role=teacher&test_id=${selectedTestIdForMonitoring}`;
@@ -1720,35 +1726,54 @@ export const TeacherDashboard = () => {
         {activeTab === "add" && addSubTab === null && (
           <div className="space-y-8 animate-fade-in">
             {/* Header Banner */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 via-cyan-600 to-indigo-600 p-6 text-white shadow-xl md:p-8">
-              <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-                <div>
-                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-100">
-                    <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#052e16] via-[#064e3b] to-[#0f172a] p-6 text-white shadow-2xl md:p-8 border border-emerald-500/20">
+              {/* Glow orbs */}
+              <div className="absolute top-0 right-0 -mr-16 -mt-16 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 -ml-12 -mb-12 h-56 w-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col justify-between gap-5 md:flex-row md:items-center">
+                <div className="max-w-xl">
+                  <div className="mb-3 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
                     Parikshya Teacher Portal
                   </div>
-                  <h1 className="text-3xl font-black tracking-tight">
-                    {orgData?.brandingBannerText || `${subjectsDisplay} Question Bank Hub`}
+                  <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
+                    {orgData?.brandingBannerText || `Welcome to ${orgData?.name ? (orgData.name.split(" ").length > 1 ? orgData.name.split(" ").map(w => w[0]).join("") : orgData.name) : "BU"} Online Portal`}
                   </h1>
-                  <p className="mt-2 text-sm text-teal-50 max-w-xl">
-                    Create and manage your question pool for <strong>{subjectsDisplay}</strong>. Monitor {isSchool ? "class" : "subject"} distribution, perform bulk spreadsheet uploads, or add single questions manually.
+                  <p className="mt-2 text-xs sm:text-sm text-emerald-100/70 leading-relaxed font-medium">
+                    Create and manage your question pool for <strong className="text-emerald-300">{subjectsDisplay}</strong>. Monitor {isSchool ? "class" : "subject"} distribution, perform bulk spreadsheet uploads, or add single questions manually.
                   </p>
-                  <p className="mt-4 text-xs text-indigo-800 bg-white/95 rounded-full px-4 py-1.5 inline-block font-bold shadow-sm dark:bg-slate-900/90 dark:text-indigo-400">
-                    Active Teacher: {user?.name || "Teacher"} ({subjectsDisplay} Specialist)
-                  </p>
+                  <div className="mt-4">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-4 py-1.5 text-xs font-bold shadow-sm backdrop-blur-md">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Active Teacher: {user?.name || "Teacher"} ({subjectsDisplay})
+                    </span>
+                  </div>
                 </div>
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-4xl border border-white/20 shadow-inner">
+                <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl bg-emerald-500/10 text-4xl sm:text-5xl border border-emerald-500/20 shadow-inner shrink-0 self-end md:self-center">
                   📚
                 </div>
               </div>
-              <div className="absolute -bottom-8 -right-8 h-40 w-40 rounded-full bg-white/5 pointer-events-none" />
             </div>
+
 
             {/* Stats Breakdown Grid */}
             <div>
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4">
-                {isSchool ? "Class Pool Distribution" : "Subject Pool Distribution"}
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
+                  {isSchool ? "Class Pool Distribution" : "Subject Pool Distribution"}
+                </h2>
+                <button
+                  onClick={() => {
+                    setSearchParams({ tab: "view", class: "all" });
+                  }}
+                  className="text-xs font-bold text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1 transition cursor-pointer"
+                >
+                  <span>View All</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
               <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 {(isSchool ? (Array.isArray(registeredClasses) && registeredClasses.length > 0 ? registeredClasses.map(c => c.name) : ["Class 9", "Class 10", "Class 11", "Class 12"]) : teacherSubjects.map(s => s.name)).map((item, idx) => {
                   const count = isSchool
@@ -1771,66 +1796,34 @@ export const TeacherDashboard = () => {
                   const totalCount = subjectQuestions.length;
                   const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
                   
-                  // Color themes for each class to keep it dynamic and colorful
-                  const theme = [
-                    {
-                      bg: "bg-emerald-50/20 dark:bg-emerald-950/10",
-                      border: "border-emerald-200/50 dark:border-emerald-900/20",
-                      hoverBorder: "hover:border-emerald-400 dark:hover:border-emerald-800/80",
-                      text: "text-emerald-600 dark:text-emerald-400",
-                      bar: "from-emerald-500 to-teal-500",
-                      shadow: "hover:shadow-emerald-500/5"
-                    },
-                    {
-                      bg: "bg-indigo-50/20 dark:bg-indigo-950/10",
-                      border: "border-indigo-200/50 dark:border-indigo-900/20",
-                      hoverBorder: "hover:border-indigo-400 dark:hover:border-indigo-800/80",
-                      text: "text-indigo-600 dark:text-indigo-400",
-                      bar: "from-indigo-500 to-blue-500",
-                      shadow: "hover:shadow-indigo-500/5"
-                    },
-                    {
-                      bg: "bg-amber-50/20 dark:bg-amber-950/10",
-                      border: "border-amber-200/50 dark:border-amber-900/20",
-                      hoverBorder: "hover:border-amber-400 dark:hover:border-amber-800/80",
-                      text: "text-amber-600 dark:text-amber-400",
-                      bar: "from-amber-500 to-orange-500",
-                      shadow: "hover:shadow-amber-500/5"
-                    },
-                    {
-                      bg: "bg-purple-50/20 dark:bg-purple-950/10",
-                      border: "border-purple-200/50 dark:border-purple-900/20",
-                      hoverBorder: "hover:border-purple-400 dark:hover:border-purple-800/80",
-                      text: "text-purple-600 dark:text-purple-400",
-                      bar: "from-purple-500 to-pink-500",
-                      shadow: "hover:shadow-purple-500/5"
-                    }
-                  ][idx % 4];
+                  const isFirst = idx % 2 === 0;
+                  const barGradient = isFirst ? "from-[#00c982] to-[#00d084]" : "from-[#3b82f6] to-[#6366f1]";
+                  const countColor = isFirst ? "text-emerald-500 dark:text-[#00c982]" : "text-indigo-500 dark:text-[#60a5fa]";
 
                   return (
                     <div
                       key={item}
-                      className={`rounded-xl border ${theme.border} ${theme.bg} ${theme.hoverBorder} ${theme.shadow} p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between`}
+                      className="rounded-2xl border border-slate-200/80 dark:border-emerald-900/40 bg-white dark:bg-[#081a16] p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between"
                     >
                       <div>
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
-                          {isSchool ? "Class Level" : "Subject"}
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                          {isSchool ? "CLASS" : "SUBJECT"}
                         </span>
-                        <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{item}</h4>
+                        <h4 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 mt-0.5 truncate">{item}</h4>
                       </div>
                       <div className="mt-4">
-                        <div className="flex items-baseline gap-1">
-                          <span className={`text-2xl font-black ${theme.text}`}>{count}</span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Questions</span>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className={`text-2xl sm:text-3xl font-black ${countColor}`}>{count}</span>
+                          <span className="text-xs text-slate-400 font-semibold">Questions</span>
                         </div>
                         <div className="mt-3">
-                          <div className="flex items-center justify-between text-[9px] text-slate-400 dark:text-slate-500 font-bold mb-1">
+                          <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-1">
                             <span>Pool Ratio</span>
                             <span>{pct}%</span>
                           </div>
-                          <div className="w-full bg-slate-100 dark:bg-slate-800/60 h-1.5 rounded-full overflow-hidden">
+                          <div className="w-full bg-slate-100 dark:bg-slate-800/80 h-1.5 rounded-full overflow-hidden">
                             <div 
-                              className={`bg-gradient-to-r ${theme.bar} h-full rounded-full transition-all duration-500`} 
+                              className={`bg-gradient-to-r ${barGradient} h-full rounded-full transition-all duration-500`} 
                               style={{ width: `${pct}%` }} 
                             />
                           </div>
@@ -1844,95 +1837,115 @@ export const TeacherDashboard = () => {
 
             {/* Actions Grid */}
             <div>
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4">Add Questions to Pool</h2>
-              <div className="grid gap-6 md:grid-cols-2">
+              <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">Add Questions to Pool</h2>
+              <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
                 <article
                   onClick={() => setAddSubTab("manual")}
-                  className="group cursor-pointer rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white dark:to-slate-900 p-6 shadow-sm hover:shadow-lg dark:hover:shadow-emerald-950/20 hover:-translate-y-1 hover:border-emerald-400 dark:hover:border-emerald-800/80 transition-all duration-300 border-t-4 border-t-emerald-500"
+                  className="group cursor-pointer rounded-2xl border border-slate-200/80 dark:border-emerald-900/40 bg-white dark:bg-[#081a16] p-5 sm:p-6 shadow-sm hover:shadow-xl hover:border-emerald-500/50 transition-all duration-300 relative flex flex-col justify-between"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500 dark:bg-emerald-600 text-white mb-4 group-hover:scale-110 transition-transform shadow-md shadow-emerald-500/20">
-                    <Plus className="h-6 w-6" />
+                  <div className="flex items-start justify-between">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400 mb-4 group-hover:scale-105 transition-transform">
+                      <Plus className="h-6 w-6" />
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                    Manual Question Entry
-                  </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-                    Type a new question manually. You can set the question prompt, define options, specify the correct answer, choose class levels, and select topics/subtopics.
-                  </p>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                    Add Question Manually →
-                  </span>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-1.5 group-hover:text-emerald-500 transition-colors">
+                      Manual Question Entry
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Type a new question manually. You can set the question prompt, define options, specify the correct answer, choose class levels, and select topics/subtopics.
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                    <span>Add Question Manually</span>
+                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </article>
 
                 <article
                   onClick={() => setAddSubTab("csv")}
-                  className="group cursor-pointer rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-teal-500/10 via-teal-500/5 to-white dark:to-slate-900 p-6 shadow-sm hover:shadow-lg dark:hover:shadow-teal-950/20 hover:-translate-y-1 hover:border-teal-400 dark:hover:border-teal-800/80 transition-all duration-300 border-t-4 border-t-teal-500"
+                  className="group cursor-pointer rounded-2xl border border-slate-200/80 dark:border-emerald-900/40 bg-white dark:bg-[#081a16] p-5 sm:p-6 shadow-sm hover:shadow-xl hover:border-teal-500/50 transition-all duration-300 relative flex flex-col justify-between"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500 dark:bg-teal-600 text-white mb-4 group-hover:scale-110 transition-transform shadow-md shadow-teal-500/20">
-                    <Upload className="h-6 w-6" />
+                  <div className="flex items-start justify-between">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-500 dark:text-teal-400 mb-4 group-hover:scale-105 transition-transform">
+                      <Upload className="h-6 w-6" />
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-teal-400 group-hover:translate-x-1 transition-all" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-                    CSV Spreadsheet Import
-                  </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-                    Import multiple multiple-choice questions in one go. Upload a standard CSV file or paste raw comma-separated text formatted with headers.
-                  </p>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
-                    Import CSV file →
-                  </span>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-1.5 group-hover:text-teal-500 transition-colors">
+                      CSV Spreadsheet Import
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Import multiple multiple-choice questions in one go. Upload a standard CSV file or paste raw comma-separated text formatted with headers.
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-teal-600 dark:text-teal-400">
+                    <span>Import CSV File</span>
+                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </article>
               </div>
             </div>
 
             {/* Recent Questions Panel */}
             <div>
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4">Recently Added Questions</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">Recently Added Questions</h2>
+                <button
+                  onClick={() => {
+                    setSearchParams({ tab: "view", class: "all" });
+                  }}
+                  className="text-xs font-bold text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1 transition cursor-pointer"
+                >
+                  <span>View All</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
               {subjectQuestions.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center text-slate-400 dark:text-slate-500">
+                <div className="rounded-2xl border border-dashed border-slate-300 dark:border-emerald-900/50 bg-white dark:bg-[#081a16] p-10 text-center text-slate-400 dark:text-slate-500">
                   <p className="text-sm font-semibold">No questions added yet to this subject.</p>
                   <p className="text-xs mt-1">Use the actions above to populate your question pool.</p>
                 </div>
               ) : (
-                <div className="grid gap-4 md:grid-cols-3">
-                  {subjectQuestions.slice(-3).reverse().map((q, idx) => {
-                    const diffLower = (q.difficulty || "").toLowerCase().trim();
-                    const difficultyColor =
-                      diffLower === "easy" ? "green" :
-                        diffLower === "medium" ? "yellow" :
-                          (diffLower === "hard" || diffLower === "difficult" ? "red" : "slate");
-                    
-                    const borderTheme = 
-                      diffLower === "easy" ? "border-l-emerald-500 bg-gradient-to-br from-emerald-500/5 to-transparent dark:from-emerald-950/5" :
-                      diffLower === "medium" ? "border-l-amber-500 bg-gradient-to-br from-amber-500/5 to-transparent dark:from-amber-950/5" :
-                      (diffLower === "hard" || diffLower === "difficult" ? "border-l-rose-500 bg-gradient-to-br from-rose-500/5 to-transparent dark:from-rose-950/5" : "border-l-slate-500");
-                    
-                    const correctOptionsList = q.correct_option
-                      ? q.correct_option.split(",").map(o => o.trim()).filter(Boolean)
-                      : ["option1"];
-                    const correctValues = correctOptionsList.map(optKey => {
-                      if (optKey === "option1") return q.option1;
-                      if (optKey === "option2") return q.option2;
-                      if (optKey === "option3") return q.option3;
-                      if (optKey === "option4") return q.option4;
-                      return "";
-                    }).filter(Boolean).join(", ") || q.option1;
+                <div className="space-y-3">
+                  {subjectQuestions.slice(-4).reverse().map((q, idx) => {
+                    const qSubject = q.subject || teacherSubject.name || "DSA";
+                    const qClass = isSchool ? q.class : (programs.find(p => p.id === q.class)?.code || q.class || "Class 3");
+                    const rawDate = (q as any).createdAt || (q as any).created_at;
+                    const dateStr = rawDate ? new Date(rawDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Jul 12, 2026";
 
                     return (
-                      <div 
-                        key={q.id || idx} 
-                        className={`p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 border-l-4 ${borderTheme} shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between`}
+                      <div
+                        key={q.id || idx}
+                        onClick={() => {
+                          setSearchParams({ tab: "view", class: "all" });
+                        }}
+                        className="group flex items-center justify-between gap-3 p-4 rounded-2xl border border-slate-200/80 dark:border-emerald-900/40 bg-white dark:bg-[#081a16] hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all cursor-pointer shadow-sm"
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-2 leading-relaxed">{q.question}</p>
-                          <div className="flex items-center gap-2 mt-4">
-                            <Badge tone="blue">
-                              {isSchool ? q.class : (programs.find(p => p.id === q.class)?.code || q.class)}
-                            </Badge>
-                            <Badge tone={difficultyColor}>{q.difficulty}</Badge>
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400 group-hover:scale-105 transition-transform">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-emerald-400 transition-colors">
+                              {q.question}
+                            </h4>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30">
+                                {qSubject}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                {qClass}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        <div className="text-xs text-slate-400 dark:text-slate-500 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0 font-medium">
-                          Correct Answer: <span className="text-slate-700 dark:text-slate-350 font-bold">{correctValues}</span>
+                        <div className="flex items-center gap-2 shrink-0 text-slate-400 text-xs font-semibold">
+                          <span className="hidden sm:inline">{dateStr}</span>
+                          <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
                         </div>
                       </div>
                     );
@@ -2004,7 +2017,7 @@ export const TeacherDashboard = () => {
 
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
                   <div>
-                    <h2 className="text-lg font-extrabold text-slate-850 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                    <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
                       <Plus className="h-5 w-5 text-emerald-500" />
                       Create New MCQ Question
                     </h2>
@@ -2027,7 +2040,7 @@ export const TeacherDashboard = () => {
                       <label className="block">
                         <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Type</span>
                         <select
-                          className="h-11 w-full appearance-none rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 cursor-pointer font-semibold"
+                          className="h-11 w-full appearance-none rounded-xl border border-slate-200 dark:border-emerald-800 bg-white dark:bg-[#061915] pl-4 pr-10 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 cursor-pointer font-semibold"
                           {...register("type")}
                         >
                           <option value="mcq">Standard Single MCQ</option>
@@ -2038,13 +2051,13 @@ export const TeacherDashboard = () => {
 
                     {/* Passage Creation */}
                     {selectedType === "passage_sub_question" && (
-                      <div className="space-y-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/30 dark:bg-slate-950/10">
+                      <div className="space-y-4 border border-dashed border-slate-200 dark:border-emerald-800/60 rounded-xl p-4 bg-slate-50/30 dark:bg-[#061915]/30">
                         <div className="space-y-2">
                           <label className="block">
                             <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Title</span>
                             <input
                               type="text"
-                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold"
+                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-emerald-800 bg-white dark:bg-[#061915] px-4 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-semibold text-slate-800 dark:text-slate-100"
                               placeholder="Enter a descriptive title for this passage"
                               {...register("passage_title")}
                             />
@@ -2058,7 +2071,7 @@ export const TeacherDashboard = () => {
                           <label className="block">
                             <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passage Content</span>
                             <textarea
-                              className="h-40 w-full resize-none rounded-xl border border-slate-200 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold leading-relaxed"
+                              className="h-40 w-full resize-none rounded-xl border border-slate-200 dark:border-emerald-800/80 dark:bg-[#061915] px-4 py-3.5 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-semibold text-slate-800 dark:text-slate-100 leading-relaxed"
                               placeholder="Enter the full comprehension passage text here..."
                               {...register("passage_content")}
                             />
@@ -2092,7 +2105,7 @@ export const TeacherDashboard = () => {
                                   value={passageCsvText}
                                   onChange={(e) => setPassageCsvText(e.target.value)}
                                   placeholder="question,option1,option2,option3,option4,correct_option&#10;What is 1+1?,2,3,4,5,option1&#10;What is 2+2?,3,4,5,6,option2"
-                                  className="h-24 w-full resize-none rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950 p-3 text-xs font-mono outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all leading-normal"
+                                  className="h-24 w-full resize-none rounded-xl border border-slate-200 dark:border-emerald-800 bg-slate-50/20 dark:bg-[#061915] p-3 text-xs font-mono outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all text-slate-800 dark:text-slate-100 leading-normal"
                                 />
                               </label>
                             </div>
@@ -2100,7 +2113,7 @@ export const TeacherDashboard = () => {
                             <div className="flex flex-col justify-between">
                               <div>
                                 <span className="mb-2 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Upload CSV File</span>
-                                <label className="flex flex-col items-center justify-center border border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-700/60 rounded-xl p-5 bg-slate-50/20 dark:bg-slate-900/35 cursor-pointer group transition-all h-24">
+                                <label className="flex flex-col items-center justify-center border border-dashed border-slate-200 dark:border-emerald-800 hover:border-emerald-500 dark:hover:border-emerald-600 rounded-xl p-5 bg-slate-50/20 dark:bg-[#061915]/40 cursor-pointer group transition-all h-24">
                                   <Upload className="h-5 w-5 text-slate-400 group-hover:text-emerald-500 transition-colors mb-1.5" />
                                   <span className="text-[10px] font-bold text-slate-500 group-hover:text-emerald-600 transition-colors">Select CSV file</span>
                                   <input
@@ -2126,7 +2139,7 @@ export const TeacherDashboard = () => {
 
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2">
                             <div className="rounded bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 p-2.5 text-[9px] text-amber-800 dark:text-amber-300 leading-normal flex-1">
-                              Expected Format: <code className="font-mono font-bold bg-white/70 dark:bg-slate-950/50 px-1 py-0.5 rounded">question,option1,option2,option3,option4,correct_option</code>
+                              Expected Format: <code className="font-mono font-bold bg-white/70 dark:bg-[#061915] px-1 py-0.5 rounded">question,option1,option2,option3,option4,correct_option</code>
                             </div>
                             <Button
                               type="button"
@@ -2140,7 +2153,7 @@ export const TeacherDashboard = () => {
                         </div>
 
                         {subQuestions.map((subQ, subIdx) => (
-                          <div key={subIdx} className="space-y-4 p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/10 dark:bg-slate-900/10 relative">
+                          <div key={subIdx} className="space-y-4 p-4 border border-slate-200 dark:border-emerald-800/60 rounded-2xl bg-slate-50/10 dark:bg-[#061915]/30 relative">
                             {subQuestions.length > 1 && (
                               <button
                                 type="button"
@@ -2153,7 +2166,7 @@ export const TeacherDashboard = () => {
                                 Remove Question
                               </button>
                             )}
-                            <h4 className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                            <h4 className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
                               Question {subIdx + 1}
                             </h4>
 
@@ -2162,7 +2175,7 @@ export const TeacherDashboard = () => {
                               <label className="block">
                                 <span className="mb-2 block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Prompt</span>
                                 <textarea
-                                  className="h-24 w-full resize-none rounded-xl border border-slate-200 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold leading-relaxed"
+                                  className="h-24 w-full resize-none rounded-xl border border-slate-200 dark:border-emerald-800/80 dark:bg-[#061915] px-4 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-semibold text-slate-800 dark:text-slate-100 leading-relaxed"
                                   placeholder="Enter the question text or problem description here..."
                                   value={subQ.question}
                                   onChange={(e) => {
@@ -2242,9 +2255,9 @@ export const TeacherDashboard = () => {
                                       <input
                                         type="text"
                                         placeholder={`Option ${idx + 1}`}
-                                        className={`h-9 w-full rounded-md px-3 text-sm font-semibold border transition-all focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:bg-slate-900 dark:text-slate-200 ${isCorrect
-                                          ? "border-emerald-200 dark:border-emerald-900 focus:border-emerald-500"
-                                          : "border-slate-200 dark:border-slate-850 focus:border-indigo-500"
+                                        className={`h-9 w-full rounded-md px-3 text-sm font-semibold border transition-all focus:outline-none focus:ring-4 focus:ring-emerald-500/10 dark:bg-[#061915] dark:text-slate-100 ${isCorrect
+                                          ? "border-emerald-400 dark:border-emerald-600 focus:border-emerald-500"
+                                          : "border-slate-200 dark:border-emerald-900/50 focus:border-emerald-500"
                                           }`}
                                         value={subQ[opt]}
                                         onChange={(e) => {
@@ -2283,7 +2296,7 @@ export const TeacherDashboard = () => {
                           <label className="block">
                             <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Question Prompt</span>
                             <textarea
-                              className="h-32 w-full resize-none rounded-xl border border-slate-200 dark:border-slate-800/80 dark:bg-slate-950 px-4 py-3.5 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold leading-relaxed"
+                              className="h-32 w-full resize-none rounded-xl border border-slate-200 dark:border-emerald-800/80 dark:bg-[#061915] px-4 py-3.5 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-semibold text-slate-800 dark:text-slate-100 leading-relaxed"
                               placeholder="Enter the question text or problem description here..."
                               {...register("question")}
                             />
@@ -2352,9 +2365,9 @@ export const TeacherDashboard = () => {
                                 <div className="flex-1">
                                   <Input
                                     placeholder={`Option ${idx + 1}`}
-                                    className={`h-10 text-sm font-semibold transition-all focus:ring-4 focus:ring-indigo-500/10 ${isCorrect
-                                      ? "border-emerald-200 dark:border-emerald-900 focus:border-emerald-500"
-                                      : "border-slate-200 dark:border-slate-850 focus:border-indigo-500"
+                                    className={`h-10 text-sm font-semibold transition-all focus:ring-4 focus:ring-emerald-500/10 ${isCorrect
+                                      ? "border-emerald-400 dark:border-emerald-600 focus:border-emerald-500"
+                                      : "border-slate-200 dark:border-emerald-900/50 focus:border-emerald-500"
                                       }`}
                                     error={errors[opt]?.message}
                                     {...register(opt)}
@@ -2386,8 +2399,8 @@ export const TeacherDashboard = () => {
                                   setValue("class", cls);
                                 }}
                                 className={`py-2.5 px-3.5 rounded-xl text-xs font-bold border transition-all duration-200 ${isActive
-                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]"
-                                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                                    ? "bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/25 scale-[1.02]"
+                                    : "bg-white dark:bg-[#061915] border-slate-200 dark:border-emerald-900/50 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-emerald-900/20"
                                   }`}
                               >
                                 {cls}
@@ -2407,7 +2420,7 @@ export const TeacherDashboard = () => {
                               setValue("topic_id", "");
                               setValue("sub_topic_id", "");
                             }}
-                            className="h-10 w-full rounded-xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-700 dark:text-slate-350 outline-none transition focus:border-indigo-500"
+                            className="h-10 w-full rounded-xl border border-slate-300 dark:border-emerald-800 bg-white dark:bg-[#061915] px-3 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none transition focus:border-emerald-500"
                           >
                             {teacherSubjects.map(s => (
                               <option key={s.id} value={s.name}>{s.name}</option>
@@ -2527,7 +2540,7 @@ export const TeacherDashboard = () => {
                         </div>
                       ) : (
                         <div
-                          className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-850 rounded-2xl p-6 text-center cursor-pointer bg-slate-50/40 dark:bg-slate-950/10 max-w-md transition duration-200 hover:shadow-sm"
+                          className="border-2 border-dashed border-slate-200 dark:border-emerald-800/60 hover:border-emerald-500 dark:hover:border-emerald-600 rounded-2xl p-6 text-center cursor-pointer bg-slate-50/40 dark:bg-[#061915]/40 max-w-md transition duration-200 hover:shadow-sm"
                           onDragOver={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -2553,15 +2566,15 @@ export const TeacherDashboard = () => {
                           <label htmlFor="file-upload-add" className="cursor-pointer block">
                             {isUploadingImage ? (
                               <div className="flex flex-col items-center justify-center space-y-3 py-2">
-                                <Spinner className="h-7 w-7 text-indigo-500" />
-                                <span className="text-xs font-bold text-slate-500 animate-pulse">Uploading to ImageKit...</span>
+                                <Spinner className="h-7 w-7 text-emerald-500" />
+                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 animate-pulse">Uploading to ImageKit...</span>
                               </div>
                             ) : (
                               <div className="space-y-2">
-                                <div className="h-10 w-10 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl flex items-center justify-center mx-auto text-indigo-600 dark:text-indigo-400">
+                                <div className="h-10 w-10 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400">
                                   <Upload className="h-5.5 w-5.5" />
                                 </div>
-                                <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 block">Click or drag & drop to upload question image</span>
+                                <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 block">Click or drag & drop to upload question image</span>
                                 <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">JPG, JPEG, PNG or WEBP up to 5MB</span>
                               </div>
                             )}
@@ -2604,7 +2617,7 @@ export const TeacherDashboard = () => {
                   
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
                     <div>
-                      <h2 className="text-lg font-extrabold text-slate-850 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                      <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
                         <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse" />
                         AI-Powered MCQ Question Generator
                       </h2>
@@ -2637,7 +2650,7 @@ export const TeacherDashboard = () => {
                     <div className="space-y-5">
                       <div className="space-y-2">
                         <label className="block">
-                          <span className="mb-2 block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                          <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                             Topic or Prompt*
                           </span>
                           <div className="relative">
@@ -2646,7 +2659,7 @@ export const TeacherDashboard = () => {
                               value={aiTopic}
                               onChange={(e) => setAiTopic(e.target.value)}
                               placeholder="e.g. Photosynthesis light reactions, algebra linear equations, circular motion"
-                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold text-slate-905 dark:text-white"
+                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-emerald-800 bg-white dark:bg-[#061915] pl-4 pr-10 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-semibold text-slate-900 dark:text-white"
                             />
                             <Sparkles className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400 pointer-events-none" />
                           </div>
@@ -2656,14 +2669,14 @@ export const TeacherDashboard = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <label className="block">
-                            <span className="mb-2 block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                            <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                               {isSchool ? "Class / Grade" : "Subject"}
                             </span>
                             {isSchool ? (
                               <select
                                 value={aiClass}
                                 onChange={(e) => setAiClass(e.target.value)}
-                                className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-705 dark:text-slate-200 outline-none transition focus:border-indigo-500 cursor-pointer font-semibold"
+                                className="h-11 w-full rounded-xl border border-slate-200 dark:border-emerald-800 bg-white dark:bg-[#061915] px-4 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-emerald-500 cursor-pointer font-semibold"
                               >
                                 {(Array.isArray(registeredClasses) && registeredClasses.length > 0 ? registeredClasses.map(c => c.name) : ["Class 9", "Class 10", "Class 11", "Class 12"]).map((cls) => (
                                   <option key={cls} value={cls}>{cls}</option>
@@ -2673,7 +2686,7 @@ export const TeacherDashboard = () => {
                               <select
                                 value={selectedTeacherSubject}
                                 onChange={(e) => setSelectedTeacherSubject(e.target.value)}
-                                className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-705 dark:text-slate-200 outline-none transition focus:border-indigo-500 cursor-pointer font-semibold"
+                                className="h-11 w-full rounded-xl border border-slate-200 dark:border-emerald-800 bg-white dark:bg-[#061915] px-4 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-emerald-500 cursor-pointer font-semibold"
                               >
                                 {teacherSubjects.map(s => (
                                   <option key={s.id} value={s.name}>{s.name}</option>
@@ -2685,13 +2698,13 @@ export const TeacherDashboard = () => {
 
                         <div className="space-y-2">
                           <label className="block">
-                            <span className="mb-2 block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                            <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                               Difficulty Level
                             </span>
                             <select
                               value={aiDifficulty}
                               onChange={(e) => setAiDifficulty(e.target.value)}
-                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-705 dark:text-slate-200 outline-none transition focus:border-indigo-500 cursor-pointer font-semibold"
+                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-emerald-800 bg-white dark:bg-[#061915] px-4 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-emerald-500 cursor-pointer font-semibold"
                             >
                               <option value="Easy">Easy</option>
                               <option value="Medium">Medium</option>
@@ -2702,13 +2715,13 @@ export const TeacherDashboard = () => {
 
                         <div className="space-y-2">
                           <label className="block">
-                            <span className="mb-2 block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                            <span className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                               Question Count
                             </span>
                             <select
                               value={aiCount}
                               onChange={(e) => setAiCount(Number(e.target.value))}
-                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-705 dark:text-slate-200 outline-none transition focus:border-indigo-500 cursor-pointer font-semibold"
+                              className="h-11 w-full rounded-xl border border-slate-200 dark:border-emerald-800 bg-white dark:bg-[#061915] px-4 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-emerald-500 cursor-pointer font-semibold"
                             >
                               <option value={2}>2 Questions</option>
                               <option value={3}>3 Questions</option>
@@ -2724,7 +2737,7 @@ export const TeacherDashboard = () => {
                           type="button"
                           onClick={handleGenerateAIQuestions}
                           disabled={generating || !aiTopic.trim()}
-                          className="h-11 w-full bg-gradient-to-r from-indigo-600 to-purple-650 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold rounded-xl shadow-lg shadow-indigo-500/10 active:scale-[0.98] transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 border-0 cursor-pointer"
+                          className="h-11 w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold rounded-xl shadow-lg shadow-emerald-950/20 active:scale-[0.98] transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 border-0 cursor-pointer"
                         >
                           {generating ? (
                             <>
@@ -2742,12 +2755,12 @@ export const TeacherDashboard = () => {
                     </div>
 
                     {/* Right Panel: Informational Tips */}
-                    <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-indigo-900 dark:text-indigo-400 text-xs flex flex-col justify-between space-y-4">
+                    <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 dark:text-emerald-300 text-xs flex flex-col justify-between space-y-4">
                       <div>
-                        <h4 className="font-extrabold uppercase tracking-widest text-[#4B52DC] dark:text-[#818CF8] mb-2 flex items-center gap-1.5 font-title">
+                        <h4 className="font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1.5 font-title">
                           <Sparkles className="w-3.5 h-3.5 shrink-0" /> AI Generator Guidelines
                         </h4>
-                        <ul className="space-y-2.5 list-disc pl-4 text-slate-650 dark:text-slate-400 leading-relaxed font-semibold">
+                        <ul className="space-y-2.5 list-disc pl-4 text-slate-600 dark:text-slate-400 leading-relaxed font-semibold">
                           <li>Specify a precise topic keyword (e.g. <i>photosynthesis calvin cycle</i> instead of just <i>biology</i>).</li>
                           <li>The generator will simulate highly realistic multiple-choice questions matching CBSE/ICSE curriculum requirements.</li>
                           <li>Predefined detailed questions are instantly provided for common topics like <b>Photosynthesis</b> or <b>Algebra Linear Equations</b>.</li>
@@ -2769,7 +2782,7 @@ export const TeacherDashboard = () => {
                     
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
                       <div>
-                        <h3 className="text-base font-extrabold text-slate-850 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                        <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
                           Generated MCQ Previews
                         </h3>
                         <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 font-medium">
@@ -2781,7 +2794,7 @@ export const TeacherDashboard = () => {
                         <button
                           type="button"
                           onClick={toggleSelectAllGen}
-                          className="px-3.5 py-2 text-xs font-bold border border-slate-200/80 dark:border-slate-700/60 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition text-slate-650 dark:text-slate-350 cursor-pointer"
+                          className="px-3.5 py-2 text-xs font-bold border border-slate-200/80 dark:border-slate-700/60 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition text-slate-600 dark:text-slate-300 cursor-pointer"
                         >
                           {selectedGenIds.length === generatedQuestions.length ? "Deselect All" : "Select All"}
                         </button>
@@ -2789,7 +2802,7 @@ export const TeacherDashboard = () => {
                         <Button
                           onClick={handleSaveAIQuestions}
                           disabled={savingGen || selectedGenIds.length === 0}
-                          className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-750 text-white text-xs font-bold rounded-xl shadow-md h-9.5 px-4"
+                          className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-bold rounded-xl shadow-md h-9.5 px-4"
                         >
                           {savingGen ? "Adding to Pool..." : `Import Selected (${selectedGenIds.length})`}
                         </Button>
@@ -2805,7 +2818,7 @@ export const TeacherDashboard = () => {
                             className={`p-5 rounded-2xl border transition-all duration-355 flex gap-4 ${
                               isSelected
                                 ? "border-indigo-500/35 bg-indigo-500/[0.015] dark:border-indigo-500/25 dark:bg-indigo-950/5 shadow-sm"
-                                : "border-slate-200/70 bg-slate-50/20 dark:border-slate-850 dark:bg-slate-950/20 opacity-70"
+                                : "border-slate-200/70 bg-slate-50/20 dark:border-slate-800 dark:bg-slate-950/20 opacity-70"
                             }`}
                           >
                             {/* Checkbox */}
@@ -2814,7 +2827,7 @@ export const TeacherDashboard = () => {
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => toggleGenQuestionSelect(q.id)}
-                                className="w-4 h-4 text-indigo-650 bg-gray-100 border-gray-350 rounded focus:ring-indigo-500 cursor-pointer"
+                                className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
                               />
                             </div>
 
@@ -2823,10 +2836,10 @@ export const TeacherDashboard = () => {
                               <div className="flex items-center justify-between gap-4 flex-wrap">
                                 <span className="text-xs font-bold text-slate-500">MCQ Question #{idx + 1}</span>
                                 <div className="flex items-center gap-2">
-                                  <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-850 border border-slate-200/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 text-[10px] font-bold">
+                                  <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 text-[10px] font-bold">
                                     {isSchool ? q.class : (programs.find(p => p.id === q.class)?.code || q.class)}
                                   </span>
-                                  <span className="px-2.5 py-0.5 rounded-full bg-indigo-50/75 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/30 text-indigo-650 dark:text-indigo-400 text-[10px] font-bold">
+                                  <span className="px-2.5 py-0.5 rounded-full bg-indigo-50/75 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold">
                                     {q.difficulty}
                                   </span>
                                 </div>
@@ -2839,7 +2852,7 @@ export const TeacherDashboard = () => {
                                   value={q.question}
                                   onChange={(e) => updateGenQuestionField(idx, "question", e.target.value)}
                                   rows={2}
-                                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-350 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/10 font-semibold resize-none"
+                                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/10 font-semibold resize-none"
                                 />
                               </div>
 
@@ -2852,7 +2865,7 @@ export const TeacherDashboard = () => {
                                       type="text"
                                       value={q[optKey]}
                                       onChange={(e) => updateGenQuestionField(idx, optKey, e.target.value)}
-                                      className="h-10 w-full px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white outline-none placeholder:text-slate-350 focus:border-indigo-500 font-semibold"
+                                      className="h-10 w-full px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white outline-none placeholder:text-slate-300 focus:border-indigo-500 font-semibold"
                                     />
                                   </div>
                                 ))}
@@ -2864,7 +2877,7 @@ export const TeacherDashboard = () => {
                                 <select
                                   value={q.correct_option}
                                   onChange={(e) => updateGenQuestionField(idx, "correct_option", e.target.value)}
-                                  className="h-9 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3.5 text-xs text-slate-705 dark:text-slate-250 outline-none focus:border-indigo-500 cursor-pointer font-bold"
+                                  className="h-9 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3.5 text-xs text-slate-700 dark:text-slate-250 outline-none focus:border-indigo-500 cursor-pointer font-bold"
                                 >
                                   <option value="option1">Option 1 ({q.option1 ? q.option1.substring(0, 30) : "Empty"}...)</option>
                                   <option value="option2">Option 2 ({q.option2 ? q.option2.substring(0, 30) : "Empty"}...)</option>
@@ -2892,7 +2905,7 @@ export const TeacherDashboard = () => {
                       <Button
                         onClick={handleSaveAIQuestions}
                         disabled={savingGen || selectedGenIds.length === 0}
-                        className="bg-gradient-to-r from-emerald-500 to-teal-650 hover:from-emerald-600 hover:to-teal-750 text-white text-xs font-bold rounded-xl shadow-md h-9.5 px-6 border-0 cursor-pointer"
+                        className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-bold rounded-xl shadow-md h-9.5 px-6 border-0 cursor-pointer"
                       >
                         {savingGen ? "Saving Questions..." : `Import Selected (${selectedGenIds.length})`}
                       </Button>
@@ -2904,12 +2917,12 @@ export const TeacherDashboard = () => {
 
             {/* CSV Form */}
             {addSubTab === "csv" && (
-              <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-850 dark:bg-slate-900 p-6 shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-6">
-                  <h2 className="text-base font-bold text-slate-800 dark:text-slate-200">Import Questions via CSV</h2>
+              <div className="rounded-xl border border-slate-200/80 dark:border-emerald-900/40 bg-white dark:bg-[#081a16] p-6 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-emerald-900/40 pb-3 mb-6">
+                  <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Import Questions via CSV</h2>
                   <button
                     onClick={() => setAddSubTab(null)}
-                    className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition uppercase cursor-pointer"
+                    className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition uppercase cursor-pointer"
                   >
                     Close Form ×
                   </button>
@@ -2921,21 +2934,21 @@ export const TeacherDashboard = () => {
                   </p>
 
                   {/* CSV File Input */}
-                  <label className="block border border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-5 hover:border-slate-400 dark:hover:border-slate-600 text-center cursor-pointer transition bg-slate-50/50 dark:bg-slate-950/20">
+                  <label className="block border border-dashed border-slate-300 dark:border-emerald-800 rounded-xl p-5 hover:border-emerald-500 dark:hover:border-emerald-600 text-center cursor-pointer transition bg-slate-50/50 dark:bg-[#061915]/40">
                     <input
                       type="file"
                       accept=".csv"
                       className="hidden"
                       onChange={handleFileUpload}
                     />
-                    <FileSpreadsheet className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                    <span className="text-xs font-semibold text-emerald-600 block">Click to upload .csv file</span>
+                    <FileSpreadsheet className="h-8 w-8 text-slate-400 dark:text-emerald-500 mx-auto mb-2" />
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block">Click to upload .csv file</span>
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-1">UTF-8 comma-separated format</span>
                   </label>
 
                   {/* Textarea for Paste CSV */}
                   <div>
-                    <span className="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-350">Or Paste CSV Text:</span>
+                    <span className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-300">Or Paste CSV Text:</span>
                     <textarea
                       value={csvText}
                       onChange={(e) => setCsvText(e.target.value)}
@@ -2944,37 +2957,37 @@ export const TeacherDashboard = () => {
                           ? "question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic\nWhat is 1+1?,2,3,4,5,option1,easy,Class 10,Algebra,Addition"
                           : "question,options1,option2,option3,option4,correct_option,difficulty,subject,topic\nWhat is 1+1?,2,3,4,5,option1,easy,Mathematics,Algebra"
                       }
-                      className="h-28 w-full resize-none rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 p-2.5 text-xs font-mono text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-500"
+                      className="h-28 w-full resize-none rounded-xl border border-slate-300 dark:border-emerald-800 bg-white dark:bg-[#061915] p-3 text-xs font-mono text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
                     />
                   </div>
 
                   {parsedPreviewQuestions.length > 0 && (
                     <div>
-                      <span className="mb-2 block text-xs font-bold text-slate-600">CSV Preview ({parsedPreviewQuestions.length} Questions):</span>
-                      <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-2">
+                      <span className="mb-2 block text-xs font-bold text-slate-700 dark:text-slate-300">CSV Preview ({parsedPreviewQuestions.length} Questions):</span>
+                      <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 dark:border-emerald-900/40 bg-slate-50 dark:bg-[#061915]/50 p-2 space-y-2">
                         {parsedPreviewQuestions.map((q, idx) => {
                           const diff = (q.difficulty || "").toLowerCase().trim();
                           const boxColor =
-                            diff === "easy" ? "border-l-4 border-l-emerald-500 bg-emerald-50/25 dark:bg-emerald-950/10 border-slate-200" :
-                            diff === "medium" ? "border-l-4 border-l-amber-500 bg-amber-50/25 dark:bg-amber-950/10 border-slate-200" :
-                            (diff === "hard" || diff === "difficult" ? "border-l-4 border-l-rose-500 bg-rose-50/25 dark:bg-rose-950/10 border-slate-200" : "border-slate-100 bg-white");
+                            diff === "easy" ? "border-l-4 border-l-emerald-500 bg-emerald-50/25 dark:bg-emerald-950/20 border-slate-200 dark:border-emerald-900/40" :
+                            diff === "medium" ? "border-l-4 border-l-amber-500 bg-amber-50/25 dark:bg-amber-950/20 border-slate-200 dark:border-emerald-900/40" :
+                            (diff === "hard" || diff === "difficult" ? "border-l-4 border-l-rose-500 bg-rose-50/25 dark:bg-rose-950/20 border-slate-200 dark:border-emerald-900/40" : "border-slate-100 dark:border-emerald-900/30 bg-white dark:bg-[#081a16]");
                           
                           return (
-                            <div key={idx} className={`rounded border p-3 text-xs shadow-sm ${boxColor}`}>
-                              <div className="font-bold text-slate-800">Q{idx + 1}: {q.question}</div>
-                              <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[11px] text-slate-500">
+                            <div key={idx} className={`rounded-xl border p-3 text-xs shadow-sm ${boxColor}`}>
+                              <div className="font-bold text-slate-800 dark:text-slate-100">Q{idx + 1}: {q.question}</div>
+                              <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                                 <div>Option 1: {q.option1 || q.options1 || "-"}</div>
                                 <div>Option 2: {q.option2 || "-"}</div>
                                 <div>Option 3: {q.option3 || "-"}</div>
                                 <div>Option 4: {q.option4 || "-"}</div>
                               </div>
                               <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
-                                <span className="font-semibold text-emerald-600">Correct: {q.correct_option || "-"}</span>
-                                {isSchool && <span className="text-slate-400">Class: {q.class || "Class 10"}</span>}
-                                <span className="text-slate-400">Difficulty: {q.difficulty || "-"}</span>
-                                <span className="text-slate-400">Topic: {q.topic || "-"}</span>
-                                {isSchool && <span className="text-slate-400">Sub-topic: {q.sub_topic || "-"}</span>}
-                                {q.subject && <span className="text-slate-400">Subject: {q.subject}</span>}
+                                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Correct: {q.correct_option || "-"}</span>
+                                {isSchool && <span className="text-slate-400 dark:text-slate-500">Class: {q.class || "Class 10"}</span>}
+                                <span className="text-slate-400 dark:text-slate-500">Difficulty: {q.difficulty || "-"}</span>
+                                <span className="text-slate-400 dark:text-slate-500">Topic: {q.topic || "-"}</span>
+                                {isSchool && <span className="text-slate-400 dark:text-slate-500">Sub-topic: {q.sub_topic || "-"}</span>}
+                                {q.subject && <span className="text-slate-400 dark:text-slate-500">Subject: {q.subject}</span>}
                               </div>
                             </div>
                           );
@@ -2984,11 +2997,11 @@ export const TeacherDashboard = () => {
                   )}
 
                   {/* Format Help Details */}
-                  <div className="rounded bg-amber-50 border border-amber-100 p-3 text-[10px] text-amber-800 leading-relaxed">
+                  <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 p-3 text-[10px] text-amber-800 dark:text-amber-300 leading-relaxed">
                     <h4 className="font-bold flex items-center gap-1 mb-1">
                       <HelpCircle className="h-3.5 w-3.5 shrink-0" /> Expected CSV Headers:
                     </h4>
-                    <p className="font-mono bg-white/70 p-1.5 rounded mb-1.5 text-[9px] overflow-x-auto whitespace-nowrap">
+                    <p className="font-mono bg-white/70 dark:bg-[#061915] p-1.5 rounded-lg mb-1.5 text-[9px] overflow-x-auto whitespace-nowrap text-slate-800 dark:text-slate-200">
                       {isSchool
                         ? "question,option1,option2,option3,option4,correct_option,difficulty,class,topic,sub_topic,subject"
                         : "question,options1,option2,option3,option4,correct_option,difficulty,subject,topic"
@@ -2999,7 +3012,7 @@ export const TeacherDashboard = () => {
                     <span>* If the topic name doesn't match any subject topics, the first topic will be auto-assigned.</span>
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-emerald-900/30">
                     <Button
                       variant="secondary"
                       onClick={() => setAddSubTab(null)}
@@ -3023,28 +3036,28 @@ export const TeacherDashboard = () => {
         {activeTab === "view" && (
           <div className="space-y-6 animate-fade-in">
             {/* Header Banner */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-pink-500/10 border border-indigo-150/50 dark:border-indigo-900/30 p-6 shadow-sm backdrop-blur-md">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-600/15 border border-emerald-200/60 dark:border-emerald-800/50 p-6 shadow-sm backdrop-blur-md">
               <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="mb-2 flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                  <div className="mb-2 flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
                     <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
                     Subject Question Repository
                   </div>
-                  <h1 className="text-2xl md:text-3xl font-black text-slate-850 dark:text-slate-100 tracking-tight flex items-center gap-2">
-                    <FolderPlus className="h-6.5 w-6.5 text-indigo-500" />
+                  <h1 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                    <FolderPlus className="h-6.5 w-6.5 text-emerald-500 dark:text-emerald-400" />
                     {selectedClass === "all" ? "All Questions Bank" : `${selectedClass} Questions Bank`}
                   </h1>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold mt-1">
-                    Subject Domain: <span className="font-bold text-indigo-600 dark:text-indigo-400">{subjectsDisplay}</span>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">
+                    Subject Domain: <span className="font-bold text-emerald-600 dark:text-emerald-400">{subjectsDisplay}</span>
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/45 px-3.5 py-2 rounded-xl border border-indigo-100/60 dark:border-indigo-900/40 shadow-sm">
+                  <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-sm">
                     {filteredQuestions.length} Questions Displayed
                   </span>
                 </div>
               </div>
-              <div className="absolute -right-6 -bottom-6 h-24 w-24 rounded-full bg-indigo-500/10 blur-xl pointer-events-none" />
+              <div className="absolute -right-6 -bottom-6 h-24 w-24 rounded-full bg-emerald-500/10 blur-xl pointer-events-none" />
             </div>
 
             {/* Stats Grid */}
@@ -3054,25 +3067,25 @@ export const TeacherDashboard = () => {
                 onClick={() => setDifficultyFilter("all")}
                 className={`rounded-2xl border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none relative overflow-hidden group flex flex-col items-center justify-center text-center min-h-[140px] ${
                   difficultyFilter === "all"
-                    ? "border-transparent bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white shadow-lg shadow-indigo-500/25 ring-2 ring-indigo-500/20"
-                    : "border-indigo-200 bg-indigo-50/20 dark:border-indigo-900/40 dark:bg-indigo-950/15 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50/35 dark:hover:bg-indigo-950/25 hover:border-indigo-400 dark:hover:border-indigo-800"
+                    ? "border-transparent bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-700 text-white shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-500/20"
+                    : "border-emerald-200 bg-emerald-50/20 dark:border-emerald-900/40 dark:bg-emerald-950/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50/35 dark:hover:bg-emerald-950/25 hover:border-emerald-400 dark:hover:border-emerald-800"
                 }`}
               >
                 <div className={`p-2.5 rounded-xl mb-2.5 group-hover:scale-110 transition-transform ${
-                  difficultyFilter === "all" ? "bg-white/20 text-white" : "bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400"
+                  difficultyFilter === "all" ? "bg-white/20 text-white" : "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400"
                 }`}>
                   <BookOpen className="h-5 w-5" />
                 </div>
                 <p className={`text-[10px] font-extrabold uppercase tracking-widest ${
-                  difficultyFilter === "all" ? "text-indigo-100" : "text-indigo-600 dark:text-indigo-400/80"
+                  difficultyFilter === "all" ? "text-emerald-100" : "text-emerald-600 dark:text-emerald-400/80"
                 }`}>Total Pool</p>
                 <h3 className={`text-3xl font-black mt-1 ${
-                  difficultyFilter === "all" ? "text-white" : "text-indigo-900 dark:text-indigo-200"
+                  difficultyFilter === "all" ? "text-white" : "text-emerald-900 dark:text-emerald-200"
                 }`}>
                   {stats.total} <span className="text-xs font-bold opacity-80">Qs</span>
                 </h3>
                 <div className={`absolute bottom-2 text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${
-                  difficultyFilter === "all" ? "text-white/90" : "text-indigo-600 dark:text-indigo-400"
+                  difficultyFilter === "all" ? "text-white/90" : "text-emerald-600 dark:text-emerald-400"
                 }`}>Click to view all</div>
               </article>
 
@@ -3159,11 +3172,11 @@ export const TeacherDashboard = () => {
             </section>
 
             {/* Search & Topic Filters */}
-            <div className="grid gap-4 rounded-2xl border border-slate-200/60 dark:border-slate-850 bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-4.5 shadow-sm md:grid-cols-[1fr_260px] items-center">
+            <div className="grid gap-4 rounded-2xl border border-slate-200/60 dark:border-emerald-900/40 bg-white/70 dark:bg-[#081a16] backdrop-blur-md p-4.5 shadow-sm md:grid-cols-[1fr_260px] items-center">
               <div className="relative w-full">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-400" />
                 <Input
-                  className="pl-11 h-11 rounded-xl border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-sm w-full bg-white dark:bg-slate-950/60"
+                  className="pl-11 h-11 rounded-xl border-slate-200 dark:border-emerald-900/50 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-sm w-full bg-white dark:bg-[#061915] text-slate-800 dark:text-slate-100"
                   placeholder="Search questions by keyword or prompt text..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -3174,16 +3187,16 @@ export const TeacherDashboard = () => {
                 <select
                   value={topicFilter}
                   onChange={(e) => setTopicFilter(e.target.value)}
-                  className="h-11 w-full appearance-none rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pl-4 pr-10 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 cursor-pointer"
+                  className="h-11 w-full appearance-none rounded-xl border border-slate-200 dark:border-emerald-900/50 bg-white dark:bg-[#061915] pl-4 pr-10 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 cursor-pointer"
                 >
                   <option value="all">All Topic Nodes</option>
                   {filteredTopics.map((t) => (
-                    <option key={t.id} value={t.id} className="dark:bg-slate-950 dark:text-slate-200">
+                    <option key={t.id} value={t.id} className="dark:bg-[#061915] dark:text-slate-200">
                       {t.name}
                     </option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500">
+                <div className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-400">
                   <Filter className="h-4 w-4" />
                 </div>
               </div>
@@ -3192,21 +3205,21 @@ export const TeacherDashboard = () => {
             {/* Questions Table Section */}
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-indigo-500 animate-pulse" />
+                <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-emerald-500 animate-pulse" />
                   Manage Questions Inventory
                 </h2>
 
                 {selectedIds.length > 0 && (
-                  <div className="flex items-center gap-3 bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-150/50 dark:border-indigo-900/40 px-4 py-2 rounded-xl animate-fade-in">
-                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                  <div className="flex items-center gap-3 bg-emerald-50/50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/50 px-4 py-2 rounded-xl animate-fade-in">
+                    <span className="text-xs font-bold text-slate-600 dark:text-emerald-300">
                       {selectedIds.length} question{selectedIds.length > 1 ? "s" : ""} selected:
                     </span>
                     <Button
                       variant="secondary"
-                      className="h-8 rounded-lg px-3 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-900 font-bold transition-all shadow-sm hover:shadow active:scale-95 flex items-center gap-1.5"
+                      className="h-8 rounded-lg px-3 text-xs bg-white dark:bg-[#061915] border border-slate-200 dark:border-emerald-800/60 hover:border-emerald-400 font-bold transition-all shadow-sm hover:shadow active:scale-95 flex items-center gap-1.5"
                       onClick={downloadCsv}
-                      icon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+                      icon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
                     >
                       Download CSV
                     </Button>
@@ -3224,24 +3237,24 @@ export const TeacherDashboard = () => {
               </div>
 
               {isLoadingQuestions ? (
-                <div className="flex h-64 items-center justify-center text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex h-64 items-center justify-center text-slate-500 bg-white dark:bg-[#081a16] rounded-2xl border border-slate-200 dark:border-emerald-900/40 shadow-sm">
                   <Spinner /> <span className="ml-2 font-semibold text-sm">Loading question bank...</span>
                 </div>
               ) : filteredQuestions.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/40 dark:bg-slate-950/20 py-20 text-center text-slate-500 dark:text-slate-400 shadow-inner flex flex-col items-center justify-center space-y-3">
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 rounded-full border border-slate-200 dark:border-slate-800">
+                <div className="rounded-2xl border border-dashed border-slate-300 dark:border-emerald-900/50 bg-white/40 dark:bg-[#081a16]/40 py-20 text-center text-slate-500 dark:text-slate-400 shadow-inner flex flex-col items-center justify-center space-y-3">
+                  <div className="p-3.5 bg-slate-50 dark:bg-[#061915] text-slate-400 dark:text-emerald-400 rounded-full border border-slate-200 dark:border-emerald-900/50">
                     <FileQuestion className="h-6 w-6" />
                   </div>
                   <div className="space-y-1">
-                    <p className="font-bold text-slate-700 dark:text-slate-350">No questions found</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">Create new questions or adjust search filters.</p>
+                    <p className="font-bold text-slate-700 dark:text-slate-200">No questions found</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-400">Create new questions or adjust search filters.</p>
                   </div>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md shadow-md mb-10 transition-all hover:shadow-lg">
+                <div className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-emerald-900/40 bg-white/70 dark:bg-[#081a16] backdrop-blur-md shadow-md mb-10 transition-all hover:shadow-lg">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm relative">
-                      <thead className="bg-slate-50/80 dark:bg-slate-950/60 text-xs font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-850 sticky top-0 backdrop-blur-md z-10">
+                      <thead className="bg-slate-50/80 dark:bg-[#061915] text-xs font-extrabold uppercase tracking-widest text-slate-500 dark:text-emerald-400 border-b border-slate-200/80 dark:border-emerald-900/50 sticky top-0 backdrop-blur-md z-10">
                         <tr>
                           <th className="px-6 py-4.5 w-12 text-center">
                             {selectedIds.length > 0 && (
@@ -3313,8 +3326,8 @@ export const TeacherDashboard = () => {
                                   }
                                 }
                               }}
-                              className={`group odd:bg-white/40 even:bg-slate-50/10 dark:odd:bg-slate-900/20 dark:even:bg-slate-900/5 transition-all duration-200 cursor-pointer ${
-                                isSelected ? selectedTheme : `${difficultyTheme} text-slate-700 dark:text-slate-350`
+                              className={`group odd:bg-white/40 even:bg-slate-50/10 dark:odd:bg-[#081a16]/60 dark:even:bg-[#061915]/60 transition-all duration-200 cursor-pointer ${
+                                isSelected ? selectedTheme : `${difficultyTheme} text-slate-700 dark:text-slate-300`
                               }`}
                             >
                               <td className="px-6 py-4.5 text-center">
@@ -3328,7 +3341,7 @@ export const TeacherDashboard = () => {
                                       setSelectedIds(selectedIds.filter(id => id !== q.id));
                                     }
                                   }}
-                                  className={`h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600 transition-transform duration-200 ${
+                                  className={`h-4 w-4 rounded border-slate-300 dark:border-emerald-800 text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600 transition-transform duration-200 ${
                                     isSelected ? "scale-110" : ""
                                   }`}
                                 />
@@ -3341,15 +3354,15 @@ export const TeacherDashboard = () => {
                                         medium: "bg-amber-500 text-white shadow-md shadow-amber-500/20 scale-110",
                                         hard: "bg-rose-500 text-white shadow-md shadow-rose-500/20 scale-110",
                                         difficult: "bg-rose-500 text-white shadow-md shadow-rose-500/20 scale-110",
-                                      }[diffLower as "easy" | "medium" | "hard" | "difficult"] || "bg-indigo-500 text-white scale-110"
-                                    : "text-slate-400 group-hover:text-indigo-500"
+                                      }[diffLower as "easy" | "medium" | "hard" | "difficult"] || "bg-emerald-500 text-white scale-110"
+                                    : "text-slate-400 group-hover:text-emerald-500"
                                 }`}>
                                   {index + 1}
                                 </span>
                               </td>
                               <td className="px-6 py-4.5">
                                 <div
-                                  className="preview-trigger font-bold text-slate-800 dark:text-slate-200 leading-relaxed max-w-xl group-hover:text-indigo-600 dark:group-hover:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-350 hover:underline cursor-pointer transition-all"
+                                  className="preview-trigger font-bold text-slate-800 dark:text-slate-100 leading-relaxed max-w-xl group-hover:text-emerald-600 dark:group-hover:text-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-300 hover:underline cursor-pointer transition-all"
                                   onClick={() => setPreviewQuestion(q)}
                                   title="Click to preview question details"
                                 >
@@ -3393,9 +3406,9 @@ export const TeacherDashboard = () => {
                                     <>
                                       <Button
                                         variant="secondary"
-                                        className="h-8.5 rounded-lg px-3 text-xs border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-900 bg-white hover:bg-slate-50 dark:bg-slate-900 font-bold transition-all shadow-sm hover:shadow active:scale-95"
+                                        className="h-8.5 rounded-lg px-3 text-xs border border-slate-200 dark:border-emerald-800/60 hover:border-emerald-400 bg-white hover:bg-slate-50 dark:bg-[#061915] font-bold transition-all shadow-sm hover:shadow active:scale-95"
                                         onClick={() => handleOpenEditModal(q, index)}
-                                        icon={<Pencil className="h-3.5 w-3.5 text-indigo-500" />}
+                                        icon={<Pencil className="h-3.5 w-3.5 text-emerald-500" />}
                                       >
                                         Edit
                                       </Button>
@@ -3432,7 +3445,7 @@ export const TeacherDashboard = () => {
         )}
 
         {activeTab === "monitoring" && (
-          <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-850 dark:bg-slate-900 p-6 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm">
             {!selectedTestIdForMonitoring ? (
               <div>
                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Select Live Test to Monitor</h2>
@@ -3502,7 +3515,7 @@ export const TeacherDashboard = () => {
                             {isFuture ? (
                               <Button
                                 disabled
-                                className="w-full bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-500 font-bold h-9 text-xs border border-slate-200 dark:border-slate-850 cursor-not-allowed"
+                                className="w-full bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-500 font-bold h-9 text-xs border border-slate-200 dark:border-slate-800 cursor-not-allowed"
                               >
                                 Starts in {getRemainingTimeStr(test.start_time || "")}
                               </Button>
@@ -3734,7 +3747,7 @@ export const TeacherDashboard = () => {
                 className={`border-b-2 pb-3.5 text-xs font-black uppercase tracking-[0.15em] transition-all cursor-pointer ${
                   lmsSubTab === "library"
                     ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-black"
-                    : "border-transparent text-slate-400 hover:text-slate-700 dark:text-slate-450 dark:hover:text-slate-300"
+                    : "border-transparent text-slate-400 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
                 }`}
               >
                 Preview Material
@@ -3745,7 +3758,7 @@ export const TeacherDashboard = () => {
                 className={`border-b-2 pb-3.5 text-xs font-black uppercase tracking-[0.15em] transition-all cursor-pointer ${
                   lmsSubTab === "publish"
                     ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-black"
-                    : "border-transparent text-slate-400 hover:text-slate-700 dark:text-slate-450 dark:hover:text-slate-300"
+                    : "border-transparent text-slate-400 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
                 }`}
               >
                 Publish Material
@@ -3857,7 +3870,7 @@ export const TeacherDashboard = () => {
                     {lmsResourceType === "readme" || lmsResourceType === "html" ? null : (lmsResourceType === "document" && lmsUploadType === "file") ? (
                       <div className="mt-4">
                         <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Upload PDF / Document</span>
-                        <div className="flex h-32 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-400 transition bg-slate-50 dark:border-slate-850 dark:bg-slate-950 relative cursor-pointer">
+                        <div className="flex h-32 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-400 transition bg-slate-50 dark:border-slate-800 dark:bg-slate-950 relative cursor-pointer">
                           <input
                             type="file"
                             onChange={(e) => setSelectedLmsFile(e.target.files?.[0] || null)}
@@ -3865,7 +3878,7 @@ export const TeacherDashboard = () => {
                             className="absolute inset-0 opacity-0 cursor-pointer"
                           />
                           <Upload className="h-6 w-6 text-slate-400 mb-2" />
-                          <p className="text-xs font-black text-slate-600 dark:text-slate-350">
+                          <p className="text-xs font-black text-slate-600 dark:text-slate-300">
                             {selectedLmsFile ? selectedLmsFile.name : "Select or drag file here"}
                           </p>
                           <p className="mt-1 text-[10px] font-bold text-slate-400">PDF, Word, or presentation files up to 10MB</p>
@@ -4019,11 +4032,11 @@ export const TeacherDashboard = () => {
                                       isVideo
                                         ? "bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
                                         : isReadme
-                                          ? "bg-amber-100 text-amber-650 dark:bg-amber-950/40 dark:text-amber-300"
+                                          ? "bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
                                         : isHtml
-                                          ? "bg-teal-100 text-teal-650 dark:bg-teal-950/40 dark:text-teal-300"
+                                          ? "bg-teal-100 text-teal-600 dark:bg-teal-950/40 dark:text-teal-300"
                                         : isDoc
-                                          ? "bg-emerald-100 text-emerald-650 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                          ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
                                           : "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
                                     }`}>
                                       <ResourceIcon className="h-5 w-5" />
@@ -4063,7 +4076,7 @@ export const TeacherDashboard = () => {
                                       </Link>
                                     ) : isHtml ? (
                                       <Link to={`/lms/subjects/${encodeURIComponent(mat.subject_id)}/html/${encodeURIComponent(mat.id)}`}>
-                                        <Button className="h-8 rounded-xl text-[10px] font-bold px-3 flex items-center gap-1.5 shadow-sm bg-teal-500 hover:bg-teal-650 text-black">
+                                        <Button className="h-8 rounded-xl text-[10px] font-bold px-3 flex items-center gap-1.5 shadow-sm bg-teal-500 hover:bg-teal-600 text-black">
                                           <Code className="h-3 w-3" /> Preview
                                         </Button>
                                       </Link>
@@ -4437,7 +4450,7 @@ export const TeacherDashboard = () => {
                 {/* CSV Import Section for Passage Sub-Questions in Modal */}
                 <div className="border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-white/70 dark:bg-slate-900/40 shadow-sm space-y-3 mb-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-350 uppercase tracking-wider flex items-center gap-1.5">
+                    <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                       <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
                       Quick Import Sub-Questions via CSV
                     </h3>
@@ -4612,7 +4625,7 @@ export const TeacherDashboard = () => {
               <>
                 {/* Question Text */}
                 <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-350">Question Prompt</span>
+                  <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Question Prompt</span>
                   <textarea
                     className="h-24 w-full resize-none rounded-md border border-slate-300 dark:border-slate-800 dark:bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-300 focus:border-emerald-500 text-slate-800 dark:text-slate-200"
                     placeholder="Type the question details here..."
@@ -4625,7 +4638,7 @@ export const TeacherDashboard = () => {
 
                 {/* Options */}
                 <div>
-                  <div className="flex items-center justify-between mb-2 border-b border-slate-105 dark:border-slate-800 pb-2">
+                  <div className="flex items-center justify-between mb-2 border-b border-slate-100 dark:border-slate-800 pb-2">
                     <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Options (Select the correct one)</span>
                     <label className="relative inline-flex items-center cursor-pointer select-none">
                       <input
@@ -4865,7 +4878,7 @@ export const TeacherDashboard = () => {
                         <BookOpen className="h-4 w-4 text-indigo-500 shrink-0" />
                         Passage Context: {p.title}
                       </div>
-                      <div className="text-xs text-slate-600 dark:text-slate-350 leading-relaxed font-semibold max-h-40 overflow-y-auto whitespace-pre-wrap">
+                      <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-semibold max-h-40 overflow-y-auto whitespace-pre-wrap">
                         {p.content}
                       </div>
                     </div>

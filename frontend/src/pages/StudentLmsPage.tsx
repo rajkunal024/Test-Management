@@ -53,7 +53,7 @@ const getSubjectTheme = (subjectStr: string) => {
   if (sub.includes("science") || sub.includes("dbms") || sub.includes("network") || sub.includes("system")) {
     return {
       gradient: "from-emerald-500/5 to-teal-500/5 dark:from-emerald-950/20 dark:to-teal-950/10",
-      accent: "text-emerald-650 dark:text-emerald-400 bg-emerald-500/10",
+      accent: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
       border: "border-emerald-100 dark:border-emerald-900/30",
       borderLine: "border-emerald-100/50 dark:border-emerald-950/20",
       badgeTone: "green" as const,
@@ -69,8 +69,8 @@ const getSubjectTheme = (subjectStr: string) => {
     };
   }
   return {
-    gradient: "from-slate-500/5 to-slate-650/5 dark:from-slate-900/10 dark:to-slate-800/5",
-    accent: "text-slate-600 dark:text-slate-400 bg-slate-550/10",
+    gradient: "from-slate-500/5 to-slate-600/5 dark:from-slate-900/10 dark:to-slate-800/5",
+    accent: "text-slate-600 dark:text-slate-400 bg-slate-500/10",
     border: "border-slate-200/50 dark:border-slate-800",
     borderLine: "border-slate-100 dark:border-slate-800/80",
     badgeTone: "slate" as const,
@@ -87,17 +87,17 @@ const getMaterialIcon = (type: LmsMaterial["resource_type"]) => {
 const getButtonClass = (tone: string) => {
   switch (tone) {
     case "blue":
-      return "bg-indigo-600 hover:bg-indigo-750 text-white border-none";
+      return "bg-indigo-600 hover:bg-indigo-700 text-white border-none";
     case "purple":
-      return "bg-purple-600 hover:bg-purple-750 text-white border-none";
+      return "bg-purple-600 hover:bg-purple-700 text-white border-none";
     case "green":
-      return "bg-emerald-650 hover:bg-emerald-750 text-white border-none";
+      return "bg-emerald-600 hover:bg-emerald-700 text-white border-none";
     case "yellow":
-      return "bg-amber-600 hover:bg-amber-750 text-white border-none";
+      return "bg-amber-600 hover:bg-amber-700 text-white border-none";
     case "rose":
-      return "bg-rose-600 hover:bg-rose-750 text-white border-none";
+      return "bg-rose-600 hover:bg-rose-700 text-white border-none";
     default:
-      return "bg-indigo-600 hover:bg-indigo-750 text-white border-none";
+      return "bg-indigo-600 hover:bg-indigo-700 text-white border-none";
   }
 };
 
@@ -193,7 +193,7 @@ export const StudentLmsPage = () => {
             </div>
           ) : collegeCohortSubjects.length === 0 ? (
             <div className="rounded-[2rem] border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center bg-white/70 dark:bg-slate-900/50">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-550">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                 <Layers3 className="h-7 w-7" />
               </div>
               <p className="text-base font-black text-slate-800 dark:text-slate-100">No registered subjects found</p>
@@ -202,16 +202,16 @@ export const StudentLmsPage = () => {
           ) : (
             <div className="space-y-8">
               <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Subjects</p>
+                <div className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 shadow-sm">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Subjects</p>
                   <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{collegeCohortSubjects.length}</p>
                 </div>
-                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Resources</p>
+                <div className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 shadow-sm">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Resources</p>
                   <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{materials.length}</p>
                 </div>
-                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Latest upload</p>
+                <div className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 shadow-sm">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Latest upload</p>
                   <p className="mt-2 text-sm font-black text-slate-900 dark:text-white">
                     {materials[0]?.created_at ? new Date(materials[0].created_at).toLocaleDateString([], { dateStyle: "medium" }) : "No uploads yet"}
                   </p>
@@ -221,9 +221,9 @@ export const StudentLmsPage = () => {
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
                 <div>
                   <h2 className="text-xl font-black text-slate-900 dark:text-white">Your Subjects</h2>
-                  <p className="text-xs font-semibold text-slate-550 dark:text-slate-400">Select a subject to view its study materials</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Select a subject to view its study materials</p>
                 </div>
-                <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-950/60 border border-slate-205 dark:border-slate-800/40">
+                <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/40">
                   <button
                     type="button"
                     onClick={() => handleSetViewMode("card")}
@@ -263,7 +263,7 @@ export const StudentLmsPage = () => {
                       <Link
                         key={subject.id}
                         to={`/lms/subjects/${encodeURIComponent(subject.id)}`}
-                        className={`group overflow-hidden rounded-[1.75rem] border ${theme.border} bg-white dark:bg-slate-900 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/70 dark:hover:shadow-black/20`}
+                        className={`group overflow-hidden rounded-2xl border ${theme.border} bg-white dark:bg-[#0c1220] shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/70 dark:hover:shadow-black/20`}
                       >
                         <div className={`border-b ${theme.borderLine} bg-gradient-to-br ${theme.gradient} p-5`}>
                           <div className="flex items-start justify-between gap-4">
@@ -319,7 +319,7 @@ export const StudentLmsPage = () => {
                           <th className="pb-3 text-right pr-3">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-105 dark:divide-slate-800/50">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                         {collegeCohortSubjects.map((subject) => {
                           const subjectMaterials = materials.filter((m) => m.subject_id === subject.id);
                           const theme = getSubjectTheme(subject.name);
@@ -350,12 +350,12 @@ export const StudentLmsPage = () => {
                                 </div>
                               </td>
                               <td className="py-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
-                                <code className="px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-950 text-[10px] font-mono text-slate-650 dark:text-slate-350 uppercase font-bold border border-slate-200/50 dark:border-slate-800/80">
+                                <code className="px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-950 text-[10px] font-mono text-slate-700 dark:text-slate-200 uppercase font-bold border border-slate-200/50 dark:border-slate-800/80">
                                   {subject.id}
                                 </code>
                               </td>
                               <td className="py-4 text-xs font-bold text-slate-500">
-                                <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-1 text-[10px] text-slate-655 dark:text-slate-300 font-extrabold uppercase">
+                                <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300 font-extrabold uppercase">
                                   {currentProgramCode} · Sem {user?.semester || 1}
                                 </span>
                               </td>
@@ -479,7 +479,7 @@ export const StudentLmsSubjectPage = () => {
             </div>
           ) : materials.length === 0 ? (
             <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white/70 p-10 text-center dark:border-slate-700 dark:bg-slate-900/50">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-550 dark:bg-slate-800">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 dark:text-slate-400 dark:bg-slate-800">
                 <Layers3 className="h-7 w-7" />
               </div>
               <p className="text-base font-black text-slate-800 dark:text-slate-100">No topics uploaded yet</p>
@@ -490,9 +490,9 @@ export const StudentLmsSubjectPage = () => {
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
                 <div>
                   <h2 className="text-xl font-black text-slate-900 dark:text-white">Study Resources</h2>
-                  <p className="text-xs font-semibold text-slate-550 dark:text-slate-400">Access study materials, documents, and reference links</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Access study materials, documents, and reference links</p>
                 </div>
-                <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-950/60 border border-slate-205 dark:border-slate-800/40">
+                <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/40">
                   <button
                     type="button"
                     onClick={() => handleSetViewMode("card")}
@@ -538,12 +538,12 @@ export const StudentLmsSubjectPage = () => {
                               mat.resource_type === "video"
                                 ? "bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
                                 : isReadme
-                                  ? "bg-amber-100 text-amber-650 dark:bg-amber-950/40 dark:text-amber-300"
+                                  ? "bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
                                 : isHtml
-                                  ? "bg-teal-100 text-teal-650 dark:bg-teal-950/40 dark:text-teal-300"
+                                  ? "bg-teal-100 text-teal-600 dark:bg-teal-950/40 dark:text-teal-300"
                                 : mat.resource_type === "document"
-                                  ? "bg-emerald-100 text-emerald-650 dark:bg-emerald-950/40 dark:text-emerald-300"
-                                  : "bg-indigo-100 text-indigo-650 dark:bg-indigo-950/40 dark:text-indigo-305"
+                                  ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                  : "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
                             }`}>
                               <Icon className="h-6 w-6" />
                             </div>
@@ -636,11 +636,11 @@ export const StudentLmsSubjectPage = () => {
                                     isVideo
                                       ? "bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
                                       : isReadme
-                                        ? "bg-amber-100 text-amber-650 dark:bg-amber-950/40 dark:text-amber-300"
+                                        ? "bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
                                       : isHtml
-                                        ? "bg-teal-100 text-teal-650 dark:bg-teal-950/40 dark:text-teal-300"
+                                        ? "bg-teal-100 text-teal-600 dark:bg-teal-950/40 dark:text-teal-300"
                                       : isDoc
-                                        ? "bg-emerald-100 text-emerald-650 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                        ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
                                         : "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
                                   }`}>
                                     <ResourceIcon className="h-5 w-5" />
@@ -666,7 +666,7 @@ export const StudentLmsSubjectPage = () => {
                                 {subject?.name || mat.subject_id}
                               </td>
                               <td className="py-4 text-xs font-bold text-slate-500">
-                                <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-1 text-[10px] text-slate-655 dark:text-slate-300 font-extrabold uppercase">
+                                <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300 font-extrabold uppercase">
                                   {currentProgramCode} · Sem {user?.semester || 1}
                                 </span>
                               </td>
@@ -674,7 +674,7 @@ export const StudentLmsSubjectPage = () => {
                                 <div className="flex items-center justify-end gap-2">
                                   {isReadme ? (
                                     <Link to={`/lms/subjects/${encodeURIComponent(decodedSubjectId)}/readme/${encodeURIComponent(mat.id)}`}>
-                                      <Button className="h-8 rounded-xl text-[10px] font-bold px-3.5 flex items-center gap-1.5 shadow-sm border-none bg-indigo-600 hover:bg-indigo-750 text-white">
+                                      <Button className="h-8 rounded-xl text-[10px] font-bold px-3.5 flex items-center gap-1.5 shadow-sm border-none bg-indigo-600 hover:bg-indigo-700 text-white">
                                         <FileText className="h-3.5 w-3.5" /> Preview
                                       </Button>
                                     </Link>
@@ -687,7 +687,7 @@ export const StudentLmsSubjectPage = () => {
                                   ) : isPdf ? (
                                     <div className="flex items-center gap-1.5 justify-end">
                                       <Link to={`/lms/subjects/${encodeURIComponent(decodedSubjectId)}/pdf/${encodeURIComponent(mat.id)}`}>
-                                        <Button className="h-8 rounded-xl text-[10px] font-bold px-3.5 flex items-center gap-1.5 shadow-sm border-none bg-emerald-650 hover:bg-emerald-750 text-white">
+                                        <Button className="h-8 rounded-xl text-[10px] font-bold px-3.5 flex items-center gap-1.5 shadow-sm border-none bg-emerald-600 hover:bg-emerald-700 text-white">
                                           <FileText className="h-3.5 w-3.5" /> Preview
                                         </Button>
                                       </Link>
@@ -699,7 +699,7 @@ export const StudentLmsSubjectPage = () => {
                                     </div>
                                   ) : (
                                     <a href={mat.file_url} target="_blank" rel="noopener noreferrer">
-                                      <Button className="h-8 rounded-xl text-[10px] font-black px-3.5 flex items-center gap-1.5 shadow-sm border-none bg-indigo-650 hover:bg-indigo-750 text-white">
+                                      <Button className="h-8 rounded-xl text-[10px] font-black px-3.5 flex items-center gap-1.5 shadow-sm border-none bg-indigo-600 hover:bg-indigo-700 text-white">
                                         {mat.resource_type === "document" ? <Download className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
                                         {mat.resource_type === "document" ? "Get File" : "Visit Link"}
                                       </Button>
@@ -811,7 +811,7 @@ export const StudentLmsReadmePreviewPage = () => {
                       <div className={`flex items-center gap-2.5 rounded-2xl p-3 text-xs font-black transition-all ${
                         isActive
                           ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 border-l-4 border-indigo-500"
-                          : "text-slate-650 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-350 dark:hover:bg-slate-850 dark:hover:text-slate-100"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
                       }`}>
                         <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
                           isActive
@@ -854,7 +854,7 @@ export const StudentLmsReadmePreviewPage = () => {
                       README.md file preview
                     </span>
                     <h1 className="text-2xl font-black md:text-3xl">{material.title}</h1>
-                    <p className="mt-1 text-xs font-semibold text-zinc-450">
+                    <p className="mt-1 text-xs font-semibold text-zinc-300">
                       {subject?.name || "Subject"} · By {material.uploaded_by_name} · {new Date(material.created_at).toLocaleDateString([], { dateStyle: "medium" })}
                     </p>
                   </div>
@@ -994,7 +994,7 @@ export const StudentLmsPdfPreviewPage = () => {
                     <div className={`flex items-center gap-2.5 rounded-2xl p-3 text-xs font-black transition-all ${
                       isActive
                         ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 border-l-4 border-indigo-500"
-                        : "text-slate-655 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-350 dark:hover:bg-slate-850 dark:hover:text-slate-100"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
                     }`}>
                       <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
                         isActive
@@ -1026,7 +1026,7 @@ export const StudentLmsPdfPreviewPage = () => {
 
             <div className="min-w-0">
               <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 flex flex-col min-h-[600px] animate-fade-in">
-                <div className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 p-6 md:flex-row md:items-center md:justify-between dark:border-slate-800 dark:bg-slate-955/40 rounded-t-[1.75rem]">
+                <div className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 p-6 md:flex-row md:items-center md:justify-between dark:border-slate-800 dark:bg-slate-950/40 rounded-t-[1.75rem]">
                   <div>
                     <span className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-100 border border-emerald-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-900/40 dark:text-emerald-300">
                       <FileText className="h-3.5 w-3.5" />
@@ -1150,7 +1150,7 @@ export const StudentLmsHtmlPreviewPage = () => {
         </div>
 
         {isLoading ? (
-          <div className="flex h-56 items-center justify-center rounded-3xl border border-slate-200 bg-white/70 text-slate-550 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="flex h-56 items-center justify-center rounded-3xl border border-slate-200 bg-white/70 text-slate-500 dark:text-slate-400 dark:border-slate-800 dark:bg-slate-900/70">
             <Spinner /> <span className="ml-2 font-bold">Loading HTML Article...</span>
           </div>
         ) : !material || material.resource_type !== "html" ? (
@@ -1187,7 +1187,7 @@ export const StudentLmsHtmlPreviewPage = () => {
                       <div className={`flex items-center gap-2.5 rounded-2xl p-3 text-xs font-black transition-all ${
                         isActive
                           ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 border-l-4 border-indigo-500"
-                          : "text-slate-655 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-350 dark:hover:bg-slate-850 dark:hover:text-slate-100"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
                       }`}>
                         <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
                           isActive

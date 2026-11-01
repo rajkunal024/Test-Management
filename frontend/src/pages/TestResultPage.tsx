@@ -368,37 +368,37 @@ export const TestResultPage = () => {
             <div className="flex-1 p-6 md:p-8 flex flex-col justify-between bg-white dark:bg-slate-900/40 backdrop-blur-md">
               <div>
                 <div className="flex items-center gap-2 text-[10px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest">
-                  <Sparkles className="h-4 w-4 text-amber-550 animate-pulse" />
+                  <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
                   Performance Summary
                 </div>
                 <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-2 tracking-tight">{scorecard.heading}</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-450 mt-2 leading-relaxed font-semibold">{scorecard.desc}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed font-semibold">{scorecard.desc}</p>
               </div>
 
               {/* Stats Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 border-t border-slate-100 dark:border-slate-800/80 pt-6">
-                <div className="bg-slate-50/50 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
+                <div className="bg-slate-50/50 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Accuracy</span>
                   <span className="text-lg font-black text-slate-800 dark:text-slate-200 mt-1 block">{scorecard.accuracy}%</span>
                 </div>
-                <div className="bg-slate-50/50 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
+                <div className="bg-slate-50/50 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Time Taken</span>
                   <span className="text-lg font-black text-slate-800 dark:text-slate-200 mt-1 block flex items-center gap-1">
-                    <Clock className="h-4.5 w-4.5 text-slate-450 shrink-0" />
+                    <Clock className="h-4.5 w-4.5 text-slate-400 shrink-0" />
                     {scorecard.timeStr}
                   </span>
                 </div>
-                <div className="bg-slate-50/50 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
+                <div className="bg-slate-50/50 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Correct</span>
-                  <span className="text-lg font-black text-emerald-600 dark:text-emerald-450 mt-1 block flex items-center gap-1">
-                    <CheckCircle2 className="h-4.5 w-4.5 text-emerald-550 shrink-0" />
+                  <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 block flex items-center gap-1">
+                    <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
                     {attempt.correct_answers}
                   </span>
                 </div>
-                <div className="bg-slate-50/50 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
+                <div className="bg-slate-50/50 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Wrong</span>
-                  <span className="text-lg font-black text-rose-500 dark:text-rose-450 mt-1 block flex items-center gap-1">
-                    <XCircle className="h-4.5 w-4.5 text-rose-550 shrink-0" />
+                  <span className="text-lg font-black text-rose-500 dark:text-rose-400 mt-1 block flex items-center gap-1">
+                    <XCircle className="h-4.5 w-4.5 text-rose-500 shrink-0" />
                     {attempt.wrong_answers}
                   </span>
                 </div>
@@ -451,10 +451,10 @@ export const TestResultPage = () => {
                   </div>
 
                   {question.passage_id && (
-                    <div className="mb-5 p-4 rounded-xl bg-slate-50/50 dark:bg-slate-950/20 border border-slate-150/80 dark:border-slate-800/60 relative z-10">
+                    <div className="mb-5 p-4 rounded-xl bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200/80 dark:border-slate-800/60 relative z-10">
                       {passageCache[question.passage_id] ? (
                         <>
-                          <h4 className="text-[9px] font-black text-indigo-650 dark:text-indigo-400 border-b border-slate-200/50 dark:border-slate-800/50 pb-1.5 mb-2.5 uppercase tracking-widest">
+                          <h4 className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 border-b border-slate-200/50 dark:border-slate-800/50 pb-1.5 mb-2.5 uppercase tracking-widest">
                             Passage: {passageCache[question.passage_id].title}
                           </h4>
                           <p className="text-slate-600 dark:text-slate-400 text-xs font-semibold leading-relaxed whitespace-pre-wrap">
@@ -462,7 +462,7 @@ export const TestResultPage = () => {
                           </p>
                         </>
                       ) : (
-                        <p className="text-xs text-slate-405 font-bold animate-pulse">
+                        <p className="text-xs text-slate-400 font-bold animate-pulse">
                           Loading passage text...
                         </p>
                       )}
@@ -510,14 +510,14 @@ export const TestResultPage = () => {
                             ? "bg-gradient-to-tr from-purple-600 to-fuchsia-500 border-none text-white font-extrabold shadow-sm"
                             : "bg-emerald-600 border-emerald-600 text-white font-bold";
                         } else {
-                          optStyle = "border-rose-500 dark:border-rose-450 bg-rose-50/30 dark:bg-rose-955/20 text-rose-900 dark:text-rose-100 shadow-sm font-bold";
+                          optStyle = "border-rose-500 dark:border-rose-400 bg-rose-50/30 dark:bg-rose-950/20 text-rose-900 dark:text-rose-100 shadow-sm font-bold";
                           icon = <X className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />;
                           letterCircleStyle = "bg-rose-600 border-rose-600 text-white font-bold";
                         }
                       } else if (isCorrOpt) {
-                        optStyle = "border-emerald-350 dark:border-emerald-800/85 bg-emerald-50/20 dark:bg-emerald-955/10 text-emerald-800 dark:text-emerald-300 shadow-sm font-bold";
+                        optStyle = "border-emerald-300 dark:border-emerald-800/85 bg-emerald-50/20 dark:bg-emerald-950/10 text-emerald-800 dark:text-emerald-300 shadow-sm font-bold";
                         icon = <Check className="h-4 w-4 text-emerald-500 shrink-0 animate-bounce-slow" />;
-                        letterCircleStyle = "bg-emerald-100 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-850 text-emerald-850 dark:text-emerald-305";
+                        letterCircleStyle = "bg-emerald-100 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-305";
                       }
 
                       return (

@@ -173,20 +173,52 @@ export const TeacherSchema = new Schema({
 TeacherSchema.index({ organization_id: 1, userId: 1 }, { unique: true });
 TeacherSchema.index({ organization_id: 1, email: 1 }, { unique: true });
 TeacherSchema.pre("validate", async function (this: any, next) {
-  if (this.isModified("name") || this.isModified("subject") || this.isModified("subjects") || this.isModified("organization_id") || this.isModified("joined_at") || this.isNew) {
+  if (this.isNew || this.isModified("organization_id")) {
     try {
       const org = await mongoose.model("Organization").findOne({ id: this.organization_id });
-      const orgName = (org?.name || "tester").toLowerCase().replace(/\s+/g, "");
-      const userName = this.name.toLowerCase().replace(/\s+/g, "");
-      if (!this.email) {
-        this.email = `${userName}@${orgName}.teacher.com`;
+      const orgName = org?.name || "Tester";
+
+      // 1. Extract prefix from organization (first letters of first two words + '_t' for teacher)
+      const words = orgName.trim().split(/\s+/);
+      let prefix = "";
+      if (words.length >= 2) {
+        const firstLetter = words[0].charAt(0).toLowerCase();
+        const secondLetter = words[1].charAt(0).toLowerCase();
+        prefix = `${firstLetter}${secondLetter}_t`;
+      } else {
+        prefix = `${orgName.substring(0, 2).toLowerCase()}_t`;
       }
 
-      const subjectClean = (this.subject || (this.subjects && this.subjects[0]) || "subject").toLowerCase().replace(/\s+/g, "");
-      const datePart = parseJoiningDate(this.joined_at || new Date());
-      this.userId = `${userName}_${subjectClean}_${datePart}`;
+      // Sanitize prefix to allow only lowercase alphanumeric characters and underscores
+      prefix = prefix.replace(/[^a-z0-9_]/g, "_t");
+
+      let uniqueUserId = "";
+      let exists = true;
+
+      // 2. Loop to generate a unique 5-digit username
+      while (exists) {
+        const randomFiveDigits = Math.floor(10000 + Math.random() * 90000);
+        uniqueUserId = `${prefix}${randomFiveDigits}`;
+
+        const duplicate = await mongoose.model("Teacher").findOne({
+          userId: uniqueUserId
+        });
+
+        if (!duplicate) {
+          exists = false;
+        }
+      }
+
+      this.userId = uniqueUserId;
+
+      // 3. Auto-generate the fallback email using the new username
+      if (!this.email) {
+        const cleanOrgName = orgName.toLowerCase().replace(/[^a-z0-9_]/g, "");
+        this.email = `${uniqueUserId}@${cleanOrgName}.teacher.com`;
+      }
+      
     } catch (err) {
-      console.error("Error setting teacher email/userId in pre-validate:", err);
+      console.error("Error setting teacher unique userId in pre-validate:", err);
     }
   }
   next();

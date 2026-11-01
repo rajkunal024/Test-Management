@@ -269,8 +269,8 @@ export const AddQuestionsPage = () => {
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="blue" className="bg-blue-500/15 border-blue-450/20 text-blue-300 font-bold">{subjectsName}</Badge>
-                <Badge tone="slate" className="bg-slate-500/15 border-slate-450/20 text-slate-300 font-bold uppercase tracking-wider text-[10px]">{test.type.replace("_", " ")}</Badge>
+                <Badge tone="blue" className="bg-blue-500/15 border-blue-400/20 text-blue-300 font-bold">{subjectsName}</Badge>
+                <Badge tone="slate" className="bg-slate-500/15 border-slate-400/20 text-slate-300 font-bold uppercase tracking-wider text-[10px]">{test.type.replace("_", " ")}</Badge>
                 <Badge tone={
                   computedDifficulty === "easy" ? "green" :
                     computedDifficulty === "medium" ? "yellow" :
@@ -307,23 +307,23 @@ export const AddQuestionsPage = () => {
           {/* Left Column: Manage Linked Questions */}
           <main className="space-y-6">
             <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-6 shadow-sm">
-              <h2 className="text-base font-extrabold text-slate-850 dark:text-slate-105 tracking-tight mb-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3">
+              <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-100 tracking-tight mb-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3">
                 <span className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                   Linked Test Questions ({testQuestions.length})
                 </span>
-                <span className="text-xs text-slate-400 font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200/65 dark:border-slate-850 px-2.5 py-1 rounded-lg">
+                <span className="text-xs text-slate-400 font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200/65 dark:border-slate-800 px-2.5 py-1 rounded-lg">
                   Target: {test.total_questions} Qs
                 </span>
               </h2>
 
               {testQuestions.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-slate-250 dark:border-slate-800 py-16 text-center text-slate-400 dark:text-slate-500 text-sm bg-white/40 dark:bg-slate-955/20 shadow-inner flex flex-col items-center justify-center space-y-3">
+                <div className="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-800 py-16 text-center text-slate-400 dark:text-slate-500 text-sm bg-white/40 dark:bg-slate-950/20 shadow-inner flex flex-col items-center justify-center space-y-3">
                   <div className="p-3.5 bg-slate-55 dark:bg-slate-900 text-slate-400 dark:text-slate-500 rounded-full border border-slate-200 dark:border-slate-800">
                     <FileQuestion className="h-6 w-6" />
                   </div>
                   <div className="max-w-xs space-y-1">
-                    <p className="font-bold text-slate-700 dark:text-slate-350">No questions linked yet</p>
+                    <p className="font-bold text-slate-700 dark:text-slate-300">No questions linked yet</p>
                     <p className="text-xs text-slate-400 dark:text-slate-500">Link questions from the global pool on the right panel to build your test</p>
                   </div>
                 </div>
@@ -332,7 +332,7 @@ export const AddQuestionsPage = () => {
                   {testQuestions.map((q, index) => (
                     <article
                       key={q.id ?? index}
-                      className="flex items-start justify-between gap-4 rounded-xl border border-slate-150 dark:border-slate-800/60 bg-white/50 dark:bg-slate-955/30 p-4 hover:border-slate-250 dark:hover:border-slate-700/80 transition-all hover:shadow-sm"
+                      className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-800/60 bg-white/50 dark:bg-slate-950/30 p-4 hover:border-slate-300 dark:hover:border-slate-700/80 transition-all hover:shadow-sm"
                     >
                       <div className="min-w-0 space-y-1.5">
                         <p className="text-sm font-bold text-slate-805 dark:text-slate-200 leading-snug line-clamp-3">
@@ -350,7 +350,7 @@ export const AddQuestionsPage = () => {
                           </div>
                         )}
                         <div className="flex flex-wrap items-center gap-3">
-                          <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-450 font-bold bg-emerald-50 dark:bg-emerald-955/30 border border-emerald-100 dark:border-emerald-900/50 px-2 py-0.5 rounded-lg">
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 px-2 py-0.5 rounded-lg">
                             <Check className="h-3.5 w-3.5" /> Answer: {q.correct_option?.replace("option", "Option ")}
                           </span>
                           <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider">
@@ -360,7 +360,7 @@ export const AddQuestionsPage = () => {
                       </div>
                       <Button
                         variant="ghost"
-                        className="h-9 w-9 rounded-xl text-rose-500 dark:text-rose-450 hover:bg-rose-55 dark:hover:bg-rose-955/40 border border-transparent hover:border-rose-100 dark:hover:border-rose-900/40 flex items-center justify-center shrink-0 transition-colors"
+                        className="h-9 w-9 rounded-xl text-rose-500 dark:text-rose-400 hover:bg-rose-55 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-100 dark:hover:border-rose-900/40 flex items-center justify-center shrink-0 transition-colors"
                         onClick={() => handleRemoveFromTest(q.id ?? "")}
                         icon={<Trash2 className="h-4 w-4" />}
                         title="Remove question"
@@ -383,7 +383,7 @@ export const AddQuestionsPage = () => {
 
                 {/* Subject Filter Tabs */}
                 {testSubjects.length > 1 && (
-                  <div className="flex flex-wrap gap-1 mb-4 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-150/80 dark:border-slate-800/60 shrink-0">
+                  <div className="flex flex-wrap gap-1 mb-4 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200/80 dark:border-slate-800/60 shrink-0">
                     {testSubjects.map((subName) => (
                       <button
                         key={subName}
@@ -402,8 +402,8 @@ export const AddQuestionsPage = () => {
                 )}
 
                 {availablePoolQuestions.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/30 border border-slate-155 dark:border-slate-800 rounded-xl space-y-2">
-                    <FileQuestion className="h-6 w-6 text-slate-350" />
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <FileQuestion className="h-6 w-6 text-slate-300" />
                     <p className="text-xs text-slate-455 dark:text-slate-500 font-semibold max-w-[200px]">
                       No pool questions available for subjects: {subjectsName}. Let teachers create them.
                     </p>
@@ -411,7 +411,7 @@ export const AddQuestionsPage = () => {
                 ) : (
                   <div className="flex-1 flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-3.5 px-2 border-b border-slate-100 dark:border-slate-800/60 pb-2.5 shrink-0">
-                      <label className="flex items-center gap-2.5 cursor-pointer font-bold text-xs text-slate-650 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200 transition-colors">
+                      <label className="flex items-center gap-2.5 cursor-pointer font-bold text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
                         <input
                           type="checkbox"
                           checked={selectedPoolIds.length === filteredPoolQuestions.length && filteredPoolQuestions.length > 0}
@@ -422,7 +422,7 @@ export const AddQuestionsPage = () => {
                               setSelectedPoolIds([]);
                             }
                           }}
-                          className="h-4 w-4 rounded text-indigo-650 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer border-slate-300 dark:border-slate-700"
+                          className="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer border-slate-300 dark:border-slate-700"
                         />
                         <span>Select All ({filteredPoolQuestions.length})</span>
                       </label>
@@ -437,8 +437,8 @@ export const AddQuestionsPage = () => {
                       )}
                     </div>
                     {filteredPoolQuestions.length === 0 ? (
-                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/30 border border-slate-155 dark:border-slate-800 rounded-xl space-y-2 my-4">
-                        <FileQuestion className="h-6 w-6 text-slate-350" />
+                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 my-4">
+                        <FileQuestion className="h-6 w-6 text-slate-300" />
                         <p className="text-xs text-slate-455 dark:text-slate-500 font-semibold max-w-[200px]">
                           No available questions in pool for subject: {selectedSubjectTab}.
                         </p>
@@ -450,15 +450,15 @@ export const AddQuestionsPage = () => {
                           return (
                             <label
                               key={q.id}
-                              className={`flex items-start gap-3 p-3.5 rounded-xl border text-xs cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-955/30 transition-all ${isSelected
-                                  ? "border-indigo-400 dark:border-indigo-850 bg-indigo-50/30 dark:bg-indigo-950/10 ring-2 ring-indigo-500/10"
-                                  : "border-slate-155 dark:border-slate-800/60 bg-white/50 dark:bg-slate-955/20"
+                              className={`flex items-start gap-3 p-3.5 rounded-xl border text-xs cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-950/30 transition-all ${isSelected
+                                  ? "border-indigo-400 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-950/10 ring-2 ring-indigo-500/10"
+                                  : "border-slate-200 dark:border-slate-800/60 bg-white/50 dark:bg-slate-950/20"
                                 }`}
                             >
                               <input
                                 type="checkbox"
                                 checked={isSelected}
-                                className="h-4.5 w-4.5 rounded text-indigo-650 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer mt-0.5 border-slate-300 dark:border-slate-700"
+                                className="h-4.5 w-4.5 rounded text-indigo-600 focus:ring-indigo-500/20 accent-indigo-600 cursor-pointer mt-0.5 border-slate-300 dark:border-slate-700"
                                 onChange={() => handleToggleSelectPool(q.id ?? "")}
                               />
                               <div className="min-w-0 space-y-1.5 flex-1">

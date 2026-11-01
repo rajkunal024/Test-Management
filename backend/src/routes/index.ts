@@ -15,7 +15,7 @@ import { tenantContext } from "../utils/context.js";
 import { resolveTenant } from "../middlewares/tenant.js";
 
 const isPublicRoute = (path: string, method: string): boolean => {
-  if (path === "/api/health") return true;
+  if (path === "/api/health" || path === "/health" || path === "/") return true;
   if (path.startsWith("/api/parikshya-admin/auth/")) return true;
   
   if (
@@ -39,8 +39,8 @@ const isPublicRoute = (path: string, method: string): boolean => {
 
 export const routeRequest = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
   if (isPublicRoute(path, method)) {
-    if (path === "/api/health") {
-      json(response, 200, { success: true, service: "parikshya-backend" });
+    if (path === "/api/health" || path === "/health" || path === "/") {
+      json(response, 200, { success: true, status: "healthy", service: "parikshya-backend", timestamp: new Date().toISOString() });
       return;
     }
     if (path.startsWith("/api/parikshya-admin")) {

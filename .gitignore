@@ -7,4 +7,5 @@ frontend/.env
 backend/.env
 *.tsbuildinfo
 **/.env
+ai.md
 

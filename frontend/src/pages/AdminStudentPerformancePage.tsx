@@ -170,7 +170,7 @@ export const AdminStudentPerformancePage = () => {
             {student.name}
           </Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="text-slate-655 dark:text-slate-350">Performance Log</span>
+          <span className="text-slate-600 dark:text-slate-300">Performance Log</span>
         </nav>
 
         {/* Back button and profile details */}
@@ -182,10 +182,10 @@ export const AdminStudentPerformancePage = () => {
               </Button>
             </Link>
             <div>
-              <h2 className="text-xl font-extrabold text-slate-850 dark:text-slate-100 leading-tight">
+              <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
                 Academic Performance Log
               </h2>
-              <p className="text-xs text-slate-400 dark:text-slate-550 mt-1 font-semibold">
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 font-semibold">
                 Complete exam scorecards for <span className="font-bold text-slate-700 dark:text-slate-300">{student.name}</span> ({student.class || "Class 10"})
               </p>
             </div>
@@ -195,38 +195,38 @@ export const AdminStudentPerformancePage = () => {
         {/* Summaries overview row */}
         <section className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-6">
           <article className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition hover:shadow-md border-l-4 border-l-indigo-500">
-            <h4 className="text-slate-450 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Average Score</h4>
-            <p className="text-2xl font-black text-slate-850 dark:text-slate-100 mt-1.5">{summaries.avgScore}%</p>
+            <h4 className="text-slate-400 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Average Score</h4>
+            <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1.5">{summaries.avgScore}%</p>
           </article>
 
           <article className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition hover:shadow-md border-l-4 border-l-emerald-500">
-            <h4 className="text-slate-450 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Highest Score</h4>
-            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-450 mt-1.5">{summaries.highestScore}%</p>
+            <h4 className="text-slate-400 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Highest Score</h4>
+            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1.5">{summaries.highestScore}%</p>
           </article>
 
           <article className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition hover:shadow-md border-l-4 border-l-rose-500">
-            <h4 className="text-slate-450 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Lowest Score</h4>
-            <p className="text-2xl font-black text-rose-600 dark:text-rose-450 mt-1.5">{summaries.lowestScore}%</p>
+            <h4 className="text-slate-400 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Lowest Score</h4>
+            <p className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1.5">{summaries.lowestScore}%</p>
           </article>
 
           <article className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition hover:shadow-md border-l-4 border-l-blue-500">
-            <h4 className="text-slate-450 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Attempted</h4>
+            <h4 className="text-slate-400 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Attempted</h4>
             <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1.5">{summaries.attempted}</p>
           </article>
 
           <article className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition hover:shadow-md border-l-4 border-l-emerald-400">
-            <h4 className="text-slate-450 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Tests Passed</h4>
+            <h4 className="text-slate-400 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Tests Passed</h4>
             <p className="text-2xl font-black text-emerald-500 mt-1.5">{summaries.passed}</p>
           </article>
 
           <article className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition hover:shadow-md border-l-4 border-l-rose-400">
-            <h4 className="text-slate-450 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Tests Failed</h4>
+            <h4 className="text-slate-400 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Tests Failed</h4>
             <p className="text-2xl font-black text-rose-500 mt-1.5">{summaries.failed}</p>
           </article>
         </section>
 
         {/* Analytics listing header */}
-        <h3 className="text-lg font-bold text-slate-850 dark:text-slate-100 flex items-center gap-2 mb-4">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4">
           <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse" />
           Test-by-Test Performance Analytics
         </h3>
@@ -240,7 +240,7 @@ export const AdminStudentPerformancePage = () => {
           <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
-                <thead className="bg-slate-50 dark:bg-slate-850/50 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="px-6 py-4">Test Name</th>
                     <th className="px-6 py-4">Subject</th>
@@ -272,7 +272,7 @@ export const AdminStudentPerformancePage = () => {
                     return (
                       <tr
                         key={attempt.id}
-                        className="hover:bg-slate-50/40 dark:hover:bg-slate-850/20 transition-all duration-150 group"
+                        className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-all duration-150 group"
                       >
                         <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">
                           {attempt.test_name || test?.name || "Exam Attempt"}
@@ -292,7 +292,7 @@ export const AdminStudentPerformancePage = () => {
                             })}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-350">
+                        <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-300">
                           {attempt.score} / {totalMarks}
                         </td>
                         <td className="px-6 py-4">
@@ -315,7 +315,7 @@ export const AdminStudentPerformancePage = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span className="inline-flex items-center gap-1 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/30 dark:border-indigo-900/30 px-2 py-0.5 rounded text-xs font-bold text-indigo-750 dark:text-indigo-400">
+                          <span className="inline-flex items-center gap-1 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/30 dark:border-indigo-900/30 px-2 py-0.5 rounded text-xs font-bold text-indigo-700 dark:text-indigo-400">
                             Rank {rank}
                           </span>
                         </td>
@@ -332,7 +332,7 @@ export const AdminStudentPerformancePage = () => {
                               Passed
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-rose-600 dark:text-rose-450 bg-rose-50 dark:bg-rose-950/20 px-3 py-1 rounded-full border border-rose-200/20">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 px-3 py-1 rounded-full border border-rose-200/20">
                               <XCircle className="h-3.5 w-3.5" />
                               Failed
                             </span>

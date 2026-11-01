@@ -22,6 +22,7 @@ import {
   Sun,
   Moon,
   Menu,
+  X,
   Mail,
   Calendar,
   Clock,
@@ -36,6 +37,7 @@ import {
   TrendingUp,
   School,
   Sparkles,
+  GraduationCap,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { DynamicLogo } from "./DynamicLogo";
@@ -75,6 +77,11 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
   const { toggleTheme, isDark } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname, location.search]);
 
   const { data: orgData } = useQuery({
     queryKey: ["myOrganization"],
@@ -134,7 +141,11 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
   }, [orgData]);
 
   const toggleNav = () => {
-    setNavHidden((prev) => !prev);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setMobileMenuOpen((prev) => !prev);
+    } else {
+      setNavHidden((prev) => !prev);
+    }
   };
 
   const currentSidebarItems = useMemo(() => {
@@ -181,6 +192,78 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
 
   const notificationRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // ── Role-Specific Color Scheme & Atmospheric Theming ──
+  const roleTheme = useMemo(() => {
+    if (user?.role === "Admin") {
+      return {
+        rootClass: "theme-admin",
+        headerClass: "bg-white/95 border-b border-indigo-200 text-slate-800 shadow-xs dark:bg-[#0a1122] dark:border-indigo-500/40 dark:text-white dark:shadow-[0_4px_20px_-2px_rgba(0,0,0,0.5),0_1px_0_0_rgba(99,102,241,0.25)]",
+        headerBtnClass: "border-indigo-200 bg-white hover:bg-indigo-50 text-slate-700 dark:border-indigo-500/40 dark:bg-[#0d172e] dark:hover:bg-indigo-900/60 dark:text-cyan-200",
+        sidebarClass: "border-r border-indigo-200 bg-[#f3f5fc] text-slate-700 backdrop-blur-xl shadow-[2px_0_8px_rgba(99,102,241,0.06)] dark:border-indigo-500/40 dark:bg-[#080e1c] dark:text-slate-100 dark:shadow-[4px_0_24px_rgba(0,0,0,0.55),1px_0_0_0_rgba(99,102,241,0.25)]",
+        sidebarLogoClass: "border-t border-r border-indigo-200 bg-[#f3f5fc] dark:border-indigo-500/40 dark:bg-[#080e1c] dark:shadow-[1px_-1px_0_0_rgba(99,102,241,0.2)]",
+        sidebarActive: "bg-gradient-to-r from-indigo-500/25 to-cyan-500/20 text-indigo-900 border border-indigo-300/60 shadow-xs dark:from-indigo-500/30 dark:to-cyan-500/20 dark:text-white dark:border-cyan-400/40 dark:shadow-sm",
+        sidebarActiveBar: "bg-indigo-600 dark:bg-cyan-400 dark:shadow-[0_0_10px_rgba(6,182,212,0.8)]",
+        sidebarIconActive: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/30 dark:text-cyan-200",
+        sidebarText: "text-slate-600 hover:bg-indigo-50 hover:text-indigo-950 dark:text-slate-300 dark:hover:bg-indigo-950/40 dark:hover:text-white",
+        drawerBg: "bg-[#f3f5fc] dark:bg-[#080e1c] border-r border-indigo-200 dark:border-indigo-500/40 text-slate-800 dark:text-slate-100",
+        drawerFooterBg: "bg-indigo-50 dark:bg-[#050812] border-t border-indigo-200 dark:border-indigo-500/40",
+        dropdownBg: "bg-white dark:bg-[#0a1122] border border-slate-200 dark:border-indigo-500/40 text-slate-800 dark:text-slate-100 shadow-xl shadow-indigo-950/40",
+        dropdownItemHover: "hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-200 dark:hover:text-white",
+        dropdownDivider: "border-slate-100 dark:border-indigo-500/30",
+        badge: {
+          wrap: "bg-indigo-500/10 dark:bg-indigo-950/50 border border-indigo-300/60 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300",
+          dot: "bg-emerald-500 dark:bg-emerald-400 animate-pulse",
+          text: "PARIKSHYA · ADMIN COMMAND DECK"
+        }
+      };
+    }
+    if (user?.role === "Teacher") {
+      return {
+        rootClass: "theme-teacher",
+        headerClass: "bg-white/95 border-b border-emerald-200 text-slate-800 shadow-xs dark:bg-[#071f1a] dark:border-emerald-700/50 dark:text-slate-100 dark:shadow-[0_4px_20px_-2px_rgba(0,0,0,0.5),0_1px_0_0_rgba(16,185,129,0.25)]",
+        headerBtnClass: "border-emerald-200 bg-white hover:bg-emerald-50 text-slate-700 dark:border-emerald-700/60 dark:bg-[#092620] dark:hover:bg-emerald-900/60 dark:text-emerald-200",
+        sidebarClass: "border-r border-emerald-200 bg-[#f4faf6] text-slate-700 backdrop-blur-xl shadow-[2px_0_8px_rgba(16,185,129,0.06)] dark:border-emerald-700/50 dark:bg-[#061915] dark:text-slate-100 dark:shadow-[4px_0_24px_rgba(0,0,0,0.55),1px_0_0_0_rgba(16,185,129,0.25)]",
+        sidebarLogoClass: "border-t border-r border-emerald-200 bg-[#f4faf6] dark:border-emerald-700/50 dark:bg-[#061915] dark:shadow-[1px_-1px_0_0_rgba(16,185,129,0.2)]",
+        sidebarActive: "bg-gradient-to-r from-emerald-500/25 to-teal-500/20 text-emerald-900 dark:text-white shadow-xs border border-emerald-300/60 dark:border-emerald-500/50",
+        sidebarActiveBar: "bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.7)] dark:shadow-[0_0_10px_rgba(52,211,153,0.8)]",
+        sidebarIconActive: "bg-emerald-100 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-200",
+        sidebarText: "text-slate-600 hover:bg-emerald-50 hover:text-emerald-900 dark:text-slate-300 dark:hover:bg-emerald-950/40 dark:hover:text-white",
+        drawerBg: "bg-[#f4faf6] dark:bg-[#061915] border-r border-emerald-200 dark:border-emerald-700/50 text-slate-800 dark:text-slate-100",
+        drawerFooterBg: "bg-emerald-50 dark:bg-[#04120f] border-t border-emerald-200 dark:border-emerald-700/50",
+        dropdownBg: "bg-white dark:bg-[#071f1a] border border-slate-200 dark:border-emerald-700/50 text-slate-800 dark:text-slate-100 shadow-xl shadow-emerald-950/40",
+        dropdownItemHover: "hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-slate-700 dark:text-slate-200 dark:hover:text-white",
+        dropdownDivider: "border-slate-100 dark:border-emerald-700/40",
+        badge: {
+          wrap: "bg-emerald-500/10 dark:bg-emerald-950/50 border border-emerald-300/60 dark:border-emerald-700/50 text-emerald-700 dark:text-emerald-300",
+          dot: "bg-emerald-500 animate-pulse",
+          text: "PARIKSHYA · FACULTY PORTAL"
+        }
+      };
+    }
+    // Default: Student
+    return {
+      rootClass: "theme-student",
+      headerClass: "bg-white/95 border-b border-blue-200 text-slate-800 shadow-xs dark:bg-[#0a1428] dark:border-blue-900/50 dark:text-slate-100 dark:shadow-[0_4px_20px_-2px_rgba(0,0,0,0.5),0_1px_0_0_rgba(59,130,246,0.2)]",
+      headerBtnClass: "border-blue-200 bg-white hover:bg-blue-50 text-slate-700 dark:border-blue-800/60 dark:bg-[#0d1e3d] dark:hover:bg-blue-900/60 dark:text-blue-200",
+      sidebarClass: "border-r border-blue-200 bg-[#f4f7fe] text-slate-700 backdrop-blur-xl shadow-[2px_0_8px_rgba(59,130,246,0.06)] dark:border-blue-900/50 dark:bg-[#081022] dark:text-slate-100 dark:shadow-[4px_0_24px_rgba(0,0,0,0.55),1px_0_0_0_rgba(59,130,246,0.2)]",
+      sidebarLogoClass: "border-t border-r border-blue-200 bg-[#f4f7fe] dark:border-blue-900/50 dark:bg-[#081022] dark:shadow-[1px_-1px_0_0_rgba(59,130,246,0.2)]",
+      sidebarActive: "bg-gradient-to-r from-blue-500/25 to-indigo-500/20 text-blue-900 dark:text-white dark:from-blue-600/30 dark:to-blue-500/10 shadow-xs border border-blue-300/60 dark:border-blue-500/40",
+      sidebarActiveBar: "bg-blue-600 dark:bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.7)] dark:shadow-[0_0_10px_rgba(59,130,246,0.8)]",
+      sidebarIconActive: "bg-blue-100 dark:bg-blue-500/25 text-blue-700 dark:text-blue-400",
+      sidebarText: "text-slate-600 hover:bg-blue-50 hover:text-blue-900 dark:text-slate-300 dark:hover:bg-blue-950/40 dark:hover:text-white",
+      drawerBg: "bg-[#f4f7fe] dark:bg-[#081022] border-r border-blue-200 dark:border-blue-900/50 text-slate-800 dark:text-slate-100",
+      drawerFooterBg: "bg-blue-50 dark:bg-[#060d1b] border-t border-blue-200 dark:border-blue-900/50",
+      dropdownBg: "bg-white dark:bg-[#0a1428] border border-slate-200 dark:border-blue-800/50 text-slate-800 dark:text-slate-100 shadow-xl shadow-blue-950/40",
+      dropdownItemHover: "hover:bg-blue-50 dark:hover:bg-blue-950/50 text-slate-700 dark:text-slate-200 dark:hover:text-white",
+      dropdownDivider: "border-slate-100 dark:border-blue-800/40",
+      badge: {
+        wrap: "bg-blue-500/10 dark:bg-blue-950/50 border border-blue-300/60 dark:border-blue-800/60 text-blue-700 dark:text-blue-300",
+        dot: "bg-blue-500 animate-pulse",
+        text: "PARIKSHYA · STUDENT CAMPUS"
+      }
+    };
+  }, [user?.role]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -447,171 +530,262 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
     navigate("/");
   };
 
+  const renderNavLinks = (onItemClick?: () => void) => {
+    return currentSidebarItems.map(({ label, icon: Icon, to }) => {
+      const currentPath = location.pathname + location.search;
+
+      const isAddTab = to === "/dashboard?tab=add";
+      const isViewTab = to === "/dashboard?tab=view";
+
+      let isActive = false;
+      if (isAddTab) {
+        isActive = currentPath === "/dashboard" || currentPath === "/dashboard?tab=add" || currentPath.includes("tab=add");
+      } else if (isViewTab) {
+        isActive = currentPath.includes("tab=view");
+      } else if (to.includes("tab=monitoring")) {
+        isActive = currentPath.includes("tab=monitoring");
+      } else if (to.includes("tab=lms")) {
+        isActive = currentPath.includes("tab=lms");
+      } else {
+        isActive = currentPath === to;
+      }
+
+      const subItems = isSchool
+        ? [
+            { label: "All Questions", classVal: "all" },
+            ...(Array.isArray(registeredClasses) && registeredClasses.length > 0
+              ? registeredClasses.map((c: any) => ({ label: c.name, classVal: c.name }))
+              : [
+                  { label: "Class 9", classVal: "Class 9" },
+                  { label: "Class 10", classVal: "Class 10" },
+                  { label: "Class 11", classVal: "Class 11" },
+                  { label: "Class 12", classVal: "Class 12" },
+                ])
+          ]
+        : [
+            { label: "All Questions", classVal: "all" },
+            ...(user?.subjects || []).map((subName: string) => ({
+              label: subName,
+              classVal: subName
+            }))
+          ];
+
+      return (
+        <div key={label} className="space-y-0.5">
+          <Link
+            to={isViewTab ? "/dashboard?tab=view&class=all" : to}
+            onClick={onItemClick}
+            className={`relative flex h-11 items-center gap-3 rounded-xl px-3.5 text-sm font-semibold transition-all duration-150 ${
+              isActive
+                ? roleTheme.sidebarActive
+                : roleTheme.sidebarText
+            }`}
+          >
+            {isActive && <span className={`absolute left-0 h-7 w-[3px] rounded-r-full ${roleTheme.sidebarActiveBar}`} />}
+            <span className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 transition-colors ${
+              isActive
+                ? roleTheme.sidebarIconActive
+                : "text-slate-400 dark:text-slate-400"
+            }`}>
+              <Icon className="h-4 w-4" />
+            </span>
+            {label}
+          </Link>
+
+          {isViewTab && isActive && (
+            <div className="pl-4 space-y-0.5 mt-1">
+              {subItems.map((sub) => {
+                const subUrl = `/dashboard?tab=view&class=${encodeURIComponent(sub.classVal)}`;
+                const isSubActive = searchParams.get("class") === sub.classVal ||
+                  (!searchParams.get("class") && sub.classVal === "all");
+                const subActiveStyle = user?.role === "Teacher"
+                  ? "bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 font-bold border border-emerald-400/30"
+                  : user?.role === "Admin"
+                  ? "bg-indigo-500/20 dark:bg-indigo-950/60 text-cyan-200 font-bold border border-indigo-500/30"
+                  : "bg-blue-100/70 dark:bg-blue-950/60 text-blue-800 dark:text-blue-200 font-bold border border-blue-400/30";
+                const subDotStyle = isSubActive
+                  ? (user?.role === "Teacher" ? "bg-emerald-400" : user?.role === "Admin" ? "bg-cyan-400" : "bg-blue-400")
+                  : "bg-slate-300 dark:bg-slate-600";
+                return (
+                  <Link
+                    key={sub.label}
+                    to={subUrl}
+                    onClick={onItemClick}
+                    className={`flex h-8 items-center gap-2.5 rounded-lg px-3 text-xs font-semibold transition-all ${
+                      isSubActive
+                        ? subActiveStyle
+                        : "text-slate-400 hover:bg-slate-50 dark:text-slate-500 dark:hover:bg-slate-800/50 dark:hover:text-slate-300"
+                    }`}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${subDotStyle}`} />
+                    {sub.label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+
+  const sidebarWidthClass = compactRail ? "w-[64px]" : "w-[252px]";
+
   return (
-    <div className="min-h-screen bg-white text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
+    <div className={`min-h-screen ${roleTheme.rootClass} text-slate-800 dark:text-slate-100 transition-colors duration-200`}>
       <aside
-        className={`fixed top-[100px] bottom-0 left-0 z-30 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 transition-all duration-300 flex flex-col justify-between ${navHidden
-            ? "w-0 -translate-x-full border-r-0 opacity-0 pointer-events-none"
-            : compactRail
-              ? "w-[64px] lg:block hidden"
-              : "w-[252px] lg:block hidden"
-          }`}
+        className={`fixed top-[72px] sm:top-[100px] bottom-0 left-0 z-30 border-r ${roleTheme.sidebarClass} ${sidebarWidthClass} hidden lg:flex flex-col justify-between transition-transform duration-300 ease-in-out will-change-transform ${
+          navHidden
+            ? "-translate-x-full pointer-events-none"
+            : "translate-x-0"
+        }`}
       >
-        <div className="flex flex-col flex-1 pb-20">
+        <div className="flex flex-col flex-1 pb-20 overflow-y-auto">
           {compactRail ? (
             <nav className="flex flex-col items-center gap-6 py-8">
               {railIcons.map((Icon, index) => (
-                <div key={index} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition cursor-pointer">
+                <div key={index} className={`p-2 rounded-lg transition cursor-pointer ${roleTheme.sidebarText}`}>
                   <Icon className="h-5 w-5" />
                 </div>
               ))}
             </nav>
           ) : (
-            <nav className="space-y-2 px-3 py-8">
-              {currentSidebarItems.map(({ label, icon: Icon, to }) => {
-                const currentPath = location.pathname + location.search;
-
-                const isAddTab = to === "/dashboard?tab=add";
-                const isViewTab = to === "/dashboard?tab=view";
-
-                let isActive = false;
-                if (isAddTab) {
-                  isActive = currentPath === "/dashboard" || currentPath === "/dashboard?tab=add" || currentPath.includes("tab=add");
-                } else if (isViewTab) {
-                  isActive = currentPath.includes("tab=view");
-                } else if (to.includes("tab=monitoring")) {
-                  isActive = currentPath.includes("tab=monitoring");
-                } else if (to.includes("tab=lms")) {
-                  isActive = currentPath.includes("tab=lms");
-                } else {
-                  isActive = currentPath === to;
-                }
-
-                const subItems = isSchool
-                  ? [
-                      { label: "All Questions", classVal: "all" },
-                      ...(Array.isArray(registeredClasses) && registeredClasses.length > 0
-                        ? registeredClasses.map(c => ({ label: c.name, classVal: c.name }))
-                        : [
-                            { label: "Class 9", classVal: "Class 9" },
-                            { label: "Class 10", classVal: "Class 10" },
-                            { label: "Class 11", classVal: "Class 11" },
-                            { label: "Class 12", classVal: "Class 12" },
-                          ])
-                    ]
-                  : [
-                      { label: "All Questions", classVal: "all" },
-                      ...(user?.subjects || []).map((subName: string) => ({
-                        label: subName,
-                        classVal: subName
-                      }))
-                    ];
-
-                return (
-                  <div key={label} className="space-y-1">
-                    <Link
-                      to={isViewTab ? "/dashboard?tab=view&class=all" : to}
-                      className={`relative flex h-12 items-center gap-3 rounded-md px-4 text-sm font-semibold transition-all ${isActive
-                          ? "bg-primary-50 text-primary-700 dark:bg-primary-950/30 dark:text-primary-400"
-                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-850 dark:hover:text-slate-200"
-                        }`}
-                    >
-                      {isActive ? <span className="absolute left-0 h-9 w-1 rounded-r-full bg-primary-600" /> : null}
-                      <Icon className="h-5 w-5" />
-                      {label}
-                    </Link>
-
-                    {isViewTab && isActive && (
-                      <div className="pl-6 space-y-1 mt-1">
-                        {subItems.map((sub) => {
-                          const subUrl = `/dashboard?tab=view&class=${encodeURIComponent(sub.classVal)}`;
-                          const isSubActive = searchParams.get("class") === sub.classVal ||
-                            (!searchParams.get("class") && sub.classVal === "all");
-                          return (
-                            <Link
-                              key={sub.label}
-                              to={subUrl}
-                              className={`flex h-9 items-center gap-2 rounded-md px-4 text-xs font-semibold transition-all ${isSubActive
-                                  ? "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
-                                  : "text-slate-400 hover:bg-slate-50 hover:text-slate-650 dark:text-slate-500 dark:hover:bg-slate-850/50 dark:hover:text-slate-300"
-                                }`}
-                            >
-                              <span className={`h-1.5 w-1.5 rounded-full ${isSubActive ? "bg-primary-600 dark:bg-primary-400 animate-pulse" : "bg-slate-300 dark:bg-slate-700"}`} />
-                              {sub.label}
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <nav className="space-y-1 px-3 py-5">
+              {renderNavLinks()}
             </nav>
           )}
         </div>
       </aside>
 
       <div
-        className={`fixed bottom-0 left-0 z-40 transition-all duration-300 flex items-center justify-center print:hidden ${
+        className={`fixed bottom-0 left-0 z-40 hidden lg:flex items-center justify-center print:hidden ${roleTheme.sidebarLogoClass} backdrop-blur-xl border-t border-r h-[80px] ${sidebarWidthClass} ${
+          compactRail ? "" : "px-5"
+        } transition-transform duration-300 ease-in-out will-change-transform ${
           navHidden
-            ? "w-[64px] h-[80px] bg-transparent border-t-0 border-r-0"
-            : compactRail
-              ? "w-[64px] h-[80px] bg-white dark:bg-slate-900 border-t border-r border-slate-200 dark:border-slate-850/60"
-              : "w-[252px] h-[80px] bg-white dark:bg-slate-900 border-t border-r border-slate-200 dark:border-slate-850/60 px-7"
+            ? "-translate-x-full pointer-events-none"
+            : "translate-x-0"
         }`}
       >
-        <Logo compact={navHidden || compactRail} />
+        <Logo compact={compactRail} />
+      </div>
+
+      {/* Mobile Navigation Drawer with Coming In / Going Out Transitions */}
+      <div
+        className={`fixed inset-0 z-50 lg:hidden transition-all duration-300 ease-in-out ${
+          mobileMenuOpen
+            ? "visible pointer-events-auto"
+            : "invisible pointer-events-none delay-300"
+        }`}
+        aria-hidden={!mobileMenuOpen}
+      >
+        {/* Backdrop */}
+        <div
+          className={`fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
+            mobileMenuOpen ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+        {/* Drawer content */}
+        <aside
+          className={`fixed inset-y-0 left-0 w-72 max-w-[85vw] ${roleTheme.drawerBg} border-r shadow-2xl flex flex-col justify-between z-50 transition-transform duration-300 ease-in-out will-change-transform ${
+            mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div>
+            <div className={`flex items-center justify-between h-[72px] px-5 border-b ${roleTheme.dropdownDivider}`}>
+              <div className="flex items-center gap-3">
+                {orgLogo ? (
+                  <DynamicLogo src={orgLogo} alt={orgName || "Logo"} className="max-h-[36px] max-w-[120px] object-contain" />
+                ) : (
+                  <Logo />
+                )}
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className={`h-9 w-9 rounded-full flex items-center justify-center border ${roleTheme.headerBtnClass} transition cursor-pointer`}
+                title="Close Menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto px-4 py-4 max-h-[calc(100vh-140px)]">
+              <nav className="space-y-1">
+                {renderNavLinks(() => setMobileMenuOpen(false))}
+              </nav>
+            </div>
+          </div>
+
+          <div className={`p-4 border-t ${roleTheme.drawerFooterBg} flex items-center justify-between`}>
+            <div className="flex items-center gap-2">
+              <Logo compact />
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-300">Parikshya</span>
+            </div>
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                logout();
+              }}
+              className="flex items-center gap-1.5 text-xs font-bold text-rose-500 hover:text-rose-600 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>Logout</span>
+            </button>
+          </div>
+        </aside>
       </div>
 
       <header
-        className="fixed left-0 right-0 top-0 z-40 flex h-[100px] items-center justify-between border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 px-7"
+        className={`fixed left-0 right-0 top-0 z-40 flex h-[72px] sm:h-[100px] items-center justify-between border-b ${roleTheme.headerClass} px-3.5 sm:px-7 transition-colors duration-200`}
       >
-        <div className="flex items-center gap-4">
-          {orgLogo ? (
-            <Link
-              to="/dashboard"
-              className="cursor-pointer hover:opacity-85 transition flex items-center justify-center max-h-[80px] animate-fade-in"
-              title={orgName || "Home"}
-            >
-              <DynamicLogo
-                src={orgLogo}
-                alt={orgName || "Home"}
-                className="max-h-[60px] max-w-[150px] object-contain"
-              />
-            </Link>
-          ) : (
-            <Link
-              to="/dashboard"
-              className="flex items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition focus:outline-none cursor-pointer shrink-0 h-12 w-12 animate-fade-in"
-              title="Home"
-            >
-              <Home className="h-5.5 w-5.5" />
-            </Link>
-          )}
-
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {/* Toggle Button for Navigation Panel */}
           <button
             onClick={toggleNav}
-            className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-200 text-slate-700 transition focus:outline-none cursor-pointer shrink-0"
+            className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border ${roleTheme.headerBtnClass} transition focus:outline-none cursor-pointer shrink-0 shadow-xs`}
             title={navHidden ? "Show Navigation" : "Hide Navigation"}
             id="nav-visibility-toggle"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
           </button>
+
+          <Link
+            to="/dashboard"
+            className="flex items-center cursor-pointer hover:opacity-90 transition shrink-0"
+            title={orgName || "Home"}
+          >
+            {orgLogo ? (
+              <DynamicLogo
+                src={orgLogo}
+                alt={orgName || "Home"}
+                className="max-h-[32px] sm:max-h-[46px] max-w-[85px] sm:max-w-[140px] object-contain"
+              />
+            ) : (
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-600 text-white shadow-md">
+                <GraduationCap className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+              </div>
+            )}
+          </Link>
+
+          {/* Role-Specific Workspace Pill */}
+          <div className={`hidden md:inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.14em] shadow-xs ${roleTheme.badge.wrap}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${roleTheme.badge.dot}`} />
+            <span className="truncate max-w-[240px]">{roleTheme.badge.text}</span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4 animate-fade-in">
+        <div className="flex items-center gap-1.5 sm:gap-3 animate-fade-in shrink-0">
           {/* Light/Dark Mode Toggle Switch */}
           <button
             onClick={toggleTheme}
-            className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-200 text-slate-700 transition-all duration-300 focus:outline-none cursor-pointer"
+            className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border ${roleTheme.headerBtnClass} transition-all duration-300 focus:outline-none cursor-pointer shrink-0 shadow-xs`}
             title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             id="theme-mode-toggle"
           >
             {isDark ? (
-              <Sun className="h-5 w-5 text-amber-500 animate-[spin_10s_linear_infinite]" />
+              <Sun className="h-4 w-4 text-amber-500 animate-[spin_10s_linear_infinite]" />
             ) : (
-              <Moon className="h-5 w-5 text-slate-600" />
+              <Moon className="h-4 w-4" />
             )}
           </button>
 
@@ -623,18 +797,18 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                   markReadMutation.mutate();
                 }
               }}
-              className="relative flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 transition focus:outline-none cursor-pointer"
+              className={`relative flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border ${roleTheme.headerBtnClass} transition focus:outline-none cursor-pointer shrink-0 shadow-xs`}
             >
-              <Bell className="h-5 w-5 text-slate-700 dark:text-slate-300" />
+              <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full border-2 border-white bg-indigo-600 dark:border-slate-900 animate-pulse" />
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-indigo-600 dark:border-slate-900 animate-pulse" />
               )}
             </button>
 
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-4 shadow-xl z-50 max-h-[380px] overflow-y-auto transform origin-top-right transition-all duration-200 ease-out">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-3">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Notifications</span>
+              <div className={`absolute right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-80 max-w-[340px] rounded-xl border p-4 z-50 max-h-[380px] overflow-y-auto transform origin-top-right transition-all duration-200 ease-out ${roleTheme.dropdownBg}`}>
+                <div className={`flex items-center justify-between border-b pb-2 mb-3 ${roleTheme.dropdownDivider}`}>
+                  <span className="text-xs font-bold uppercase tracking-wider">Notifications</span>
                   <div className="flex items-center gap-2">
                     {notifications.length > 0 && (
                       <button
@@ -666,7 +840,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                           }`}
                       >
                         <div className="flex justify-between items-start gap-2 mb-1">
-                          <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${n.type === "test_live" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-450" : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400"
+                          <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${n.type === "test_live" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400"
                             }`}>
                             {n.type === "test_live" ? "Exam Live" : "Results Out"}
                           </span>
@@ -706,34 +880,48 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
           <div ref={profileRef} className="relative">
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-3 text-left focus:outline-none hover:opacity-85 transition group cursor-pointer"
+              className="flex items-center gap-1.5 sm:gap-2.5 text-left focus:outline-none hover:opacity-90 transition group cursor-pointer"
               title="User menu"
             >
-              <div className="h-12 w-12 overflow-hidden rounded-full border border-primary-400 group-hover:ring-2 group-hover:ring-primary-200 transition">
+              <div className="h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-full border border-primary-400 group-hover:ring-2 group-hover:ring-primary-300 transition shrink-0">
                 {user?.profilePicture ? (
                   <img src={user.profilePicture} alt="Profile" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="h-full w-full bg-[#ffd584] flex items-center justify-center text-3xl">
-                    <span className="mt-1">🙂</span>
+                  <div className="h-full w-full bg-[#ffd584] flex items-center justify-center text-lg sm:text-xl">
+                    <span>🙂</span>
                   </div>
                 )}
               </div>
-              <div className="hidden sm:block">
-                <div className="flex items-center gap-2 text-lg font-bold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition">
-                  {user?.name ?? "Alex Wando"} <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0 sm:hidden" />
+              <div className="hidden sm:flex flex-col text-left leading-tight">
+                <div className={`flex items-center gap-1 text-xs sm:text-sm font-bold transition ${
+                  user?.role === "Admin"
+                    ? "text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-cyan-300"
+                    : "text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white"
+                }`}>
+                  <span className="truncate max-w-[70px] sm:max-w-[130px]">{user?.name ?? "User"}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                 </div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{user?.role ?? "Admin"}</p>
+                <p className={`text-[10px] sm:text-xs font-semibold capitalize ${
+                  user?.role === "Admin"
+                    ? "text-indigo-600 dark:text-cyan-400"
+                    : user?.role === "Teacher"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-blue-600 dark:text-blue-400"
+                }`}>
+                  {user?.role ?? "Student"}
+                </p>
               </div>
             </button>
 
             {profileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-2 shadow-xl z-50 transform origin-top-right transition-all duration-200 ease-out">
+              <div className={`absolute right-0 mt-2 w-56 rounded-xl border p-2 z-50 transform origin-top-right transition-all duration-200 ease-out ${roleTheme.dropdownBg}`}>
                 <button
                   onClick={() => {
                     setProfileDropdownOpen(false);
                     setProfileModalOpen(true);
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100 transition focus:outline-none cursor-pointer"
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-semibold transition focus:outline-none cursor-pointer ${roleTheme.dropdownItemHover}`}
                 >
                   <User className="h-4 w-4 text-slate-400" />
                   View Profile
@@ -743,20 +931,30 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                     setProfileDropdownOpen(false);
                     setChangePasswordModalOpen(true);
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100 transition focus:outline-none cursor-pointer"
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-semibold transition focus:outline-none cursor-pointer ${roleTheme.dropdownItemHover}`}
                 >
                   <Key className="h-4 w-4 text-slate-400" />
                   Change Password
+                </button>
+                <button
+                  onClick={() => {
+                    setProfileDropdownOpen(false);
+                    logout();
+                  }}
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30 transition focus:outline-none cursor-pointer border-t mt-1 pt-2 ${roleTheme.dropdownDivider}`}
+                >
+                  <LogOut className="h-4 w-4 text-rose-500" />
+                  Logout
                 </button>
               </div>
             )}
           </div>
           <button
             onClick={logout}
-            className="flex h-10 w-10 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
+            className={`hidden sm:flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border ${roleTheme.headerBtnClass} cursor-pointer transition shrink-0`}
             title="Log out"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4.5 w-4.5" />
           </button>
         </div>
       </header>
@@ -822,7 +1020,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
               <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
                 {user?.name ?? "Alex Wando"}
               </h3>
-              <span className="mt-2 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 border border-indigo-200/30">
+              <span className="mt-2 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/30">
                 {user?.role ?? "Admin"} Account
               </span>
               {uploadError && (
@@ -836,12 +1034,12 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
             {/* Details list */}
             <div className="p-6 pt-2 space-y-4 text-sm">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 shrink-0">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shrink-0">
                   <User className="h-5 w-5" />
                 </div>
                 <div>
                   <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Username / ID</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-350 block">{user?.userId ?? "admin1"}</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-300 block">{user?.userId ?? "admin1"}</span>
                 </div>
               </div>
 
@@ -865,7 +1063,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                       <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">
                         {isSchool ? "Specialist Subject" : "Assigned Subjects"}
                       </span>
-                      <span className="font-semibold text-emerald-650 dark:text-emerald-400 block">
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 block">
                         {isSchool
                           ? (user.subject || "—")
                           : (user.subjects && user.subjects.length > 0 ? user.subjects.join(", ") : (user.subject || "—"))
@@ -881,7 +1079,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                       </div>
                       <div>
                         <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Program</span>
-                        <span className="font-semibold text-indigo-650 dark:text-indigo-400 block leading-tight">
+                        <span className="font-semibold text-indigo-600 dark:text-indigo-400 block leading-tight">
                           {programs.find((p: any) => p.id === user.program_id)?.name || user.program_id}
                         </span>
                       </div>
@@ -899,19 +1097,19 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                       </div>
                       <div>
                         <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Assigned Class</span>
-                        <span className="font-semibold text-indigo-650 dark:text-indigo-400 block">{user.class}</span>
+                        <span className="font-semibold text-indigo-600 dark:text-indigo-400 block">{user.class}</span>
                       </div>
                     </div>
                   )}
 
                   {!isSchool && user.program_id && (
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-450 shrink-0">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shrink-0">
                         <School className="h-5 w-5" />
                       </div>
                       <div>
                         <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Program</span>
-                        <span className="font-semibold text-emerald-655 dark:text-emerald-450 block leading-tight">
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400 block leading-tight">
                           {programs.find((p: any) => p.id === user.program_id)?.name || user.program_id}
                         </span>
                       </div>
@@ -925,7 +1123,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                       </div>
                       <div>
                         <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Semester</span>
-                        <span className="font-semibold text-indigo-650 dark:text-indigo-400 block">Semester {user.semester}</span>
+                        <span className="font-semibold text-indigo-600 dark:text-indigo-400 block">Semester {user.semester}</span>
                       </div>
                     </div>
                   )}
@@ -937,7 +1135,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                       </div>
                       <div>
                         <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Academic Session</span>
-                        <span className="font-semibold text-indigo-650 dark:text-indigo-400 block">{user.session}</span>
+                        <span className="font-semibold text-indigo-600 dark:text-indigo-400 block">{user.session}</span>
                       </div>
                     </div>
                   )}
@@ -1168,7 +1366,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
         </div>
       </Modal>
 
-      <main className={`min-h-screen pt-[100px] transition-all duration-300 ${
+      <main className={`min-h-screen pt-[72px] sm:pt-[100px] transition-all duration-300 ease-in-out ${
         navHidden
           ? `pl-0 nav-hidden ${location.pathname === "/dashboard" ? "dashboard-expanded" : ""}`
           : compactRail

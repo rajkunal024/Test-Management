@@ -27,6 +27,7 @@ import {
   Link2,
   Download,
   ExternalLink,
+  MonitorX,
 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -45,7 +46,7 @@ const getSubjectTheme = (subjectStr: string) => {
       gradient: "from-indigo-500/5 to-purple-500/5 dark:from-indigo-950/20 dark:to-purple-950/10",
       borderHover: "hover:border-indigo-500/40",
       glow: "bg-indigo-500/5 group-hover:bg-indigo-500/10",
-      textAccent: "text-indigo-650 dark:text-indigo-400",
+      textAccent: "text-indigo-600 dark:text-indigo-300",
       badgeTone: "blue" as const,
       borderLine: "border-indigo-100/30 dark:border-indigo-900/30"
     };
@@ -55,7 +56,7 @@ const getSubjectTheme = (subjectStr: string) => {
       gradient: "from-blue-500/5 to-cyan-500/5 dark:from-blue-950/20 dark:to-cyan-950/10",
       borderHover: "hover:border-blue-500/40",
       glow: "bg-blue-500/5 group-hover:bg-blue-500/10",
-      textAccent: "text-blue-650 dark:text-blue-400",
+      textAccent: "text-blue-600 dark:text-blue-300",
       badgeTone: "blue" as const,
       borderLine: "border-blue-100/30 dark:border-blue-900/30"
     };
@@ -65,7 +66,7 @@ const getSubjectTheme = (subjectStr: string) => {
       gradient: "from-emerald-500/5 to-teal-500/5 dark:from-emerald-950/20 dark:to-teal-950/10",
       borderHover: "hover:border-emerald-500/40",
       glow: "bg-emerald-500/5 group-hover:bg-emerald-500/10",
-      textAccent: "text-emerald-650 dark:text-emerald-400",
+      textAccent: "text-emerald-600 dark:text-emerald-300",
       badgeTone: "green" as const,
       borderLine: "border-emerald-100/30 dark:border-emerald-900/30"
     };
@@ -75,7 +76,7 @@ const getSubjectTheme = (subjectStr: string) => {
       gradient: "from-amber-500/5 to-orange-500/5 dark:from-amber-950/20 dark:to-orange-950/10",
       borderHover: "hover:border-amber-500/40",
       glow: "bg-amber-500/5 group-hover:bg-amber-500/10",
-      textAccent: "text-amber-650 dark:text-amber-450",
+      textAccent: "text-amber-600 dark:text-amber-300",
       badgeTone: "yellow" as const,
       borderLine: "border-amber-100/30 dark:border-amber-900/30"
     };
@@ -85,7 +86,7 @@ const getSubjectTheme = (subjectStr: string) => {
     gradient: "from-slate-500/5 to-violet-500/5 dark:from-slate-900/20 dark:to-violet-950/10",
     borderHover: "hover:border-violet-500/40",
     glow: "bg-violet-500/5 group-hover:bg-violet-500/10",
-    textAccent: "text-violet-650 dark:text-violet-400",
+    textAccent: "text-violet-600 dark:text-violet-300",
     badgeTone: "slate" as const,
     borderLine: "border-slate-100/30 dark:border-slate-800/30"
   };
@@ -372,109 +373,201 @@ export const StudentDashboard = () => {
     <AppShell>
       <PageWrapper>
         {/* Welcome Header */}
-        <div className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 p-6 text-white shadow-2xl md:p-8 border border-white/10">
-          {/* Glowing background meshes */}
-          <div className="absolute top-[-30%] left-[-10%] w-[50%] h-[80%] rounded-full bg-indigo-500/20 blur-[90px] pointer-events-none" />
-          <div className="absolute bottom-[-30%] right-[-10%] w-[55%] h-[80%] rounded-full bg-[#6c7df7]/20 blur-[100px] pointer-events-none" />
-          <div className="absolute top-1/2 left-1/3 w-36 h-36 rounded-full bg-purple-500/15 blur-[60px] animate-pulse pointer-events-none" />
+        <div className="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-[#0c1a3a] via-[#102450] to-[#081226] p-6 text-white shadow-2xl shadow-blue-950/40 md:p-8 border border-blue-500/30">
+          {/* Glow orbs */}
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 -ml-12 -mb-12 h-56 w-56 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
-            <div>
-              <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-300">
-                <Sparkles className="h-4 w-4 text-amber-400 animate-pulse" />
+            <div className="max-w-xl">
+              <div className="mb-3 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-300 bg-blue-500/15 border border-blue-400/30 px-3 py-1.5 rounded-full">
+                <Sparkles className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
                 Parikshya Student Workspace
               </div>
-              <h1 className="text-3xl font-black tracking-tight md:text-4xl bg-gradient-to-r from-white via-indigo-100 to-indigo-200 bg-clip-text text-transparent">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight text-white">
                 {orgData?.brandingBannerText || `Welcome back, ${user?.name || "Student"}!`}
               </h1>
-              <p className="mt-3 text-sm text-slate-400 max-w-xl leading-relaxed font-medium">
-                Elevate your exam preparation. Monitor scheduled slots, attempt mock tests under live security, and trace detailed analytics.
+              <p className="mt-2 text-xs sm:text-sm text-blue-100/80 leading-relaxed font-medium">
+                Supervise enrolled curricula, launch scheduled exams under live proctoring, review answers, and inspect historical performance scorecards.
               </p>
-              <div className="mt-6 flex max-w-full flex-col gap-3.5 sm:flex-row sm:flex-wrap">
-                <Link
-                  to="/analytics"
-                  className="inline-flex max-w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-[#6c7df7] px-4 py-2.5 text-center text-xs font-bold leading-snug text-white transition-all duration-300 hover:scale-[1.03] hover:shadow-lg hover:shadow-indigo-500/25 active:scale-[0.98] sm:w-auto sm:px-5"
-                >
-                  <TrendingUp className="h-4 w-4 shrink-0" />
-                  <span className="min-w-0 whitespace-normal break-words">View Performance Charts</span>
-                </Link>
-                <button
-                  onClick={() => {
-                    const el = document.getElementById("exams-list-section");
-                    el?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                  className="inline-flex max-w-full items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-center text-xs font-bold leading-snug text-slate-200 transition-all duration-300 hover:scale-[1.03] hover:border-white/20 hover:bg-white/10 active:scale-[0.98] sm:w-auto sm:px-5"
-                >
-                  <span className="min-w-0 whitespace-normal break-words">Browse Exams</span>
-                </button>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full bg-blue-500/15 border border-blue-400/30 text-blue-200 px-4 py-1.5 text-xs font-bold shadow-sm backdrop-blur-md">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+                  {user?.name || "Student"} · {classDisplay}
+                </span>
               </div>
             </div>
-            
-            {/* Visual Profile Avatar Card */}
-            <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl self-start md:self-center shrink-0 w-full md:w-auto transition-all duration-300 hover:border-white/30 hover:bg-white/15 group">
-              <div className="relative flex h-18 w-18 items-center justify-center rounded-full bg-gradient-to-tr from-amber-400 via-yellow-300 to-orange-500 text-4xl shadow-inner border-2 border-white/30 group-hover:scale-105 transition-transform duration-300">
-                🎓
-                <span className="absolute -inset-1 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 opacity-20 blur-sm -z-10 animate-pulse" />
-              </div>
-              <span className="mt-3 text-[10px] font-black tracking-widest uppercase text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 rounded-full px-3 py-1">
-                {classDisplay}
-              </span>
+
+            {/* Visual Profile Emblem */}
+            <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl bg-blue-500/15 text-4xl sm:text-5xl border border-blue-400/30 shadow-inner shrink-0 self-end md:self-center">
+              🎓
             </div>
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <section className="mb-8 grid gap-5 sm:grid-cols-3">
-          <article className="relative flex items-center gap-4 rounded-2xl border border-indigo-100/60 dark:border-indigo-900/40 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 dark:from-indigo-950/20 dark:to-purple-950/10 backdrop-blur-md p-5 shadow-md transition-all duration-300 hover:shadow-indigo-500/15 hover:-translate-y-1 hover:border-indigo-500/50 group overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-5 -mt-5 transition-all group-hover:bg-indigo-500/10" />
-            <div className="flex h-13 w-13 items-center justify-center rounded-xl bg-indigo-500/10 dark:bg-indigo-950/70 text-indigo-650 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/40 group-hover:scale-110 group-hover:rotate-3 transition duration-300 shadow-sm">
-              <BookOpen className="h-6.5 w-6.5" />
+
+        {/* Mobile Device Test-taking Alert */}
+        <div className="lg:hidden mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 flex items-start gap-3 text-xs leading-relaxed">
+          <MonitorX className="h-5 w-5 shrink-0 mt-0.5 text-amber-500" />
+          <div>
+            <span className="font-bold">Exam Proctoring Notice:</span> You can monitor schedules and review completed scorecards on mobile, but <strong className="font-extrabold underline">live tests cannot be attempted on a mobile phone</strong>. Please switch to a desktop or laptop computer with a webcam to attempt exams.
+          </div>
+        </div>
+
+        {/* 2x2 Stats Metrics Grid on Mobile / 4 on Desktop */}
+        <section className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <article className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-4 sm:p-5 shadow-sm hover:shadow-md hover:dark:border-blue-500/40 transition-all duration-300 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#3b47f6] text-white shadow-md shadow-blue-500/20">
+                <BookOpen className="h-5.5 w-5.5" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-300 border border-blue-500/30">
+                Active
+              </span>
             </div>
-            <div>
-              <p className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Available Tests</p>
-              <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 tracking-tight">{stats.available}</h3>
+            <div className="mt-4">
+              <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                AVAILABLE TESTS
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight">
+                {stats.available}
+              </h3>
             </div>
           </article>
 
-          <article className="relative flex items-center gap-4 rounded-2xl border border-emerald-100/60 dark:border-emerald-900/40 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-950/20 dark:to-teal-950/10 backdrop-blur-md p-5 shadow-md transition-all duration-300 hover:shadow-emerald-500/15 hover:-translate-y-1 hover:border-emerald-500/50 group overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-5 -mt-5 transition-all group-hover:bg-emerald-500/10" />
-            <div className="flex h-13 w-13 items-center justify-center rounded-xl bg-emerald-500/10 dark:bg-emerald-950/70 text-emerald-650 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40 group-hover:scale-110 group-hover:rotate-3 transition duration-300 shadow-sm">
-              <CheckCircle2 className="h-6.5 w-6.5" />
+          <article className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-4 sm:p-5 shadow-sm hover:shadow-md hover:dark:border-blue-500/40 transition-all duration-300 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#00ba63] text-white shadow-md shadow-emerald-500/20">
+                <CheckCircle2 className="h-5.5 w-5.5" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
+                Attempted
+              </span>
             </div>
-            <div>
-              <p className="text-[10px] font-extrabold text-slate-400 dark:text-slate-550 uppercase tracking-widest">Tests Attempted</p>
-              <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 tracking-tight">{stats.attempted}</h3>
+            <div className="mt-4">
+              <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                TESTS ATTEMPTED
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight">
+                {stats.attempted}
+              </h3>
             </div>
           </article>
 
-          <article className="relative flex items-center gap-4 rounded-2xl border border-amber-100/60 dark:border-amber-900/40 bg-gradient-to-br from-amber-500/5 to-orange-500/5 dark:from-amber-950/20 dark:to-orange-950/10 backdrop-blur-md p-5 shadow-md transition-all duration-300 hover:shadow-amber-500/15 hover:-translate-y-1 hover:border-amber-500/50 group overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -mr-5 -mt-5 transition-all group-hover:bg-amber-500/10" />
-            <div className="flex h-13 w-13 items-center justify-center rounded-xl bg-amber-500/10 dark:bg-amber-955/50 text-amber-650 dark:text-amber-450 border border-amber-200/50 dark:border-amber-800/40 group-hover:scale-110 group-hover:rotate-3 transition duration-300 shadow-sm">
-              <Award className="h-6.5 w-6.5" />
+          <article className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-4 sm:p-5 shadow-sm hover:shadow-md hover:dark:border-blue-500/40 transition-all duration-300 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#9833f7] text-white shadow-md shadow-purple-500/20">
+                <Award className="h-5.5 w-5.5" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
+                Score
+              </span>
             </div>
-            <div>
-              <p className="text-[10px] font-extrabold text-slate-400 dark:text-slate-550 uppercase tracking-widest">Avg Performance</p>
-              <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 tracking-tight">{stats.accuracy}%</h3>
+            <div className="mt-4">
+              <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                AVG PERFORMANCE
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight">
+                {stats.accuracy}%
+              </h3>
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-4 sm:p-5 shadow-sm hover:shadow-md hover:dark:border-blue-500/40 transition-all duration-300 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f58400] text-white shadow-md shadow-orange-500/20">
+                <BookOpenCheck className="h-5.5 w-5.5" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-300 border border-orange-500/30">
+                Curricula
+              </span>
+            </div>
+            <div className="mt-4">
+              <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                SUBJECTS
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight">
+                {subjects.length}
+              </h3>
             </div>
           </article>
         </section>
 
+        {/* Student Quick Action Hub */}
+        <div className="mb-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+          <article
+            onClick={() => {
+              setActiveTab("exams");
+              const el = document.getElementById("exams-list-section");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="group cursor-pointer rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 sm:p-6 shadow-sm hover:shadow-xl hover:border-blue-500/50 hover:dark:border-blue-500/60 transition-all duration-300 relative flex flex-col justify-between"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-105 transition-transform">
+                <Clock className="h-6 w-6" />
+              </div>
+              <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                Live & Scheduled Exams
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Launch test sessions currently open in your schedule, or inspect upcoming test windows and strict late entry cutoffs.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-blue-900/40 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
+              <span>Browse Scheduled Exams</span>
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </article>
+
+          <article
+            onClick={() => {
+              setActiveTab("results");
+              const el = document.getElementById("exams-list-section");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="group cursor-pointer rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 sm:p-6 shadow-sm hover:shadow-xl hover:border-emerald-500/50 hover:dark:border-emerald-500/60 transition-all duration-300 relative flex flex-col justify-between"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-105 transition-transform">
+                <TrendingUp className="h-6 w-6" />
+              </div>
+              <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-1.5 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                Performance & Scorecards
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Review evaluated test attempts, verify question accuracy, and compare results across topics and cohorts.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-blue-900/40 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              <span>View Scorecards & Analytics</span>
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </article>
+        </div>
+
         {/* Tab switcher */}
-        <div className="mb-8 flex p-1 bg-slate-100/80 dark:bg-slate-900 rounded-2xl max-w-sm border border-slate-200/30 dark:border-slate-800/40 shadow-inner backdrop-blur-sm" id="exams-list-section">
+        <div className="mb-8 flex p-1.5 bg-slate-200/80 dark:bg-[#091329] rounded-2xl max-w-md border border-slate-300/80 dark:border-blue-900/50 shadow-inner" id="exams-list-section">
           <button
             onClick={() => setActiveTab("exams")}
-            className={`flex-1 py-3 px-5 text-xs font-bold rounded-xl transition-all duration-300 ${activeTab === "exams"
-                ? "bg-gradient-to-r from-indigo-600 to-[#6c7df7] text-white shadow-lg font-black scale-[1.02]"
-                : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:scale-[0.98]"
+            className={`flex-1 py-2.5 px-4 text-xs font-black rounded-xl transition-all duration-200 cursor-pointer ${activeTab === "exams"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
+                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
           >
             Available Exams
           </button>
           <button
             onClick={() => setActiveTab("results")}
-            className={`flex-1 py-3 px-5 text-xs font-bold rounded-xl transition-all duration-300 ${activeTab === "results"
-                ? "bg-gradient-to-r from-indigo-600 to-[#6c7df7] text-white shadow-lg font-black scale-[1.02]"
-                : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:scale-[0.98]"
+            className={`flex-1 py-2.5 px-4 text-xs font-black rounded-xl transition-all duration-200 cursor-pointer ${activeTab === "results"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
+                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
           >
             My Test Results
@@ -487,11 +580,11 @@ export const StudentDashboard = () => {
             {activeTab === "exams" && (
           <>
             {/* Filter Controls */}
-            <div className="mb-6 grid gap-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-4 shadow-sm md:grid-cols-[1fr_240px]">
+            <div className="mb-6 grid gap-4 rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-4 shadow-sm md:grid-cols-[1fr_240px]">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-400" />
                 <Input
-                  className="pl-10 h-11 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/10 dark:bg-slate-950 dark:border-slate-800"
+                  className="pl-10 h-11 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-blue-500/10 dark:bg-[#070e1e] dark:border-blue-900/50 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400"
                   placeholder="Search by test name..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -500,11 +593,11 @@ export const StudentDashboard = () => {
               <select
                 value={subjectFilter}
                 onChange={(e) => setSubjectFilter(e.target.value)}
-                className="h-11 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer font-semibold shadow-sm transition-all"
+                className="h-11 rounded-xl border border-slate-300 dark:border-blue-900/50 bg-white dark:bg-[#070e1e] px-4 text-sm text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 cursor-pointer font-semibold shadow-sm transition-all"
               >
-                <option value="all" className="dark:bg-slate-950 dark:text-slate-300">All Subjects</option>
+                <option value="all" className="dark:bg-[#070e1e] dark:text-slate-200">All Subjects</option>
                 {subjects.map((sub) => (
-                  <option key={sub} value={sub} className="dark:bg-slate-950 dark:text-slate-300">
+                  <option key={sub} value={sub} className="dark:bg-[#070e1e] dark:text-slate-200">
                     {sub}
                   </option>
                 ))}
@@ -513,7 +606,7 @@ export const StudentDashboard = () => {
 
             {/* Test Catalog */}
             <h2 className="mb-5 text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <BookOpenCheck className="h-5 w-5 text-indigo-500" />
+              <BookOpenCheck className="h-5 w-5 text-blue-500" />
               {selectedCalendarDate ? (
                 <span>Exams for {selectedCalendarDate.toLocaleDateString([], { dateStyle: "medium" })}</span>
               ) : (
@@ -522,14 +615,14 @@ export const StudentDashboard = () => {
             </h2>
 
             {selectedCalendarDate && (
-              <div className="mb-6 flex items-center justify-between p-3.5 rounded-xl border border-indigo-100 dark:border-indigo-950/35 bg-indigo-50/30 dark:bg-indigo-950/10 text-xs font-bold text-indigo-650 dark:text-indigo-400 animate-fade-in">
+              <div className="mb-6 flex items-center justify-between p-3.5 rounded-xl border border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-950/30 text-xs font-bold text-blue-700 dark:text-blue-300 animate-fade-in">
                 <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-indigo-550 animate-pulse" />
+                  <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                   Filtering by date: {selectedCalendarDate.toLocaleDateString([], { dateStyle: "long" })}
                 </span>
                 <button
                   onClick={() => setSelectedCalendarDate(null)}
-                  className="px-2.5 py-1 rounded-lg bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-950 dark:hover:bg-indigo-900 transition-colors uppercase text-[9px] font-black tracking-wider"
+                  className="px-2.5 py-1 rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-900 transition-colors uppercase text-[9px] font-black tracking-wider cursor-pointer"
                 >
                   Clear Date Filter
                 </button>
@@ -537,13 +630,13 @@ export const StudentDashboard = () => {
             )}
 
             {isLoading ? (
-              <div className="flex h-64 items-center justify-center text-slate-500 dark:text-slate-400">
+              <div className="flex h-64 items-center justify-center text-slate-500 dark:text-slate-300">
                 <Spinner /> <span className="ml-2 font-semibold">Loading exams catalogue...</span>
               </div>
             ) : filteredTests.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/50 dark:bg-slate-900/20 py-16 text-center text-slate-500 dark:text-slate-400 backdrop-blur-sm">
-                <p className="text-lg font-bold dark:text-slate-300">No tests found</p>
-                <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">Try adjusting your filters or search term.</p>
+              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] py-16 text-center text-slate-500 dark:text-slate-300">
+                <p className="text-lg font-bold text-slate-800 dark:text-slate-100">No tests found</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Try adjusting your filters or search term.</p>
               </div>
             ) : (
               <div className="grid gap-6 md:grid-cols-2 dashboard-cards-grid">
@@ -576,32 +669,45 @@ export const StudentDashboard = () => {
                     const s = (subj || "").toLowerCase();
                     if (s.includes("math")) {
                       return {
-                        bg: "bg-purple-50 dark:bg-purple-955/20 border-purple-100 dark:border-purple-900/30 text-purple-700 dark:text-purple-300",
+                        bg: "bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800/40 text-purple-700 dark:text-purple-300",
                         icon: <Variable className="h-3.5 w-3.5" />
                       };
                     }
                     if (s.includes("phys") || s.includes("sci")) {
                       return {
-                        bg: "bg-amber-50 dark:bg-amber-955/20 border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-300",
+                        bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-300",
                         icon: <TrendingUp className="h-3.5 w-3.5" />
                       };
                     }
                     return {
-                      bg: "bg-blue-50 dark:bg-blue-955/20 border-blue-100 dark:border-blue-900/30 text-blue-700 dark:text-blue-300",
+                      bg: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/40 text-blue-700 dark:text-blue-300",
                       icon: <BookOpen className="h-3.5 w-3.5" />
                     };
                   };
 
                   const getDifficultyBadge = (diff: string) => {
+                    const d = (diff || "").toLowerCase();
+                    if (d.includes("easy")) {
+                      return {
+                        bg: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300",
+                        icon: <Signal className="h-3.5 w-3.5" />
+                      };
+                    }
+                    if (d.includes("hard") || d.includes("difficult")) {
+                      return {
+                        bg: "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300",
+                        icon: <Signal className="h-3.5 w-3.5" />
+                      };
+                    }
                     return {
-                      bg: "bg-amber-50 dark:bg-amber-955/20 border-amber-105 dark:border-amber-900/30 text-amber-700 dark:text-amber-300",
+                      bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-300",
                       icon: <Signal className="h-3.5 w-3.5" />
                     };
                   };
 
                   const getTypeBadge = (t: string) => {
                     return {
-                      bg: "bg-blue-50 dark:bg-blue-955/20 border-blue-100 dark:border-blue-900/30 text-blue-700 dark:text-blue-300",
+                      bg: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/40 text-blue-700 dark:text-blue-300",
                       icon: <Compass className="h-3.5 w-3.5" />
                     };
                   };
@@ -609,7 +715,7 @@ export const StudentDashboard = () => {
                   const getSlotStatusBadge = () => {
                     if (isUpcoming) {
                       return (
-                        <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-blue-100 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 w-fit">
+                        <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800/40 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 w-fit">
                           <span className="h-2 w-2 rounded-full bg-blue-500" />
                           Upcoming
                         </div>
@@ -617,14 +723,14 @@ export const StudentDashboard = () => {
                     }
                     if (isEnded) {
                       return (
-                        <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-rose-100 dark:border-rose-900/30 bg-rose-50/50 dark:bg-rose-955/10 text-rose-750 dark:text-rose-305 w-fit">
+                        <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border border-rose-200 dark:border-rose-800/40 bg-rose-50/70 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 w-fit">
                           <span className="h-2 w-2 rounded-full bg-rose-500" />
                           Ended
                         </div>
                       );
                     }
                     return (
-                      <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 w-fit">
+                      <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 w-fit">
                         <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                         Slot Active
                       </div>
@@ -638,7 +744,7 @@ export const StudentDashboard = () => {
                   return (
                     <article
                       key={test.id}
-                      className="relative flex flex-col justify-between rounded-3xl border border-slate-200/80 dark:border-slate-805 bg-white dark:bg-slate-900 p-6 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group overflow-hidden"
+                      className="relative flex flex-col justify-between rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 sm:p-6 shadow-sm hover:shadow-xl hover:border-blue-500/50 hover:dark:border-blue-500/50 hover:-translate-y-0.5 transition-all duration-300 group overflow-hidden"
                     >
                       <div>
                         {/* Badges row */}
@@ -663,55 +769,55 @@ export const StudentDashboard = () => {
                         </div>
 
                         {/* Title */}
-                        <h3 className="text-2xl font-black text-slate-850 dark:text-slate-100 mb-2 tracking-tight line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" title={test.name}>
+                        <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2 tracking-tight line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={test.name}>
                           {test.name}
                         </h3>
 
                         {/* Time Slot Details */}
-                        <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-bold mb-5">
-                          <Calendar className="h-4 w-4 text-indigo-500" />
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-300 font-bold mb-5">
+                          <Calendar className="h-4 w-4 text-blue-500" />
                           <span>Slot: {formatDateTime(test.start_time)} - {formatDateTime(test.end_time)}</span>
                         </div>
 
                         {/* Statistics Grid */}
-                        <div className="mb-4 grid grid-cols-2 border border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/10 rounded-2xl p-4 relative z-10">
+                        <div className="mb-4 grid grid-cols-2 border border-slate-100 dark:border-blue-900/40 bg-slate-50/70 dark:bg-[#070f22] rounded-2xl p-4 relative z-10">
                           <div className="flex flex-col items-center justify-center">
-                            <div className="p-2.5 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 rounded-full mb-2">
+                            <div className="p-2.5 bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-300 rounded-full mb-2">
                               <FileText className="h-5 w-5" />
                             </div>
-                            <span className="font-extrabold text-slate-850 dark:text-slate-200 text-2xl tracking-tight">{test.total_questions}</span>
-                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">QUESTIONS</span>
+                            <span className="font-extrabold text-slate-800 dark:text-slate-100 text-2xl tracking-tight">{test.total_questions}</span>
+                            <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">QUESTIONS</span>
                           </div>
-                          <div className="w-px h-16 bg-slate-100 dark:bg-slate-800/80 self-center absolute left-1/2 -translate-x-1/2" />
+                          <div className="w-px h-16 bg-slate-200 dark:bg-blue-900/40 self-center absolute left-1/2 -translate-x-1/2" />
                           <div className="flex flex-col items-center justify-center">
-                            <div className="p-2.5 bg-blue-50 dark:bg-blue-955/40 text-blue-600 dark:text-blue-400 rounded-full mb-2">
+                            <div className="p-2.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 rounded-full mb-2">
                               <Award className="h-5 w-5" />
                             </div>
-                            <span className="font-extrabold text-slate-850 dark:text-slate-200 text-2xl tracking-tight">{test.total_marks}</span>
-                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5">MARKS</span>
+                            <span className="font-extrabold text-slate-800 dark:text-slate-100 text-2xl tracking-tight">{test.total_marks}</span>
+                            <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">MARKS</span>
                           </div>
                         </div>
 
                         {/* Duration and Late Entry Details */}
-                        <div className="mb-4 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4 space-y-3.5 bg-white/40 dark:bg-slate-900/10 relative z-10 text-xs">
+                        <div className="mb-4 border border-slate-100 dark:border-blue-900/40 rounded-2xl p-4 space-y-3.5 bg-slate-50/50 dark:bg-[#070f22] relative z-10 text-xs">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-bold">
-                              <div className="p-1.5 bg-blue-50 dark:bg-blue-955/30 text-blue-600 dark:text-blue-400 rounded-lg">
+                            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 font-bold">
+                              <div className="p-1.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 rounded-lg">
                                 <Clock className="h-3.5 w-3.5" />
                               </div>
                               <span>Duration</span>
                             </div>
-                            <span className="text-slate-850 dark:text-slate-200 font-extrabold">{test.total_time} Minutes</span>
+                            <span className="text-slate-800 dark:text-slate-100 font-extrabold">{test.total_time} Minutes</span>
                           </div>
-                          <div className="h-px bg-slate-100 dark:bg-slate-800/60" />
+                          <div className="h-px bg-slate-200 dark:bg-blue-900/40" />
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-bold">
-                              <div className="p-1.5 bg-purple-50 dark:bg-purple-955/30 text-purple-600 dark:text-purple-400 rounded-lg">
+                            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 font-bold">
+                              <div className="p-1.5 bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-300 rounded-lg">
                                 <UserCheck className="h-3.5 w-3.5" />
                               </div>
                               <span>Late Entry</span>
                             </div>
-                            <span className="text-slate-850 dark:text-slate-200 font-extrabold">{test.lateEntryTime ?? 0} Minutes</span>
+                            <span className="text-slate-800 dark:text-slate-100 font-extrabold">{test.lateEntryTime ?? 0} Minutes</span>
                           </div>
                         </div>
                       </div>
@@ -727,18 +833,18 @@ export const StudentDashboard = () => {
 
                         const themeColors = hasEndedCutoff
                           ? {
-                              border: "border-rose-100 dark:border-rose-950/40",
-                              bg: "bg-rose-50/50 dark:bg-rose-955/5",
-                              iconBg: "bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400",
-                              label: "text-rose-500 dark:text-rose-400",
-                              val: "text-rose-600 dark:text-rose-405",
+                              border: "border-rose-200 dark:border-rose-800/40",
+                              bg: "bg-rose-50/70 dark:bg-rose-950/20",
+                              iconBg: "bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300",
+                              label: "text-rose-600 dark:text-rose-300",
+                              val: "text-rose-700 dark:text-rose-200",
                             }
                           : {
-                              border: "border-amber-100 dark:border-amber-900/30",
-                              bg: "bg-amber-50/50 dark:bg-amber-955/5",
-                              iconBg: "bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
-                              label: "text-amber-600 dark:text-amber-400",
-                              val: "text-amber-700 dark:text-amber-300 animate-pulse",
+                              border: "border-amber-200 dark:border-amber-800/40",
+                              bg: "bg-amber-50/70 dark:bg-amber-950/20",
+                              iconBg: "bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300",
+                              label: "text-amber-600 dark:text-amber-300",
+                              val: "text-amber-700 dark:text-amber-200 animate-pulse",
                             };
 
                         return (
@@ -759,20 +865,20 @@ export const StudentDashboard = () => {
                       })()}
 
                       {/* Footer Actions */}
-                      <div className="flex items-center justify-between mt-2 pt-4 border-t border-slate-100 dark:border-slate-800/80 border-dashed gap-4 relative z-10">
-                        <div>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-2 pt-4 border-t border-slate-100 dark:border-blue-900/40 border-dashed gap-3 sm:gap-4 relative z-10">
+                        <div className="w-full sm:w-auto">
                           {hasSubmittedAttempt ? (
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 px-4 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                            <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/40 px-4 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40">
                               <CheckCircle2 className="h-4 w-4 shrink-0" />
                               {test.results_shared
                                 ? `Score: ${attempt.score}/${test.total_marks}`
                                 : "Completed"}
                             </div>
                           ) : (
-                            <div className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl border ${
+                            <div className={`flex items-center justify-center sm:justify-start gap-1.5 text-xs font-bold px-4 py-2.5 rounded-xl border ${
                               hasStartedExam 
-                                ? "text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-955/20 border-amber-100 dark:border-amber-900/30 animate-pulse"
-                                : "text-slate-450 dark:text-slate-500 bg-white dark:bg-slate-900/30 border-slate-205 dark:border-slate-800"
+                                ? "text-amber-600 dark:text-amber-300 bg-amber-50/70 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/40 animate-pulse"
+                                : "text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-[#070f22] border-slate-200 dark:border-blue-900/40"
                             }`}>
                               {!hasStartedExam && <Lock className="h-4 w-4 shrink-0 text-slate-400" />}
                               <span>
@@ -782,29 +888,29 @@ export const StudentDashboard = () => {
                           )}
                         </div>
 
-                        <div className="flex gap-2 shrink-0">
+                        <div className="flex gap-2 shrink-0 w-full sm:w-auto">
                           {hasSubmittedAttempt ? (
                             test.results_shared ? (
-                              <Link to={`/tests/${test.id}/result`}>
-                                <Button variant="secondary" className="h-11 text-xs font-extrabold px-5 rounded-xl border-slate-205 dark:border-slate-800 hover:border-indigo-500 hover:text-indigo-650 dark:hover:text-indigo-400 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300">
+                              <Link to={`/tests/${test.id}/result`} className="w-full sm:w-auto">
+                                <Button variant="secondary" className="w-full sm:w-auto h-11 text-xs font-extrabold px-5 rounded-xl border-slate-200 dark:border-blue-800/50 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-300 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300 cursor-pointer">
                                   View Scorecard
                                 </Button>
                               </Link>
                             ) : (
-                              <Button disabled variant="secondary" className="h-11 text-xs font-bold px-5 text-slate-400 dark:text-slate-550 bg-slate-50 dark:bg-slate-900/40 cursor-not-allowed rounded-xl border-slate-205 dark:border-slate-800">
+                              <Button disabled variant="secondary" className="w-full sm:w-auto h-11 text-xs font-bold px-5 text-slate-400 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/60 cursor-not-allowed rounded-xl border-slate-200 dark:border-slate-800">
                                 Waiting for Results
                               </Button>
                             )
                           ) : (
                             canEnterPrep || hasDraftAttempt ? (
-                              <Link to={`/tests/${test.id}/attempt`}>
-                                <Button className="h-11 text-xs font-extrabold px-5 flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/25 rounded-xl text-white border-none">
+                              <Link to={`/tests/${test.id}/attempt`} className="w-full sm:w-auto">
+                                <Button className="w-full sm:w-auto h-11 text-xs font-extrabold px-5 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all shadow-md shadow-blue-500/20 hover:shadow-blue-500/35 rounded-xl text-white border-none cursor-pointer">
                                   {hasStartedExam ? "Resume Test" : "Start Test"}
                                   <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                                 </Button>
                               </Link>
                             ) : (
-                              <Button disabled className="h-11 text-xs font-extrabold px-5 bg-indigo-600/90 dark:bg-indigo-700/80 text-white border-none rounded-xl cursor-not-allowed flex items-center gap-1.5 shadow-sm">
+                              <Button disabled className="w-full sm:w-auto h-11 text-xs font-extrabold px-5 bg-blue-600/70 dark:bg-blue-700/60 text-white border-none rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm">
                                 <Lock className="h-4 w-4" />
                                 {isUpcoming ? "Starts In" : isEnded ? "Closed" : isLateToStart ? "Late Entry Closed" : "No Questions"}
                               </Button>
@@ -823,7 +929,7 @@ export const StudentDashboard = () => {
         {activeTab === "results" && (
           <div className="space-y-4">
             <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-5">
-              <Award className="h-5 w-5 text-indigo-500" />
+              <Award className="h-5 w-5 text-blue-500" />
               {selectedCalendarDate ? (
                 <span>Results for {selectedCalendarDate.toLocaleDateString([], { dateStyle: "medium" })}</span>
               ) : (
@@ -832,14 +938,14 @@ export const StudentDashboard = () => {
             </h2>
 
             {selectedCalendarDate && (
-              <div className="mb-6 flex items-center justify-between p-3.5 rounded-xl border border-indigo-100 dark:border-indigo-950/35 bg-indigo-50/30 dark:bg-indigo-950/10 text-xs font-bold text-indigo-650 dark:text-indigo-400 animate-fade-in">
+              <div className="mb-6 flex items-center justify-between p-3.5 rounded-xl border border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-950/30 text-xs font-bold text-blue-700 dark:text-blue-300 animate-fade-in">
                 <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-indigo-550 animate-pulse" />
+                  <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                   Filtering by date: {selectedCalendarDate.toLocaleDateString([], { dateStyle: "long" })}
                 </span>
                 <button
                   onClick={() => setSelectedCalendarDate(null)}
-                  className="px-2.5 py-1 rounded-lg bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-950 dark:hover:bg-indigo-900 transition-colors uppercase text-[9px] font-black tracking-wider"
+                  className="px-2.5 py-1 rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-900 transition-colors uppercase text-[9px] font-black tracking-wider cursor-pointer"
                 >
                   Clear Date Filter
                 </button>
@@ -895,9 +1001,9 @@ export const StudentDashboard = () => {
 
               if (studentAttempts.length === 0) {
                 return (
-                  <div className="rounded-2xl border border-dashed border-slate-350 dark:border-slate-850 bg-white/50 dark:bg-slate-900/20 py-16 text-center text-slate-500 dark:text-slate-400 backdrop-blur-sm">
-                    <p className="text-lg font-bold dark:text-slate-350">No results found</p>
-                    <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">You haven't completed any exams yet. Go attempt active tests!</p>
+                  <div className="rounded-2xl border border-dashed border-slate-300 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] py-16 text-center text-slate-500 dark:text-slate-300">
+                    <p className="text-lg font-bold text-slate-800 dark:text-slate-100">No results found</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">You haven't completed any exams yet. Go attempt active tests!</p>
                   </div>
                 );
               }
@@ -927,11 +1033,8 @@ export const StudentDashboard = () => {
                     return (
                       <article
                         key={attempt.id}
-                        className={`relative flex flex-col justify-between rounded-2xl border border-slate-200/80 dark:border-slate-800/85 bg-gradient-to-br ${theme.gradient} bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 ${theme.borderHover} dark:hover:shadow-slate-950/80 transition-all duration-300 group overflow-hidden`}
+                        className={`relative flex flex-col justify-between rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 ${theme.borderHover} transition-all duration-300 group overflow-hidden`}
                       >
-                        {/* Gradient glow behind the card */}
-                        <div className={`absolute top-0 left-0 w-32 h-32 ${theme.glow} rounded-full blur-3xl -ml-10 -mt-10 transition-colors pointer-events-none`} />
-
                         <div>
                           <div className="mb-4 flex flex-wrap items-center gap-2 relative z-10">
                             <Badge tone={theme.badgeTone} className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">{subjectsName}</Badge>
@@ -940,34 +1043,34 @@ export const StudentDashboard = () => {
                             )}
                             <Badge tone="green" className="font-extrabold text-[10px] tracking-wide px-2.5 py-0.5 rounded-md">Attempt Completed</Badge>
                           </div>
-                          <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-2 tracking-tight line-clamp-1 group-hover:text-indigo-650 dark:group-hover:text-indigo-400 transition-colors" title={attempt.test_name || test?.name}>
+                          <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-2 tracking-tight line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={attempt.test_name || test?.name}>
                             {attempt.test_name || test?.name || "Exam Attempt"}
                           </h3>
-                          <div className="text-xs text-slate-400 dark:text-slate-500 space-y-1.5 mb-5 font-bold">
+                          <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1.5 mb-5 font-bold">
                             <div className="flex items-center gap-1.5">
                               <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                              <span>Submitted: <span className="font-extrabold text-slate-700 dark:text-slate-350">{formattedDate}</span></span>
+                              <span>Submitted: <span className="font-extrabold text-slate-800 dark:text-slate-100">{formattedDate}</span></span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                              <span>Duration: <span className="font-extrabold text-slate-700 dark:text-slate-350">{Math.floor(attempt.time_spent / 60)}m {attempt.time_spent % 60}s</span></span>
+                              <span>Duration: <span className="font-extrabold text-slate-800 dark:text-slate-100">{Math.floor(attempt.time_spent / 60)}m {attempt.time_spent % 60}s</span></span>
                             </div>
                           </div>
-                          <div className={`flex items-center justify-between border-t ${theme.borderLine} pt-4 mt-2 relative z-10`}>
+                          <div className={`flex items-center justify-between border-t border-slate-100 dark:border-blue-900/40 pt-4 mt-2 relative z-10`}>
                             <div>
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500 block uppercase font-black tracking-wider">Marks Scored</span>
-                              <span className="text-lg font-black text-indigo-650 dark:text-indigo-400">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase font-black tracking-wider">Marks Scored</span>
+                              <span className="text-lg font-black text-blue-600 dark:text-blue-400">
                                 {test?.results_shared ? `${attempt.score} / ${totalMarks}` : "Pending"}
                               </span>
                             </div>
                             {test?.results_shared ? (
                               <Link to={`/tests/${attempt.test_id}/result`}>
-                                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-9.5 px-4 font-bold rounded-xl hover:scale-[1.03] active:scale-[0.98] transition-all border-none">
+                                <Button className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-9.5 px-4 font-bold rounded-xl hover:scale-[1.03] active:scale-[0.98] transition-all border-none cursor-pointer">
                                   View Scorecard
                                 </Button>
                               </Link>
                             ) : (
-                              <Button disabled variant="secondary" className="text-slate-400 dark:text-slate-500 text-xs h-9.5 px-4 cursor-not-allowed rounded-xl">
+                              <Button disabled variant="secondary" className="text-slate-400 dark:text-slate-400 text-xs h-9.5 px-4 cursor-not-allowed rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/60">
                                 Results Pending
                               </Button>
                             )}
@@ -984,26 +1087,26 @@ export const StudentDashboard = () => {
       </div>
 
           {/* Right panel: custom calendar */}
-          <aside className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/40 backdrop-blur-md p-5 shadow-sm sticky top-[88px] relative z-10 dashboard-calendar-sidebar">
+          <aside className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 shadow-sm sticky top-[88px] relative z-10 dashboard-calendar-sidebar">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-indigo-500" />
+                <Calendar className="h-4 w-4 text-blue-500" />
                 Exam Calendar
               </h3>
               <div className="flex items-center gap-1">
                 <button
                   onClick={handlePrevMonth}
-                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
                   title="Previous Month"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 min-w-[70px] text-center tracking-wider">
+                <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 min-w-[70px] text-center tracking-wider">
                   {currentCalendarDate.toLocaleString([], { month: "short", year: "numeric" })}
                 </span>
                 <button
                   onClick={handleNextMonth}
-                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
                   title="Next Month"
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -1012,12 +1115,12 @@ export const StudentDashboard = () => {
             </div>
 
             {/* Weekdays */}
-            <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider mb-1">
+            <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
               {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
                 <div key={day} className="py-1">{day}</div>
               ))}
             </div>
-            <div className="border-b border-slate-100 dark:border-slate-800/60 mb-2.5" />
+            <div className="border-b border-slate-100 dark:border-blue-900/40 mb-2.5" />
 
             {/* Days Grid */}
             <div className="grid grid-cols-7 gap-1">
@@ -1031,17 +1134,17 @@ export const StudentDashboard = () => {
                 let textClass = "font-bold";
 
                 if (isSelected) {
-                  cellClass += " bg-gradient-to-br from-indigo-600 to-[#6c7df7] shadow-lg shadow-indigo-500/25 scale-105 ring-2 ring-indigo-450 dark:ring-indigo-600 z-10";
+                  cellClass += " bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/25 scale-105 ring-2 ring-blue-400 z-10";
                   textClass = "text-white font-black";
                 } else if (isTodayStr) {
-                  cellClass += " border-2 border-indigo-550 dark:border-indigo-400 bg-indigo-550/5 dark:bg-indigo-500/10";
-                  textClass = "text-indigo-600 dark:text-indigo-400 font-black";
+                  cellClass += " border-2 border-blue-500 dark:border-blue-400 bg-blue-500/10 dark:bg-blue-500/20";
+                  textClass = "text-blue-600 dark:text-blue-300 font-black";
                 } else if (hasExams) {
-                  cellClass += " bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-150/20 dark:border-indigo-900/25 hover:bg-indigo-550/15 dark:hover:bg-indigo-500/25";
-                  textClass = cell.isCurrentMonth ? "text-slate-800 dark:text-slate-200" : "text-slate-350 dark:text-slate-650";
+                  cellClass += " bg-blue-500/10 dark:bg-blue-500/20 border border-blue-200/60 dark:border-blue-700/40 hover:bg-blue-500/20 dark:hover:bg-blue-500/30";
+                  textClass = cell.isCurrentMonth ? "text-slate-800 dark:text-slate-100 font-black" : "text-slate-400 dark:text-slate-500";
                 } else {
-                  cellClass += " hover:bg-slate-50 dark:hover:bg-slate-800/30";
-                  textClass = cell.isCurrentMonth ? "text-slate-600 dark:text-slate-450" : "text-slate-300 dark:text-slate-700";
+                  cellClass += " hover:bg-slate-100 dark:hover:bg-slate-800/50";
+                  textClass = cell.isCurrentMonth ? "text-slate-700 dark:text-slate-300" : "text-slate-300 dark:text-slate-600";
                 }
 
                 const getDotColor = (exam: any) => {
@@ -1097,24 +1200,24 @@ export const StudentDashboard = () => {
             </div>
 
             {/* Legend & Details */}
-            <div className="mt-4 pt-3 border-t border-slate-150 dark:border-slate-800/80 flex items-center justify-between text-[9px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider">
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-blue-900/40 flex items-center justify-between text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               <div className="flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
                 <span>Exam Scheduled</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full border border-indigo-500 bg-indigo-550/5 dark:bg-indigo-500/10" />
+                <span className="h-2 w-2 rounded-full border border-blue-500 bg-blue-500/10 dark:bg-blue-500/20" />
                 <span>Today</span>
               </div>
             </div>
 
             {selectedCalendarDate && (
-              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-3 animate-fade-in">
-                <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-400 tracking-wider">
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-blue-900/40 space-y-3 animate-fade-in">
+                <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">
                   <span>Exams on this date</span>
                   <button 
                     onClick={() => setSelectedCalendarDate(null)}
-                    className="text-indigo-500 hover:text-indigo-650 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline cursor-pointer font-bold text-[9px]"
+                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline cursor-pointer font-bold text-[9px]"
                   >
                     Clear Filter
                   </button>
@@ -1128,17 +1231,17 @@ export const StudentDashboard = () => {
                       return (
                         <div 
                           key={exam.id || index} 
-                          className="p-2.5 rounded-xl border border-slate-200/50 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30 hover:border-indigo-500/40 transition-colors"
+                          className="p-2.5 rounded-xl border border-slate-200/60 dark:border-blue-900/40 bg-slate-50/70 dark:bg-[#070f22] hover:border-blue-500/40 transition-colors"
                         >
                           <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <span className="text-xs font-black text-slate-800 dark:text-slate-200 truncate max-w-[170px]">
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-100 truncate max-w-[170px]">
                               {exam.name}
                             </span>
                             <Badge tone={theme.badgeTone} className="font-extrabold text-[8px] px-1.5 py-0.5 rounded-md shrink-0">
                               {subjectName}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-3 text-[10px] text-slate-505 dark:text-slate-400 font-bold mt-1.5">
+                          <div className="flex items-center gap-3 text-[10px] text-slate-600 dark:text-slate-300 font-bold mt-1.5">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3 text-slate-400" />
                               {exam.total_time}m
@@ -1155,7 +1258,7 @@ export const StudentDashboard = () => {
                     })}
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-4 text-center text-[10px] font-bold text-slate-400 dark:text-slate-550">
+                  <div className="rounded-xl border border-dashed border-slate-200 dark:border-blue-900/40 p-4 text-center text-[10px] font-bold text-slate-500 dark:text-slate-400">
                     No exams scheduled for this date.
                   </div>
                 )}
@@ -1167,15 +1270,15 @@ export const StudentDashboard = () => {
       {/* Floating Hover Details Popover */}
       {hoveredExams.length > 0 && hoveredDatePosition && (
         <div
-          className="absolute z-50 w-72 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md p-4 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full transition-all duration-200 animate-fade-in"
+          className="absolute z-50 w-72 rounded-2xl border border-slate-200/80 dark:border-blue-900/50 bg-white/95 dark:bg-[#0b152b]/95 backdrop-blur-md p-4 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full transition-all duration-200 animate-fade-in"
           style={{
             left: `${hoveredDatePosition.x}px`,
             top: `${hoveredDatePosition.y}px`
           }}
         >
-          <div className="mb-2.5 pb-1.5 border-b border-slate-100 dark:border-slate-900 flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
+          <div className="mb-2.5 pb-1.5 border-b border-slate-100 dark:border-blue-900/40 flex justify-between items-center text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">
             <span>Scheduled Exam Details</span>
-            <span className="text-indigo-500 dark:text-indigo-400">{hoveredDateText}</span>
+            <span className="text-blue-600 dark:text-blue-400">{hoveredDateText}</span>
           </div>
           <div className="space-y-3 max-h-60 overflow-y-auto">
             {hoveredExams.map((exam, index) => {
@@ -1185,7 +1288,7 @@ export const StudentDashboard = () => {
               const subjectName = Array.isArray(exam.subject) ? exam.subject.join(", ") : exam.subject;
               return (
                 <div key={exam.id || index} className="space-y-1">
-                  <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 line-clamp-1">
+                  <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 line-clamp-1">
                     {exam.name}
                   </h4>
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -1193,7 +1296,7 @@ export const StudentDashboard = () => {
                       {subjectName}
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-bold pt-1.5">
+                  <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 dark:text-slate-300 font-bold pt-1.5">
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3 text-slate-400" />
                       <span>{exam.total_time} mins</span>
@@ -1213,7 +1316,7 @@ export const StudentDashboard = () => {
               );
             })}
           </div>
-          <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-slate-950 border-r border-b border-slate-200/80 dark:border-slate-800 rotate-45 pointer-events-none" />
+          <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-[#0b152b] border-r border-b border-slate-200/80 dark:border-blue-900/50 rotate-45 pointer-events-none" />
         </div>
       )}
     </AppShell>

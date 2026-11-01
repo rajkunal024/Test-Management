@@ -113,18 +113,30 @@ export const AdminPromotionPage: React.FC = () => {
   return (
     <AppShell>
       <PageWrapper>
-        <div className="promotion-page">
-          <header className="promotion-hero">
-            <div>
-              <span className="promotion-eyebrow">Academic progression</span>
-              <h1>Move cohorts forward.</h1>
-              <p>Advance eligible students into their next academic destination while preserving their history.</p>
+        <div className="space-y-6">
+          {/* ── ADMIN COMMAND CENTER HERO ── */}
+          <div className="admin-hero p-6 sm:p-8">
+            <div className="absolute bottom-0 left-0 -ml-8 -mb-8 h-48 w-48 rounded-full" style={{background:'radial-gradient(circle,rgba(6,182,212,0.12) 0%,transparent 70%)'}} />
+            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+              <div className="flex-1 min-w-0">
+                <div className="mb-3 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest rounded-full px-3 py-1.5 border" style={{background:'rgba(99,102,241,0.12)',borderColor:'rgba(99,102,241,0.3)',color:'#a5b4fc'}}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  PARIKSHYA · ACADEMIC PROGRESSION
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                  {orgData?.name || "Organization"}<br />
+                  <span style={{background:'linear-gradient(90deg,#a5b4fc,#67e8f9)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}} className="text-xl sm:text-2xl font-black">Cohort Promotion Engine</span>
+                </h1>
+                <p className="mt-2 text-xs sm:text-sm leading-relaxed max-w-lg" style={{color:'rgba(203,213,225,0.7)'}}>
+                  Advance eligible students into their next academic destination — class, semester, or alumni — while preserving their full history.
+                </p>
+              </div>
+              <div className="shrink-0 h-16 w-16 rounded-2xl flex flex-col items-center justify-center gap-1" style={{background:'rgba(99,102,241,0.12)',border:'1px solid rgba(99,102,241,0.25)'}}>
+                {isSchool ? <School className="h-7 w-7" style={{color:'#818cf8'}} /> : <GraduationCap className="h-7 w-7" style={{color:'#818cf8'}} />}
+                <span className="text-[8px] font-black uppercase tracking-widest" style={{color:'#6366f1'}}>{isSchool ? 'School' : 'College'}</span>
+              </div>
             </div>
-            <div className="promotion-org-chip">
-              {isSchool ? <School/> : <GraduationCap/>}
-              <div><b>{orgData?.name || "Organization"}</b><small>{isSchool ? "Class promotion" : "Semester advancement"}</small></div>
-            </div>
-          </header>
+          </div>
 
           {isSchool ? (
             <form onSubmit={handleSchoolSubmit} className="promotion-workspace">

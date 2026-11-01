@@ -13,6 +13,11 @@ import {
   AlertCircle,
   XCircle,
   FileText,
+  TrendingUp,
+  Trophy,
+  ShieldCheck,
+  BarChart3,
+  Zap,
 } from "lucide-react";
 import { useTest } from "../hooks/useTests";
 import { getAllAttempts, shareTestResults } from "../services/api";
@@ -40,61 +45,48 @@ export const MonitorTestPage = () => {
     }
   }, [user, navigate]);
 
-  // Queries
   const { data: test, isLoading: isLoadingTest } = useTest(id);
   const { data: allAttempts = [], isLoading: isLoadingAttempts } = useQuery({
     queryKey: ["attempts"],
     queryFn: getAllAttempts,
   });
 
-  // States
   const [toast, setToast] = useState("");
   const [selectedAttempt, setSelectedAttempt] = useState<Attempt | null>(null);
 
-  // Filter attempts for this test, sort by score descending and calculate ranks
   const testAttempts = useMemo(() => {
     const filtered = allAttempts.filter((att) => att.test_id === id);
-    // Sort by score descending
     const sorted = [...filtered].sort((a, b) => b.score - a.score);
-    
-    // Assign ranks
     let currentRank = 1;
     return sorted.map((attempt, index) => {
       if (index > 0 && attempt.score < sorted[index - 1].score) {
         currentRank = index + 1;
       }
-      return {
-        ...attempt,
-        rank: currentRank,
-      };
+      return { ...attempt, rank: currentRank };
     });
   }, [allAttempts, id]);
 
-  // Statistics
   const stats = useMemo(() => {
-    if (testAttempts.length === 0 || !test) {
-      return { total: 0, avg: 0, high: 0 };
-    }
+    if (testAttempts.length === 0 || !test) return { total: 0, avg: 0, high: 0, passRate: 0 };
     const scores = testAttempts.map((a) => a.score);
     const high = Math.max(...scores);
     const sum = scores.reduce((acc, curr) => acc + curr, 0);
     const avg = Math.round(sum / testAttempts.length);
-    return { total: testAttempts.length, avg, high };
+    const passing = testAttempts.filter(a => a.score >= (test.total_marks * 0.4)).length;
+    const passRate = Math.round((passing / testAttempts.length) * 100);
+    return { total: testAttempts.length, avg, high, passRate };
   }, [testAttempts, test]);
 
-  // Determine time slot status
   const timeSlotStatus = useMemo(() => {
     if (!test?.start_time || !test?.end_time) return "Active";
     const now = new Date().getTime();
     const start = new Date(test.start_time).getTime();
     const end = new Date(test.end_time).getTime();
-
     if (now < start) return "Upcoming";
     if (now > end) return "Ended";
     return "Active";
   }, [test]);
 
-  // Mutation to release/share results
   const shareMutation = useMutation({
     mutationFn: () => shareTestResults(id),
     onSuccess: async () => {
@@ -114,18 +106,26 @@ export const MonitorTestPage = () => {
     return (
       <AppShell>
         <PageWrapper>
-          <div className="flex h-96 items-center justify-center text-slate-500">
-            <Spinner /> <span className="ml-2">Loading monitor interface...</span>
+          <div className="flex h-96 items-center justify-center">
+            <div className="text-center space-y-3">
+              <Spinner />
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Loading monitor interface...</p>
+            </div>
           </div>
         </PageWrapper>
       </AppShell>
     );
   }
 
-  // Format datetime for view
   const formatDateTime = (dateStr?: string) => {
     if (!dateStr) return "N/A";
-    return new Date(dateStr).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+    return new Date(dateStr).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+  };
+
+  const statusColors = {
+    "Active": "text-emerald-600 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-950/30 dark:border-emerald-900/40",
+    "Upcoming": "text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950/30 dark:border-amber-900/40",
+    "Ended": "text-slate-600 bg-slate-100 border-slate-200 dark:text-slate-400 dark:bg-slate-800/50 dark:border-slate-700",
   };
 
   return (
@@ -133,197 +133,274 @@ export const MonitorTestPage = () => {
       <PageWrapper>
         {/* Back Link */}
         <div className="mb-6">
-          <Link to="/dashboard" className="inline-flex items-center gap-1 text-xs font-bold text-[#6c7df7] hover:underline uppercase">
-            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors group"
+          >
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+            Back to Dashboard
           </Link>
         </div>
 
-        {/* Test Summary Banner */}
-        <section className="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <Badge tone="blue">{Array.isArray(test.subject) ? test.subject.join(", ") : test.subject}</Badge>
-              <Badge tone={test.results_shared ? "green" : "yellow"}>
-                {test.results_shared ? "Results Declared" : "Awaiting Results Declaration"}
-              </Badge>
-              <Badge tone={timeSlotStatus === "Active" ? "green" : timeSlotStatus === "Upcoming" ? "blue" : "slate"}>
-                Slot: {timeSlotStatus}
-              </Badge>
-            </div>
-            <h1 className="text-xl md:text-2xl font-bold text-slate-800">{test.name}</h1>
+        {/* Hero Banner */}
+        <section className="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#0f172a] p-6 sm:p-8 text-white shadow-2xl border border-indigo-500/20">
+          {/* Background effects */}
+          <div className="absolute top-0 right-0 -mr-20 -mt-20 h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/3 -mb-16 h-56 w-56 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
 
-            <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-500 max-w-lg">
-              <span>Time Slot Window:</span>
-              <span className="font-semibold text-slate-700">
-                {formatDateTime(test.start_time)} to {formatDateTime(test.end_time)}
-              </span>
-              <span>Marks:</span>
-              <span className="font-semibold text-slate-700">+{test.correct_marks} / {test.wrong_marks} (Total: {test.total_marks} Marks)</span>
-            </div>
-          </div>
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+            <div className="flex-1 min-w-0">
+              {/* Status badges */}
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${statusColors[timeSlotStatus as keyof typeof statusColors]}`}>
+                  {timeSlotStatus === "Active" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                  Slot: {timeSlotStatus}
+                </span>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                  test.results_shared
+                    ? "text-emerald-400 bg-emerald-950/40 border-emerald-900/40"
+                    : "text-amber-400 bg-amber-950/40 border-amber-900/40"
+                }`}>
+                  {test.results_shared ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                  {test.results_shared ? "Results Declared" : "Pending Declaration"}
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border text-blue-400 bg-blue-950/40 border-blue-900/40">
+                  {Array.isArray(test.subject) ? test.subject.join(", ") : test.subject}
+                </span>
+              </div>
 
-          <div className="shrink-0 flex flex-col gap-2">
-            <Button
-              disabled={test.results_shared || testAttempts.length === 0 || shareMutation.isPending || timeSlotStatus !== "Ended"}
-              onClick={() => {
-                if (confirm("Confirm sharing results? This will release grades and test copies, and delete the questions from the main bank.")) {
-                  shareMutation.mutate();
-                }
-              }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11 px-5 flex items-center gap-2"
-              icon={<Send className="h-4 w-4" />}
-              title={timeSlotStatus !== "Ended" ? "Results can only be shared after the test has ended" : ""}
-            >
-              {shareMutation.isPending ? "Declaring..." : test.results_shared ? "Results Shared" : "Share Results"}
-            </Button>
-            {test.results_shared ? (
-              <p className="text-[10px] text-center text-emerald-600 font-semibold flex items-center justify-center gap-1">
-                <CheckCircle2 className="h-3 w-3" /> Questions successfully archived
-              </p>
-            ) : (
-              timeSlotStatus !== "Ended" && (
-                <p className="text-[10px] text-center text-amber-600 font-medium">
-                  Available after test slot ends
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight mb-2">
+                {test.name}
+              </h1>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-xs text-slate-400 mt-4 max-w-lg">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                  <span>Start: <span className="text-slate-300 font-semibold">{formatDateTime(test.start_time)}</span></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                  <span>End: <span className="text-slate-300 font-semibold">{formatDateTime(test.end_time)}</span></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Award className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                  <span>Scoring: <span className="text-emerald-400 font-semibold">+{test.correct_marks}</span> / <span className="text-rose-400 font-semibold">{test.wrong_marks}</span> · Total <span className="text-slate-300 font-semibold">{test.total_marks}</span></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Share Results Action */}
+            <div className="shrink-0 flex flex-col items-start lg:items-end gap-3">
+              <Button
+                disabled={test.results_shared || testAttempts.length === 0 || shareMutation.isPending || timeSlotStatus !== "Ended"}
+                onClick={() => {
+                  if (confirm("Confirm sharing results? This will release grades and test copies to all students.")) {
+                    shareMutation.mutate();
+                  }
+                }}
+                className="h-11 px-5 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white border-none shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                icon={<Send className="h-4 w-4" />}
+                title={timeSlotStatus !== "Ended" ? "Results can only be shared after the test has ended" : ""}
+              >
+                {shareMutation.isPending ? "Declaring..." : test.results_shared ? "Results Shared" : "Share Results"}
+              </Button>
+              {test.results_shared ? (
+                <p className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Questions archived successfully
                 </p>
-              )
-            )}
+              ) : timeSlotStatus !== "Ended" ? (
+                <p className="text-[11px] text-amber-400 font-medium flex items-center gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5" /> Available after test ends
+                </p>
+              ) : null}
+            </div>
           </div>
         </section>
 
         {/* Stats Grid */}
-        <section className="mb-8 grid gap-4 grid-cols-3">
-          <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                <Users className="h-5 w-5" />
+        <section className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              label: "Total Attempts",
+              value: stats.total,
+              suffix: "",
+              icon: Users,
+              color: "indigo",
+              bg: "from-indigo-500 to-indigo-600",
+            },
+            {
+              label: "Highest Score",
+              value: stats.high,
+              suffix: `/${test.total_marks}`,
+              icon: Trophy,
+              color: "amber",
+              bg: "from-amber-500 to-orange-500",
+            },
+            {
+              label: "Average Score",
+              value: stats.avg,
+              suffix: `/${test.total_marks}`,
+              icon: BarChart3,
+              color: "blue",
+              bg: "from-blue-500 to-cyan-500",
+            },
+            {
+              label: "Pass Rate",
+              value: stats.passRate,
+              suffix: "%",
+              icon: TrendingUp,
+              color: "emerald",
+              bg: "from-emerald-500 to-teal-500",
+            },
+          ].map(({ label, value, suffix, icon: Icon, bg }) => (
+            <article key={label} className="relative rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 p-4 sm:p-5 shadow-sm overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5">
+              <div className={`absolute top-0 right-0 h-20 w-20 rounded-bl-[48px] bg-gradient-to-br ${bg} opacity-8 pointer-events-none`} />
+              <div className={`inline-flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-gradient-to-br ${bg} text-white shadow-md mb-3`}>
+                <Icon className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Total Attempts</p>
-                <h3 className="text-xl font-bold text-slate-800 mt-0.5">{stats.total} submissions</h3>
-              </div>
-            </div>
-          </article>
-          <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                <Award className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">High Score</p>
-                <h3 className="text-xl font-bold text-slate-800 mt-0.5">{stats.high} / {test.total_marks}</h3>
-              </div>
-            </div>
-          </article>
-          <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-                <Award className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Average Score</p>
-                <h3 className="text-xl font-bold text-slate-800 mt-0.5">{stats.avg} / {test.total_marks}</h3>
-              </div>
-            </div>
-          </article>
+              <p className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">{label}</p>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none">
+                {value}<span className="text-sm font-bold text-slate-400 dark:text-slate-500 ml-0.5">{suffix}</span>
+              </p>
+            </article>
+          ))}
         </section>
 
-        {/* Student Submissions List */}
-        <h2 className="mb-4 text-base font-bold text-slate-800 flex items-center gap-2">
-          <Users className="h-5 w-5 text-indigo-500" />
-          Student Attempts
-        </h2>
+        {/* Leaderboard */}
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+              <Users className="h-4 w-4" />
+            </span>
+            Student Submissions
+          </h2>
+          {testAttempts.length > 0 && (
+            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+              {testAttempts.length} {testAttempts.length === 1 ? "student" : "students"}
+            </span>
+          )}
+        </div>
 
         {testAttempts.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center text-slate-500">
-            <p className="text-base font-bold text-slate-700">No submissions yet</p>
-            <p className="mt-1 text-sm text-slate-400">Students attempts will appear here when they submit the test.</p>
+          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/50 py-20 text-center">
+            <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 mb-4">
+              <Users className="h-8 w-8" />
+            </div>
+            <p className="text-base font-bold text-slate-700 dark:text-slate-300">No submissions yet</p>
+            <p className="mt-1 text-sm text-slate-400 dark:text-slate-500 max-w-xs mx-auto">Student attempts will appear here when they submit the test.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                <tr>
-                  <th className="px-6 py-4">Rank</th>
-                  <th className="px-6 py-4">Student ID</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Submitted At</th>
-                  <th className="px-6 py-4">Score</th>
-                  <th className="px-6 py-4">Time Spent</th>
-                  <th className="px-6 py-4">Tab Switches</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {testAttempts.map((attempt) => {
-                  const m = Math.floor(attempt.time_spent / 60);
-                  const s = attempt.time_spent % 60;
-                  const timeStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
-                  const rankVal = attempt.rank ?? 1;
+          <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="bg-slate-50/80 dark:bg-slate-950/50 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <th className="px-5 py-4">Rank</th>
+                    <th className="px-5 py-4">Student</th>
+                    <th className="px-5 py-4">Status</th>
+                    <th className="px-5 py-4">Submitted At</th>
+                    <th className="px-5 py-4">Score</th>
+                    <th className="px-5 py-4">Time Spent</th>
+                    <th className="px-5 py-4">Tab Switches</th>
+                    <th className="px-5 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {testAttempts.map((attempt) => {
+                    const m = Math.floor(attempt.time_spent / 60);
+                    const s = attempt.time_spent % 60;
+                    const timeStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
+                    const rankVal = attempt.rank ?? 1;
+                    const pct = test.total_marks > 0 ? Math.round((attempt.score / test.total_marks) * 100) : 0;
 
-                  return (
-                    <tr key={attempt.id} className="hover:bg-slate-50/40">
-                      <td className="px-6 py-4 font-bold">
-                        {rankVal === 1 && (
-                          <span className="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-xs font-extrabold bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-sm animate-pulse">
-                            🏆 1st
+                    return (
+                      <tr key={attempt.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors group">
+                        <td className="px-5 py-3.5 font-bold">
+                          {rankVal === 1 && (
+                            <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-extrabold bg-gradient-to-r from-amber-400 to-orange-400 text-white shadow-sm shadow-amber-500/30">
+                              🏆 1st
+                            </span>
+                          )}
+                          {rankVal === 2 && (
+                            <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-extrabold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                              🥈 2nd
+                            </span>
+                          )}
+                          {rankVal === 3 && (
+                            <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-extrabold bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400">
+                              🥉 3rd
+                            </span>
+                          )}
+                          {rankVal > 3 && (
+                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                              #{rankVal}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                              {attempt.user_id?.charAt(0)?.toUpperCase() || "?"}
+                            </div>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs font-mono">{attempt.user_id}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            Submitted
                           </span>
-                        )}
-                        {rankVal === 2 && (
-                          <span className="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-xs font-extrabold bg-slate-300/20 text-slate-500 border border-slate-300/30">
-                            🥈 2nd
-                          </span>
-                        )}
-                        {rankVal === 3 && (
-                          <span className="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-xs font-extrabold bg-amber-700/10 text-amber-700 border border-amber-700/20">
-                            🥉 3rd
-                          </span>
-                        )}
-                        {rankVal > 3 && (
-                          <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
-                            #{rankVal}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-slate-700">{attempt.user_id}</td>
-                      <td className="px-6 py-4">
-                        <Badge tone="green">Submitted</Badge>
-                      </td>
-                      <td className="px-6 py-4 text-slate-500">
-                        {new Date(attempt.submitted_at).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-slate-800">
-                        {attempt.score} / {test.total_marks}
-                      </td>
-                      <td className="px-6 py-4 text-slate-500 font-mono text-xs">{timeStr}</td>
-                      <td className="px-6 py-4">
-                        {attempt.tab_switches && attempt.tab_switches > 0 ? (
-                          <Badge tone="red">{attempt.tab_switches} switches</Badge>
-                        ) : (
-                          <span className="text-slate-400 font-medium text-xs">0</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <Button
-                          variant="secondary"
-                          className="h-8 px-2.5 text-xs inline-flex items-center gap-1.5"
-                          onClick={() => setSelectedAttempt(attempt)}
-                          icon={<Eye className="h-3.5 w-3.5" />}
-                        >
-                          View Copy
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                          {new Date(attempt.submitted_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex flex-col gap-1">
+                            <span className={`text-sm font-extrabold ${pct >= 75 ? "text-emerald-600 dark:text-emerald-400" : pct >= 50 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"}`}>
+                              {attempt.score} <span className="text-xs font-normal text-slate-400">/ {test.total_marks}</span>
+                            </span>
+                            <div className="w-16 h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${pct >= 75 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-rose-500"}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400 font-mono font-semibold">{timeStr}</td>
+                        <td className="px-5 py-3.5">
+                          {attempt.tab_switches && attempt.tab_switches > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                              <XCircle className="h-3 w-3" /> {attempt.tab_switches}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                              <ShieldCheck className="h-3 w-3" /> Clean
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          <button
+                            onClick={() => setSelectedAttempt(attempt)}
+                            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-900/40 transition-colors cursor-pointer"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            View Copy
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
         {/* View Copy Modal */}
         <Modal
           open={Boolean(selectedAttempt)}
-          title={`Exam Answer Sheet - ${selectedAttempt?.user_id}`}
+          title={`Exam Answer Sheet — ${selectedAttempt?.user_id}`}
           onClose={() => setSelectedAttempt(null)}
           footer={
             <Button variant="secondary" onClick={() => setSelectedAttempt(null)}>
@@ -332,36 +409,27 @@ export const MonitorTestPage = () => {
           }
         >
           {selectedAttempt && (
-            <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-slate-50 p-4 border border-slate-200 rounded-lg text-sm font-semibold">
-                <div>
-                  <span className="text-[10px] text-slate-400 block uppercase">Student ID</span>
-                  <span className="text-slate-800">{selectedAttempt.user_id}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block uppercase">Marks Scored</span>
-                  <span className="text-indigo-600">{selectedAttempt.score} / {test.total_marks}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block uppercase">Correct Answers</span>
-                  <span className="text-emerald-600">{selectedAttempt.correct_answers}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block uppercase">Wrong Answers</span>
-                  <span className="text-rose-500">{selectedAttempt.wrong_answers}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block uppercase">Tab Switches</span>
-                  <span className={selectedAttempt.tab_switches && selectedAttempt.tab_switches > 0 ? "text-rose-600" : "text-slate-600"}>
-                    {selectedAttempt.tab_switches ?? 0}
-                  </span>
-                </div>
+            <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-1">
+              {/* Summary Strip */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                {[
+                  { label: "Student ID", value: selectedAttempt.user_id, color: "text-slate-800 dark:text-slate-200" },
+                  { label: "Marks Scored", value: `${selectedAttempt.score} / ${test.total_marks}`, color: "text-indigo-600 dark:text-indigo-400" },
+                  { label: "Correct", value: selectedAttempt.correct_answers, color: "text-emerald-600 dark:text-emerald-400" },
+                  { label: "Wrong", value: selectedAttempt.wrong_answers, color: "text-rose-500 dark:text-rose-400" },
+                  { label: "Tab Switches", value: selectedAttempt.tab_switches ?? 0, color: (selectedAttempt.tab_switches ?? 0) > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-400" },
+                ].map(({ label, value, color }) => (
+                  <div key={label}>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 block uppercase tracking-wider font-bold mb-1">{label}</span>
+                    <span className={`text-sm font-bold ${color}`}>{value}</span>
+                  </div>
+                ))}
               </div>
 
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1">
-                  <FileText className="h-4.5 w-4.5 text-slate-400" />
-                  Answered Questions Copy
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-slate-400" />
+                  Answer Sheet Copy
                 </h3>
                 {(() => {
                   const baseQuestions = selectedAttempt.test_copy || [];
@@ -373,7 +441,6 @@ export const MonitorTestPage = () => {
                         h = Math.imul(h ^ seedStr.charCodeAt(i), 16777619);
                       }
                       let seed = h >>> 0;
-
                       return () => {
                         let z = (seed += 0x6d2b79f5 | 0);
                         z = Math.imul(z ^ (z >>> 15), z | 1);
@@ -381,7 +448,6 @@ export const MonitorTestPage = () => {
                         return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
                       };
                     };
-
                     const getDeterministicSubset = <T,>(array: T[], count: number, seed: string): T[] => {
                       if (array.length <= count) return array;
                       const temp = [...array];
@@ -393,77 +459,64 @@ export const MonitorTestPage = () => {
                       }
                       return result;
                     };
-
                     const sortedQuestions = [...baseQuestions].sort((a: any, b: any) => (a.id || "").localeCompare(b.id || ""));
                     const seed = `${selectedAttempt.user_id}-${test.id}`;
                     filteredQuestions = getDeterministicSubset(sortedQuestions, test.total_questions, seed);
                   }
 
                   if (filteredQuestions.length === 0) {
-                    return <p className="text-xs text-slate-400">Answer sheet copy not archived. Results might not be declared yet.</p>;
+                    return <p className="text-xs text-slate-400 dark:text-slate-500 py-4 text-center">Answer sheet not available yet.</p>;
                   }
 
                   return filteredQuestions.map((item: any, idx: number) => {
                     const correctParts = (item.correct_option || "").split(",").map((o: string) => o.trim()).filter(Boolean).sort();
                     const selectedParts = (item.selected_option || "").split(",").map((o: string) => o.trim()).filter(Boolean).sort();
                     const isCorrect = correctParts.length > 0 &&
-                                      selectedParts.length === correctParts.length &&
-                                      selectedParts.every((val: string, index: number) => val === correctParts[index]);
+                      selectedParts.length === correctParts.length &&
+                      selectedParts.every((val: string, index: number) => val === correctParts[index]);
                     const isUnattempted = !item.selected_option;
 
-                    let statusBorder = "border-slate-200";
-                    let statusBadge = <Badge tone="slate">Unattempted</Badge>;
+                    const cardStyle = isCorrect
+                      ? "border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/10"
+                      : !isUnattempted
+                        ? "border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/10"
+                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50";
 
-                    if (isCorrect) {
-                      statusBorder = "border-emerald-200 bg-emerald-50/10";
-                      statusBadge = <Badge tone="green">Correct</Badge>;
-                    } else if (!isUnattempted) {
-                      statusBorder = "border-rose-200 bg-rose-50/10";
-                      statusBadge = <Badge tone="red">Incorrect</Badge>;
-                    }
+                    const statusBadge = isCorrect
+                      ? <span className="text-[9px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">Correct</span>
+                      : isUnattempted
+                        ? <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">Skipped</span>
+                        : <span className="text-[9px] font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/40 px-2 py-0.5 rounded-full">Incorrect</span>;
 
                     return (
-                      <div key={item.id || idx} className={`p-4 border rounded-lg ${statusBorder}`}>
-                        <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-3 text-xs font-bold text-slate-400">
-                          <span>QUESTION {idx + 1}</span>
+                      <div key={item.id || idx} className={`p-4 border rounded-xl ${cardStyle}`}>
+                        <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800/60 mb-3">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Q{idx + 1}</span>
                           {statusBadge}
                         </div>
-                        <p className="font-bold text-slate-800 text-sm leading-relaxed mb-4">{item.question}</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm leading-relaxed mb-3">{item.question}</p>
                         {(item.image_url || item.media_url) && (
-                          <div className="mt-2 mb-4 flex justify-start">
+                          <div className="mt-2 mb-3 flex justify-start">
                             <img
                               src={item.image_url || item.media_url}
-                              alt="Question Graphic"
+                              alt="Question"
                               loading="lazy"
-                              className="max-h-60 w-auto max-w-full rounded-lg border border-slate-200 object-contain shadow-sm bg-white aspect-auto"
+                              className="max-h-48 w-auto max-w-full rounded-lg border border-slate-200 dark:border-slate-700 object-contain shadow-sm"
                             />
                           </div>
                         )}
-
-                        <div className="grid gap-2 text-xs md:grid-cols-2">
+                        <div className="grid gap-1.5 md:grid-cols-2">
                           {["option1", "option2", "option3", "option4"].map((optKey, oIdx) => {
                             const optText = item[optKey];
-                            const isSelected = item.selected_option
-                              ? item.selected_option.split(",").map((o: string) => o.trim()).includes(optKey)
-                              : false;
-                            const isCorrectOpt = item.correct_option
-                              ? item.correct_option.split(",").map((o: string) => o.trim()).includes(optKey)
-                              : false;
-
-                            let optStyle = "border-slate-100 text-slate-500 bg-white";
-                            if (isSelected) {
-                              if (isCorrectOpt) {
-                                optStyle = "border-emerald-400 bg-emerald-50 text-emerald-800";
-                              } else {
-                                optStyle = "border-rose-400 bg-rose-50 text-rose-800";
-                              }
-                            } else if (isCorrectOpt) {
-                              optStyle = "border-emerald-300 bg-emerald-50/20 text-emerald-700";
-                            }
-
+                            const isSelected = item.selected_option?.split(",").map((o: string) => o.trim()).includes(optKey);
+                            const isCorrectOpt = item.correct_option?.split(",").map((o: string) => o.trim()).includes(optKey);
+                            let optStyle = "border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900/40";
+                            if (isSelected && isCorrectOpt) optStyle = "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300";
+                            else if (isSelected && !isCorrectOpt) optStyle = "border-rose-400 bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300";
+                            else if (!isSelected && isCorrectOpt) optStyle = "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400";
                             return (
-                              <div key={optKey} className={`p-2.5 border rounded font-semibold ${optStyle}`}>
-                                {String.fromCharCode(65 + oIdx)}. {optText}
+                              <div key={optKey} className={`p-2.5 border rounded-lg text-xs font-semibold ${optStyle}`}>
+                                <span className="font-black mr-1.5">{String.fromCharCode(65 + oIdx)}.</span> {optText}
                               </div>
                             );
                           })}

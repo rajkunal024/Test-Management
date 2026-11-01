@@ -510,7 +510,7 @@ export const AnalyticsPage = () => {
 
         {attempts.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md py-20 text-center text-slate-500 dark:text-slate-400 shadow-xl">
-            <TrendingUp className="h-16 w-16 text-slate-350 dark:text-slate-700 mx-auto mb-4 animate-bounce" />
+            <TrendingUp className="h-16 w-16 text-slate-400 dark:text-slate-500 mx-auto mb-4 animate-bounce" />
             <p className="text-lg font-bold text-slate-700 dark:text-slate-200">No attempt data available yet</p>
             <p className="mt-2 text-sm text-slate-400 max-w-sm mx-auto">
               Complete at least one test to generate analytical graphs, insights, and achievements.
@@ -587,7 +587,7 @@ export const AnalyticsPage = () => {
 
             {stats.total === 0 ? (
               <div className="rounded-3xl border border-slate-200/50 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md py-16 text-center text-slate-500 shadow-lg mb-8">
-                <Calendar className="h-10 w-10 text-slate-350 dark:text-slate-700 mx-auto mb-3" />
+                <Calendar className="h-10 w-10 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
                 <p className="text-sm font-bold text-slate-600 dark:text-slate-300">No matching test attempts found</p>
                 <p className="mt-1 text-xs text-slate-400">Try adjusting your filters above to broaden your analytics view.</p>
               </div>
@@ -682,7 +682,7 @@ export const AnalyticsPage = () => {
                 <div className="grid gap-6 md:grid-cols-2 mb-8 relative z-10">
                   
                   {/* Score Trend (SVG Line Chart) */}
-                  <div className="relative rounded-3xl border border-white/20 dark:border-slate-800/30 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl p-6 shadow-xl flex flex-col transition-all hover:shadow-2xl hover:border-indigo-400/30 duration-300">
+                  <div className={`relative rounded-3xl border border-white/20 dark:border-slate-800/30 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl p-6 shadow-xl flex flex-col transition-all hover:shadow-2xl hover:border-indigo-400/30 duration-300 ${hoveredPoint ? "z-30" : "z-10"}`}>
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-sm font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
                         <Activity className="h-4 w-4 text-indigo-500" />
@@ -803,33 +803,57 @@ export const AnalyticsPage = () => {
                         </defs>
                       </svg>
 
-                      {/* Interactive HTML Tooltip Absolute Placement */}
-                      {hoveredPoint && (
-                        <div 
-                          className="absolute z-20 bg-slate-900/95 text-white dark:bg-slate-950/95 border border-indigo-500/30 rounded-xl p-2.5 shadow-2xl backdrop-blur-md text-[10px] pointer-events-none flex flex-col gap-1 w-44"
-                          style={{
-                            left: `${(hoveredPoint.x / 400) * 100}%`,
-                            top: `${(hoveredPoint.y / 200) * 100 - 8}%`,
-                            transform: 'translate(-50%, -100%)',
-                          }}
-                        >
-                          <div className="font-bold border-b border-white/10 pb-1 text-indigo-300 truncate">
-                            {hoveredPoint.testName}
+                      {/* Interactive HTML Tooltip with Smart Clamping & Boundary Detection */}
+                      {hoveredPoint && (() => {
+                        const xPercent = (hoveredPoint.x / 400) * 100;
+                        const yPercent = (hoveredPoint.y / 200) * 100;
+
+                        // Horizontal anchor: anchor left if on right side to avoid spilling into adjacent card
+                        let translateX = "-50%";
+                        let leftStyle = `${xPercent}%`;
+                        if (xPercent > 68) {
+                          translateX = "-100%";
+                          leftStyle = `calc(${xPercent}% + 8px)`;
+                        } else if (xPercent < 32) {
+                          translateX = "0%";
+                          leftStyle = `calc(${xPercent}% - 8px)`;
+                        }
+
+                        // Vertical anchor: flip below if near the top
+                        let translateY = "-100%";
+                        let topStyle = `calc(${yPercent}% - 10px)`;
+                        if (yPercent < 35) {
+                          translateY = "0%";
+                          topStyle = `calc(${yPercent}% + 12px)`;
+                        }
+
+                        return (
+                          <div 
+                            className="absolute z-50 bg-slate-900/95 text-white dark:bg-slate-950/95 border border-indigo-500/40 rounded-xl p-3 shadow-2xl backdrop-blur-md text-[10px] pointer-events-none flex flex-col gap-1 w-44 transition-all duration-150 animate-fade-in"
+                            style={{
+                              left: leftStyle,
+                              top: topStyle,
+                              transform: `translate(${translateX}, ${translateY})`,
+                            }}
+                          >
+                            <div className="font-bold border-b border-white/10 pb-1 text-indigo-300 truncate">
+                              {hoveredPoint.testName}
+                            </div>
+                            <div className="flex justify-between items-center mt-1">
+                              <span className="text-slate-400">Score Rating:</span>
+                              <span className="font-black text-emerald-400">{hoveredPoint.score}%</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400">Correct Qs:</span>
+                              <span className="font-bold text-emerald-400">{hoveredPoint.correct}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400">Wrong Qs:</span>
+                              <span className="font-bold text-rose-400">{hoveredPoint.wrong}</span>
+                            </div>
                           </div>
-                          <div className="flex justify-between mt-1">
-                            <span className="text-slate-400">Score Rating:</span>
-                            <span className="font-black text-emerald-400">{hoveredPoint.score}%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Correct Qs:</span>
-                            <span className="font-bold text-emerald-400">{hoveredPoint.correct}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Wrong Qs:</span>
-                            <span className="font-bold text-rose-400">{hoveredPoint.wrong}</span>
-                          </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -891,7 +915,7 @@ export const AnalyticsPage = () => {
                                 <text 
                                   x={x + barWidth / 2} 
                                   y={y - 7} 
-                                  className="text-[8px] font-black fill-indigo-650 dark:fill-indigo-400 transition-transform text-anchor-middle group-hover:-translate-y-0.5 duration-200" 
+                                  className="text-[8px] font-black fill-indigo-600 dark:fill-indigo-400 transition-transform text-anchor-middle group-hover:-translate-y-0.5 duration-200" 
                                   textAnchor="middle"
                                 >
                                   {d.score}%

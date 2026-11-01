@@ -129,7 +129,7 @@ export const AdminStudentProfilePage = () => {
     return (
       <AppShell>
         <PageWrapper>
-          <div className="rounded-xl border border-dashed border-slate-350 dark:border-slate-800 bg-white dark:bg-slate-900 py-16 text-center text-slate-500">
+          <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 py-16 text-center text-slate-500">
             <p className="text-lg font-bold">Student Profile Not Found</p>
             <p className="mt-1 text-sm text-slate-400">The requested profile could not be verified.</p>
             <Link to="/admin/students" className="mt-4 inline-block">
@@ -157,7 +157,7 @@ export const AdminStudentProfilePage = () => {
             Students
           </Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="text-slate-655 dark:text-slate-300">{student.name}</span>
+          <span className="text-slate-600 dark:text-slate-300">{student.name}</span>
         </nav>
 
         {/* Back Button */}
@@ -189,7 +189,7 @@ export const AdminStudentProfilePage = () => {
               <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
                 {student.name}
               </h2>
-              <span className="mt-2 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 border border-indigo-200/30">
+              <span className="mt-2 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/30">
                 <Sparkles className="h-3 w-3 animate-pulse" />
                 Active Enrolled
               </span>
@@ -220,7 +220,7 @@ export const AdminStudentProfilePage = () => {
               {isSchool ? (
                 <>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-450 shrink-0 shadow-sm border border-emerald-100/30">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm border border-emerald-100/30">
                       <School className="h-5 w-5" />
                     </div>
                     <div>
@@ -235,14 +235,14 @@ export const AdminStudentProfilePage = () => {
                     </div>
                     <div>
                       <span className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block tracking-widest">Academic Session</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-350 block">{student.session || "N/A"}</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-300 block">{student.session || "N/A"}</span>
                     </div>
                   </div>
                 </>
               ) : (
                 <>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-450 shrink-0 shadow-sm border border-emerald-100/30">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/45 text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm border border-emerald-100/30">
                       <School className="h-5 w-5" />
                     </div>
                     <div>
@@ -252,7 +252,7 @@ export const AdminStudentProfilePage = () => {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/45 text-violet-650 dark:text-violet-400 shrink-0 shadow-sm border border-violet-100/30">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/45 text-violet-600 dark:text-violet-400 shrink-0 shadow-sm border border-violet-100/30">
                       <Sparkles className="h-5 w-5" />
                     </div>
                     <div>
@@ -336,7 +336,7 @@ export const AdminStudentProfilePage = () => {
 
             <article className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm transition hover:shadow-md col-span-2 sm:col-span-1">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-450">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
                   <Award className="h-5.5 w-5.5" />
                 </div>
                 <Badge tone="green" className="font-bold px-2.5">Avg Score</Badge>
@@ -366,13 +366,13 @@ export const AdminStudentProfilePage = () => {
 
             <article className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm transition hover:shadow-md col-span-2 sm:col-span-1">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-450">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
                   <ArrowDownRight className="h-5.5 w-5.5" />
                 </div>
                 <Badge tone="red" className="font-bold px-2.5">Floor Score</Badge>
               </div>
               <h3 className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-widest">Lowest Score Percentage</h3>
-              <p className="text-3xl font-black text-rose-600 dark:text-rose-450 mt-2">{stats?.lowestScore}%</p>
+              <p className="text-3xl font-black text-rose-600 dark:text-rose-400 mt-2">{stats?.lowestScore}%</p>
             </article>
           </div>
         </div>

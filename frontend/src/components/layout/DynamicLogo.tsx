@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTheme } from "../../context/ThemeContext";
 
 interface DynamicLogoProps {
   src: string;
@@ -7,27 +8,26 @@ interface DynamicLogoProps {
 }
 
 export const DynamicLogo: React.FC<DynamicLogoProps> = ({ src, alt, className }) => {
-  const [processedSrc, setProcessedSrc] = useState(src);
+  const [lightSrc, setLightSrc] = useState(src);
+  const [darkSrc, setDarkSrc] = useState(src);
   const [isTransparent, setIsTransparent] = useState(false);
+  const { isDark } = useTheme();
 
   useEffect(() => {
     if (!src) return;
 
-    // Reset states on source change
     setIsTransparent(false);
-    setProcessedSrc(src);
+    setLightSrc(src);
+    setDarkSrc(src);
 
     const img = new Image();
-    // Allow cross-origin images to prevent canvas tainted security errors
     img.crossOrigin = "anonymous";
-    
+
     img.onload = () => {
       try {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          return;
-        }
+        if (!ctx) return;
 
         canvas.width = img.naturalWidth;
         canvas.height = img.naturalHeight;
@@ -36,19 +36,20 @@ export const DynamicLogo: React.FC<DynamicLogoProps> = ({ src, alt, className })
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imgData.data;
 
-        // Sample the top-left corner pixel to detect background color
+        // Sample corner to detect background color
         const rBg = data[0];
         const gBg = data[1];
         const bBg = data[2];
         const aBg = data[3];
 
-        // Background is solid if it is fully opaque and either close to black or close to white
         const isBlack = rBg < 45 && gBg < 45 && bBg < 45;
         const isWhite = rBg > 210 && gBg > 210 && bBg > 210;
 
         if (aBg > 0 && (isBlack || isWhite)) {
-          // Key out the background color with a color difference threshold
           const threshold = 48;
+          // Duplicate image data for dark mode rendering
+          const darkData = new Uint8ClampedArray(data);
+
           for (let i = 0; i < data.length; i += 4) {
             const r = data[i];
             const g = data[i + 1];
@@ -61,35 +62,54 @@ export const DynamicLogo: React.FC<DynamicLogoProps> = ({ src, alt, className })
             );
 
             if (diff < threshold) {
-              data[i + 3] = 0; // Set alpha channel to 0 (fully transparent)
+              data[i + 3] = 0; // Alpha 0 for light mode
+              darkData[i + 3] = 0; // Alpha 0 for dark mode
+            } else {
+              // For dark mode: transform dark text/ink to crisp white, preserving colored emblems
+              const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+              const saturation = Math.max(r, g, b) - Math.min(r, g, b);
+              if (brightness < 125 && saturation < 70) {
+                darkData[i] = 255;
+                darkData[i + 1] = 255;
+                darkData[i + 2] = 255;
+              }
             }
           }
+
+          // Light mode version
           ctx.putImageData(imgData, 0, 0);
-          setProcessedSrc(canvas.toDataURL());
+          setLightSrc(canvas.toDataURL());
+
+          // Dark mode version
+          const darkImgData = new ImageData(darkData, canvas.width, canvas.height);
+          ctx.putImageData(darkImgData, 0, 0);
+          setDarkSrc(canvas.toDataURL());
+
           setIsTransparent(true);
         }
       } catch (err) {
-        console.warn("Failed canvas logo processing (CORS or other issue):", err);
+        console.warn("Canvas logo processing bypassed:", err);
       }
     };
 
     img.onerror = () => {
-      setProcessedSrc(src);
+      setLightSrc(src);
+      setDarkSrc(src);
     };
 
     img.src = src;
   }, [src]);
 
-  // Use dynamic blend mode styles if canvas conversion is bypassed or fails
+  const currentSrc = isDark ? darkSrc : lightSrc;
   const blendClass = isTransparent
     ? ""
     : "mix-blend-multiply dark:mix-blend-screen";
 
   return (
     <img
-      src={processedSrc}
+      src={currentSrc}
       alt={alt}
-      className={`${className || ""} ${blendClass} transition-all duration-300`}
+      className={`${className || ""} ${blendClass} transition-all duration-300 ${!isTransparent && isDark ? "dark:brightness-125" : ""}`}
     />
   );
 };

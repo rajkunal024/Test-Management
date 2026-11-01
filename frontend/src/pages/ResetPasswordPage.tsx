@@ -84,8 +84,8 @@ export const ResetPasswordPage = () => {
           <div className="flex items-center gap-1.5">
             <span className="relative h-7 w-8 flex-shrink-0">
               <span className="absolute left-0 top-1 h-4 w-4 rounded-sm border-2 border-indigo-400/80 bg-indigo-500/20" />
-              <span className="absolute left-2 top-0 h-2 w-7 rounded-full border-t-2 border-slate-350" />
-              <span className="absolute left-4 top-1 h-3 w-9 rounded-full border-t-2 border-slate-350" />
+              <span className="absolute left-2 top-0 h-2 w-7 rounded-full border-t-2 border-slate-300" />
+              <span className="absolute left-4 top-1 h-3 w-9 rounded-full border-t-2 border-slate-300" />
               <span className="absolute left-1.5 top-2.5 h-1.5 w-1.5 rounded-full bg-white" />
             </span>
             <span className="text-2xl font-extrabold leading-none tracking-normal text-white font-outfit">Parikshya</span>
@@ -131,12 +131,12 @@ export const ResetPasswordPage = () => {
       </section>
 
       {/* Right Column: Password Form */}
-      <section className="flex items-center justify-center p-6 border-l-4 border-indigo-500 dark:border-indigo-650 transition-colors duration-300 relative z-10 min-h-screen overflow-hidden">
+      <section className="flex items-center justify-center p-4 sm:p-6 border-l-4 border-indigo-500 dark:border-indigo-600 transition-colors duration-300 relative z-10 min-h-screen overflow-hidden">
         <div className="absolute inset-0 bg-[#fafbfc]/85 dark:bg-[#07090f]/90 pointer-events-none backdrop-blur-[1.5px]" />
 
         <form 
           onSubmit={handleSubmit}
-          className="relative w-full max-w-[500px] flex flex-col justify-center bg-white/90 dark:bg-[#0c1322]/80 border border-indigo-100/60 dark:border-indigo-950/40 rounded-3xl p-8 md:p-12 shadow-xl hover:shadow-[0_0_35px_rgba(99,102,241,0.12)] transition-all duration-500 overflow-hidden backdrop-blur-md z-10"
+          className="relative w-full max-w-[500px] flex flex-col justify-center bg-white/90 dark:bg-[#0c1322]/80 border border-indigo-100/60 dark:border-indigo-950/40 rounded-3xl p-5 sm:p-8 md:p-12 shadow-xl hover:shadow-[0_0_35px_rgba(99,102,241,0.12)] transition-all duration-500 overflow-hidden backdrop-blur-md z-10"
         >
           <div className="absolute top-[-25%] right-[-15%] w-44 h-44 bg-indigo-500/[0.02] rounded-full blur-3xl pointer-events-none" />
 
@@ -152,7 +152,7 @@ export const ResetPasswordPage = () => {
           {/* Header section */}
           <div className="mb-6 flex items-center justify-between">
             <Logo />
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black tracking-wider uppercase text-indigo-600 bg-indigo-550/10 border-indigo-550/20 dark:text-indigo-400 dark:bg-indigo-500/10 dark:border-indigo-500/20 font-mono">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black tracking-wider uppercase text-indigo-600 bg-indigo-500/10 border-indigo-500/20 dark:text-indigo-400 dark:bg-indigo-500/10 dark:border-indigo-500/20 font-mono">
               <ShieldAlert className="h-3.5 w-3.5" />
               Credentials Update
             </span>
@@ -190,23 +190,23 @@ export const ResetPasswordPage = () => {
           <div className="mt-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/30 border border-slate-100 dark:border-slate-800/80 space-y-2">
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Security Requirements</h4>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-              <div className={`flex items-center gap-1.5 ${rules.length ? "text-emerald-600 dark:text-emerald-400" : "text-slate-450"}`}>
+              <div className={`flex items-center gap-1.5 ${rules.length ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
                 {rules.length ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
                 <span>At least 8 characters</span>
               </div>
-              <div className={`flex items-center gap-1.5 ${rules.uppercase ? "text-emerald-600 dark:text-emerald-400" : "text-slate-450"}`}>
+              <div className={`flex items-center gap-1.5 ${rules.uppercase ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
                 {rules.uppercase ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
                 <span>One uppercase letter</span>
               </div>
-              <div className={`flex items-center gap-1.5 ${rules.lowercase ? "text-emerald-600 dark:text-emerald-400" : "text-slate-450"}`}>
+              <div className={`flex items-center gap-1.5 ${rules.lowercase ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
                 {rules.lowercase ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
                 <span>One lowercase letter</span>
               </div>
-              <div className={`flex items-center gap-1.5 ${rules.number ? "text-emerald-600 dark:text-emerald-400" : "text-slate-450"}`}>
+              <div className={`flex items-center gap-1.5 ${rules.number ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
                 {rules.number ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
                 <span>One number</span>
               </div>
-              <div className={`flex items-center gap-1.5 col-span-2 mt-1.5 border-t border-slate-100 dark:border-slate-850 pt-1.5 ${rules.match ? "text-emerald-600 dark:text-emerald-400" : "text-slate-450"}`}>
+              <div className={`flex items-center gap-1.5 col-span-2 mt-1.5 border-t border-slate-100 dark:border-slate-800 pt-1.5 ${rules.match ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
                 {rules.match ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
                 <span>Passwords match</span>
               </div>

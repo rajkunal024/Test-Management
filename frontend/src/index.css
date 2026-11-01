@@ -60,6 +60,7 @@
 :root {
   color: #263246;
   background: #f7faff;
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -70,6 +71,7 @@
 :root.dark {
   color: #f8fafc;
   background: #090d16;
+  color-scheme: dark;
 }
 
 * {
@@ -80,6 +82,15 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #f7faff;
+  color: #263246;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html.dark body,
+body.dark {
+  background-color: #090d16;
+  color: #f8fafc;
 }
 
 button,
@@ -89,12 +100,44 @@ textarea {
   font: inherit;
 }
 
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.7);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.45);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.75);
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 7px;
+  height: 7px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
   background: #f1f5f9;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-track {
+  background: #0b1120;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
@@ -102,9 +145,21 @@ textarea {
   border-radius: 999px;
 }
 
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
 /* Full screen override when navigation is hidden */
+main .max-w-\[1280px\] {
+  transition: max-width 300ms ease-in-out, padding 300ms ease-in-out;
+}
+
 main.nav-hidden .max-w-\[1280px\] {
-  max-w: none !important;
+  max-width: none !important;
   padding-left: 2rem !important;
   padding-right: 2rem !important;
 }
@@ -351,8 +406,8 @@ main.dashboard-expanded [class*="rounded-3xl"][class*="border"] {
 .dark .test-creation-studio {
   --studio-accent: #818cf8;
   --studio-accent-soft: rgba(49,46,129,.27);
-  --studio-surface: rgba(15,23,42,.78);
-  --studio-line: #29364a;
+  --studio-surface: #0c1426;
+  --studio-line: rgba(99, 102, 241, 0.22);
   --studio-ink: #f1f5f9;
   --studio-muted: #94a3b8;
 }
@@ -946,3 +1001,586 @@ main.dashboard-expanded [class*="rounded-3xl"][class*="border"] {
   margin-bottom: 0.25rem !important;
   list-style: inherit !important;
 }
+
+/* =============================================
+   GLOBAL PREMIUM ENHANCEMENTS
+   ============================================= */
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in { animation: fade-in 0.35s ease-out both; }
+.animate-fade-in-up { animation: fade-in-up 0.4s ease-out both; }
+
+.stagger-children > * { animation: fade-in-up 0.4s ease-out both; }
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.20s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.30s; }
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+.dark .skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+}
+
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(30, 41, 59, 0.12);
+}
+.dark .hover-lift:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+html { scroll-behavior: smooth; }
+:focus:not(:focus-visible) { outline: none; }
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+.badge-live { animation: badge-pulse 2s ease-in-out infinite; }
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Sidebar section label */
+.sidebar-section-label {
+  padding: 0 12px 6px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+.dark .sidebar-section-label { color: #475569; }
+
+/* =============================================
+   ADMIN COMMAND CENTER DESIGN SYSTEM
+   ============================================= */
+
+/* Admin page special background */
+.admin-bg {
+  background-color: #f8f9ff;
+}
+.dark .admin-bg {
+  background-color: #070b14;
+}
+
+/* Admin hero command header */
+.admin-hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0a0f1e 0%, #0d1428 40%, #0c1033 70%, #070b1c 100%);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 16px;
+  padding: 2rem;
+  color: white;
+}
+.admin-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+.admin-hero::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Admin stat card */
+.admin-stat-card {
+  position: relative;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+.admin-stat-card:hover {
+  border-color: #a5b4fc;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.1);
+  transform: translateY(-2px);
+}
+.dark .admin-stat-card {
+  background: #0d1425;
+  border-color: rgba(99, 102, 241, 0.15);
+}
+.dark .admin-stat-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.12);
+}
+.admin-stat-card .card-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+/* Admin section card */
+.admin-section-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.dark .admin-section-card {
+  background: #0d1425;
+  border-color: rgba(99, 102, 241, 0.12);
+}
+
+/* Admin table */
+.admin-table thead th {
+  background: #f8f9ff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6366f1;
+  padding: 14px 20px;
+  border-bottom: 2px solid #e8ecff;
+}
+.dark .admin-table thead th {
+  background: rgba(99, 102, 241, 0.05);
+  color: rgba(139, 92, 246, 0.8);
+  border-bottom-color: rgba(99, 102, 241, 0.15);
+}
+.admin-table tbody td {
+  padding: 13px 20px;
+}
+.admin-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s ease;
+}
+.admin-table tbody tr:hover {
+  background: #f8f9ff;
+}
+.dark .admin-table tbody tr {
+  border-bottom-color: rgba(99, 102, 241, 0.06);
+}
+.dark .admin-table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.04);
+}
+
+/* Admin tab bar */
+.admin-tab-bar {
+  display: flex;
+  gap: 2px;
+  background: #f1f5ff;
+  border: 1px solid #dde3ff;
+  border-radius: 14px;
+  padding: 4px;
+}
+.dark .admin-tab-bar {
+  background: #0a0f1e;
+  border-color: rgba(99, 102, 241, 0.2);
+}
+.admin-tab {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #64748b;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.admin-tab:hover {
+  color: #4f46e5;
+  background: rgba(99, 102, 241, 0.06);
+}
+.dark .admin-tab {
+  color: #475569;
+}
+.dark .admin-tab:hover {
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.08);
+}
+.admin-tab.active {
+  background: white;
+  color: #4f46e5;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15), 0 0 0 1px rgba(99, 102, 241, 0.15);
+}
+.dark .admin-tab.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.3);
+}
+
+/* Admin action button */
+.admin-btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 10px 18px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+}
+.admin-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+}
+.admin-btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Admin search input */
+.admin-search {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px 0 44px;
+  background: #f8f9ff;
+  border: 1px solid #dde3ff;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #1e293b;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.admin-search:focus {
+  background: white;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+.dark .admin-search {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.15);
+  color: #e2e8f0;
+}
+.dark .admin-search:focus {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* Admin filter select */
+.admin-select {
+  height: 44px;
+  padding: 0 36px 0 14px;
+  background: #f8f9ff;
+  border: 1px solid #dde3ff;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  transition: all 0.2s ease;
+}
+.admin-select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+.dark .admin-select {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.15);
+  color: #e2e8f0;
+}
+.dark .admin-select option {
+  background: #0d1425;
+}
+
+/* Admin status badge */
+.admin-badge-live {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 20px;
+  background: rgba(16,185,129,0.1); color: #059669;
+  border: 1px solid rgba(16,185,129,0.25);
+}
+.dark .admin-badge-live { background: rgba(16,185,129,0.12); color: #34d399; border-color: rgba(16,185,129,0.25); }
+
+.admin-badge-upcoming {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 20px;
+  background: rgba(245,158,11,0.1); color: #d97706;
+  border: 1px solid rgba(245,158,11,0.25);
+}
+.dark .admin-badge-upcoming { background: rgba(245,158,11,0.12); color: #fbbf24; border-color: rgba(245,158,11,0.25); }
+
+.admin-badge-completed {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 20px;
+  background: rgba(99,102,241,0.1); color: #4f46e5;
+  border: 1px solid rgba(99,102,241,0.2);
+}
+.dark .admin-badge-completed { background: rgba(99,102,241,0.12); color: #a5b4fc; border-color: rgba(99,102,241,0.25); }
+
+.admin-badge-draft {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 20px;
+  background: rgba(100,116,139,0.1); color: #475569;
+  border: 1px solid rgba(100,116,139,0.2);
+}
+.dark .admin-badge-draft { background: rgba(100,116,139,0.1); color: #94a3b8; border-color: rgba(100,116,139,0.2); }
+
+/* Admin form card */
+.admin-form-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+}
+.dark .admin-form-card {
+  background: #0d1425;
+  border-color: rgba(99, 102, 241, 0.15);
+}
+
+/* Admin section header */
+.admin-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e8ecff;
+  background: #f8f9ff;
+}
+.dark .admin-section-header {
+  border-bottom-color: rgba(99, 102, 241, 0.12);
+  background: rgba(99, 102, 241, 0.04);
+}
+.admin-section-header .admin-section-icon {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+}
+.dark .admin-section-header .admin-section-icon {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+
+/* ==========================================================================
+   ROLE-BASED BESPOKE COLOR SCHEMES
+   Eliminates flat white backgrounds and gives each role a distinct identity:
+   - Admin: Cyber Command Center (Tech Slate + Dual Cyan/Indigo Glow)
+   - Teacher: Scholarly Faculty (Academic Sage & Emerald Mint)
+   - Student: University Campus (Modern Royal Blue & Periwinkle Sky)
+   ========================================================================== */
+
+/* ── 1. ADMIN THEME: CYBER COMMAND CENTER ── */
+.theme-admin {
+  background-color: #ecf0f8 !important;
+  background-image: 
+    radial-gradient(circle at 12% 8%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 88% 92%, rgba(6, 182, 212, 0.1) 0%, transparent 45%),
+    linear-gradient(to right, rgba(99, 102, 241, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.035) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px !important;
+  background-attachment: fixed !important;
+}
+
+.dark .theme-admin {
+  background-color: #070b14 !important;
+  background-image: 
+    radial-gradient(circle at 12% 8%, rgba(99, 102, 241, 0.18) 0%, transparent 45%),
+    radial-gradient(circle at 88% 92%, rgba(6, 182, 212, 0.14) 0%, transparent 50%),
+    linear-gradient(to right, rgba(99, 102, 241, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.045) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px !important;
+  background-attachment: fixed !important;
+}
+
+.dark .theme-admin [class~="bg-white"]:not([class*="dark:bg-"]),
+.dark .theme-admin [class*="bg-white/"]:not([class*="dark:bg-"]) {
+  background-color: #0c1426;
+}
+
+.dark .theme-admin [class~="dark:bg-slate-900"] {
+  background-color: #0c1426;
+}
+
+.dark .theme-admin [class~="dark:bg-slate-950"] {
+  background-color: #080f1e;
+}
+
+.dark .theme-admin [class~="dark:border-slate-800"],
+.dark .theme-admin [class~="dark:border-slate-700"] {
+  border-color: rgba(99, 102, 241, 0.22);
+}
+
+.dark .theme-admin input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([class*="dark:bg-"]),
+.dark .theme-admin select:not([class*="dark:bg-"]),
+.dark .theme-admin textarea:not([class*="dark:bg-"]) {
+  background-color: #080f1e;
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #f1f5f9;
+}
+
+/* ── 2. TEACHER THEME: SCHOLARLY FACULTY SAGE & EMERALD ── */
+.theme-teacher {
+  background-color: #edf6f1 !important;
+  background-image: 
+    radial-gradient(circle at 10% 10%, rgba(16, 185, 129, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 90% 90%, rgba(13, 148, 136, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 50% 30%, rgba(245, 158, 11, 0.035) 0%, transparent 40%),
+    linear-gradient(to right, rgba(16, 185, 129, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16, 185, 129, 0.03) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px !important;
+  background-attachment: fixed !important;
+}
+
+.dark .theme-teacher {
+  background-color: #051411 !important;
+  background-image: 
+    radial-gradient(circle at 10% 10%, rgba(16, 185, 129, 0.16) 0%, transparent 48%),
+    radial-gradient(circle at 90% 90%, rgba(20, 184, 166, 0.13) 0%, transparent 52%),
+    linear-gradient(to right, rgba(16, 185, 129, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16, 185, 129, 0.035) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px !important;
+  background-attachment: fixed !important;
+}
+
+.dark .theme-teacher [class~="bg-white"]:not([class*="dark:bg-"]),
+.dark .theme-teacher [class*="bg-white/"]:not([class*="dark:bg-"]) {
+  background-color: #081a16;
+}
+
+.dark .theme-teacher [class~="dark:bg-slate-900"] {
+  background-color: #081a16;
+}
+
+.dark .theme-teacher [class~="dark:bg-slate-950"] {
+  background-color: #061915;
+}
+
+.dark .theme-teacher [class~="dark:border-slate-800"],
+.dark .theme-teacher [class~="dark:border-slate-700"] {
+  border-color: rgba(16, 185, 129, 0.22);
+}
+
+.dark .theme-teacher input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([class*="dark:bg-"]),
+.dark .theme-teacher select:not([class*="dark:bg-"]),
+.dark .theme-teacher textarea:not([class*="dark:bg-"]) {
+  background-color: #061915;
+  border-color: rgba(16, 185, 129, 0.28);
+  color: #f0fdf4;
+}
+
+/* ── 3. STUDENT THEME: VIBRANT UNIVERSITY CAMPUS ── */
+.theme-student {
+  background-color: #f0f4fd !important;
+  background-image: 
+    radial-gradient(circle at 10% 8%, rgba(59, 130, 246, 0.11) 0%, transparent 42%),
+    radial-gradient(circle at 90% 92%, rgba(99, 102, 241, 0.1) 0%, transparent 48%),
+    radial-gradient(circle at 50% 20%, rgba(147, 51, 234, 0.04) 0%, transparent 35%),
+    linear-gradient(to right, rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(59, 130, 246, 0.03) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 36px 36px, 36px 36px !important;
+  background-attachment: fixed !important;
+}
+
+.dark .theme-student {
+  background-color: #070d1b !important;
+  background-image: 
+    radial-gradient(circle at 10% 8%, rgba(59, 130, 246, 0.18) 0%, transparent 45%),
+    radial-gradient(circle at 90% 92%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+    linear-gradient(to right, rgba(59, 130, 246, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(59, 130, 246, 0.04) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px !important;
+  background-attachment: fixed !important;
+}
+
+.dark .theme-student [class~="bg-white"]:not([class*="dark:bg-"]),
+.dark .theme-student [class*="bg-white/"]:not([class*="dark:bg-"]) {
+  background-color: #0b152b;
+}
+
+.dark .theme-student [class~="dark:bg-slate-900"] {
+  background-color: #0b152b;
+}
+
+.dark .theme-student [class~="dark:bg-slate-950"] {
+  background-color: #081022;
+}
+
+.dark .theme-student [class~="dark:border-slate-800"],
+.dark .theme-student [class~="dark:border-slate-700"] {
+  border-color: rgba(59, 130, 246, 0.22);
+}
+
+.dark .theme-student input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([class*="dark:bg-"]),
+.dark .theme-student select:not([class*="dark:bg-"]),
+.dark .theme-student textarea:not([class*="dark:bg-"]) {
+  background-color: #081022;
+  border-color: rgba(59, 130, 246, 0.28);
+  color: #eff6ff;
+}
+
+.dark .theme-student [class~="border-slate-800"]:not([class*="dark:border-"]) {
+  border-color: rgba(30, 58, 138, 0.4);
+}
+

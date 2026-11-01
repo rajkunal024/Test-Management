@@ -62,6 +62,7 @@ server.on("upgrade", (request, socket, head) => {
   }
 });
 
-server.listen(port, "127.0.0.1", () => {
-  console.log(`Parikshya backend listening at http://127.0.0.1:${port}`);
+const host = process.env.HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
+server.listen(port, host, () => {
+  console.log(`Parikshya backend listening at http://${host}:${port}`);
 });

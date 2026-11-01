@@ -19,6 +19,8 @@ import {
   Check,
   Sliders,
   Eye,
+  MonitorX,
+  ShieldAlert,
 } from "lucide-react";
 import { useTest } from "../hooks/useTests";
 import { fetchBulkQuestions, submitAttempt, getAllAttempts, uploadStreamFrame, getPassageById, getMyOrganization } from "../services/api";
@@ -29,6 +31,7 @@ import { Modal } from "../components/ui/Modal";
 import { Toast } from "../components/ui/Toast";
 import { Logo } from "../components/layout/Logo";
 import { useAuthStore } from "../store/authStore";
+import { useTheme } from "../context/ThemeContext";
 import { Passage } from "../types";
 
 const seedRandom = (seedStr: string) => {
@@ -101,6 +104,30 @@ export const AttemptTestPage = () => {
     enabled: Boolean(user?.userId),
   });
 
+  // Mobile device restriction state (Test cannot be attempted on mobile phones)
+  const [isMobileDevice, setIsMobileDevice] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const ua = navigator.userAgent || "";
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(ua);
+    const isNarrow = window.innerWidth < 1024;
+    return isMobileUA || isNarrow;
+  });
+
+  useEffect(() => {
+    const handleDeviceCheck = () => {
+      const ua = navigator.userAgent || "";
+      const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(ua);
+      const isNarrow = window.innerWidth < 1024;
+      setIsMobileDevice(isMobileUA || isNarrow);
+    };
+    window.addEventListener("resize", handleDeviceCheck);
+    window.addEventListener("orientationchange", handleDeviceCheck);
+    return () => {
+      window.removeEventListener("resize", handleDeviceCheck);
+      window.removeEventListener("orientationchange", handleDeviceCheck);
+    };
+  }, []);
+
   // Pre-Test Environment Check States
   const [envChecked, setEnvChecked] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -164,30 +191,8 @@ export const AttemptTestPage = () => {
     };
   }, [envChecked]);
 
-  // Theme state
-  const [isDark, setIsDark] = useState(() => {
-    return document.documentElement.classList.contains("dark") || localStorage.getItem("theme") === "dark";
-  });
-
-  const toggleTheme = () => {
-    const nextDark = !isDark;
-    setIsDark(nextDark);
-    if (nextDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
-
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [isDark]);
+  // Theme state from global ThemeContext
+  const { isDark, toggleTheme } = useTheme();
 
   // Proctoring States and Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -438,17 +443,21 @@ export const AttemptTestPage = () => {
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       
-      let host = "127.0.0.1:4000";
+      let host = window.location.host;
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
       if (apiBaseUrl) {
         try {
-          const parsed = new URL(apiBaseUrl);
-          host = parsed.host;
+          if (apiBaseUrl.startsWith("http://") || apiBaseUrl.startsWith("https://")) {
+            const parsed = new URL(apiBaseUrl);
+            host = parsed.host;
+          } else {
+            host = window.location.host;
+          }
         } catch (e) {
-          host = `${window.location.hostname}:4000`;
+          host = window.location.host;
         }
       } else {
-        host = `${window.location.hostname}:4000`;
+        host = window.location.host;
       }
       
       const wsUrl = `${protocol}//${host}/api/proctor/stream?role=student&test_id=${id}&user_id=${user.userId}&username=${encodeURIComponent(user.name || user.userId || "")}`;
@@ -1432,6 +1441,58 @@ export const AttemptTestPage = () => {
     return currentTime >= start && currentTime <= end;
   }, [test, currentTime]);
 
+  // Block mobile phones from attempting the examination
+  if (isMobileDevice) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 selection:bg-rose-500 selection:text-white font-outfit relative overflow-hidden">
+        {/* Glowing cyber blobs */}
+        <div className="absolute top-[15%] left-[15%] w-72 h-72 rounded-full bg-rose-500/15 blur-[100px] pointer-events-none animate-pulse" />
+        <div className="absolute bottom-[15%] right-[15%] w-80 h-80 rounded-full bg-indigo-500/15 blur-[120px] pointer-events-none animate-pulse" />
+        <div className="absolute inset-0 grid-cyber opacity-20 pointer-events-none" />
+
+        <div className="relative w-full max-w-[480px] z-10 bg-slate-900/90 backdrop-blur-2xl border border-rose-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl text-center">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 mb-5 shadow-inner">
+            <MonitorX className="h-8 w-8" />
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-black uppercase tracking-wider mb-3">
+            <ShieldAlert className="h-3.5 w-3.5" />
+            Security Restriction
+          </div>
+
+          <h2 className="text-2xl font-black text-white font-outfit mb-2">
+            Desktop Computer Required
+          </h2>
+          <p className="text-xs text-slate-400 leading-relaxed font-medium mb-6">
+            For academic integrity, AI gaze proctoring, and secure fullscreen lockdown, <strong className="text-white">examinations cannot be attempted on mobile phones or handheld devices</strong>.
+          </p>
+
+          <div className="space-y-2.5 text-left bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 mb-6 text-xs text-slate-300">
+            <div className="flex items-start gap-3">
+              <span className="h-5 w-5 rounded-md bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 font-bold text-[10px] mt-0.5">1</span>
+              <span>Open on a <strong>desktop or laptop PC</strong> (Chrome, Edge, Brave, or Safari).</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="h-5 w-5 rounded-md bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 font-bold text-[10px] mt-0.5">2</span>
+              <span>Ensure a working <strong>webcam and microphone</strong> are connected for live proctoring.</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="h-5 w-5 rounded-md bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 font-bold text-[10px] mt-0.5">3</span>
+              <span>Minimum screen resolution: <strong>1024 × 768</strong> with full physical keyboard navigation.</span>
+            </div>
+          </div>
+
+          <Button
+            onClick={() => navigate("/dashboard")}
+            className="w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-90 transition text-white shadow-lg shadow-indigo-500/20"
+          >
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoadingTest || isLoadingQuestions || !test) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-500">
@@ -1499,7 +1560,7 @@ export const AttemptTestPage = () => {
 
   if (!envChecked) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex flex-col select-none relative">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col select-none relative transition-colors duration-200">
         {!isOnline && (
           <div className="fixed top-0 inset-x-0 z-50 bg-rose-600 text-white px-4 py-2 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-md animate-pulse">
             <AlertTriangle className="h-4 w-4" />
@@ -1507,119 +1568,132 @@ export const AttemptTestPage = () => {
           </div>
         )}
 
-        <header className="h-[72px] bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+        <header className="h-[72px] bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm transition-colors duration-200">
           <div className="flex items-center gap-3">
             <Logo compact />
-            <div className="h-6 w-px bg-slate-200" />
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-800" />
             <div>
-              <h1 className="text-sm font-bold text-slate-800">Exam Environment Setup</h1>
-              <p className="text-[10px] font-semibold text-indigo-500 tracking-wider uppercase">
+              <h1 className="text-sm font-bold text-slate-800 dark:text-white">Exam Environment Setup</h1>
+              <p className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400 tracking-wider uppercase">
                 Secure Assessment Portal
               </p>
             </div>
           </div>
-          <Button variant="ghost" onClick={() => navigate("/dashboard")} className="text-slate-500 hover:text-slate-800 text-xs">
-            Cancel & Return
-          </Button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              className="flex items-center justify-center h-10 w-10 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 transition shrink-0 cursor-pointer"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDark ? (
+                <Sun className="h-4 w-4 text-amber-500" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </button>
+            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white text-xs cursor-pointer">
+              Cancel & Return
+            </Button>
+          </div>
         </header>
 
         <main className="flex-1 max-w-[1200px] mx-auto w-full p-4 md:p-8 flex flex-col lg:flex-row gap-8">
           <div className="flex-1 flex flex-col gap-6">
-            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-              <div className="flex items-start justify-between border-b border-slate-100 pb-4 mb-4">
+            <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+              <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
                 <div>
-                  <span className="text-[10px] font-bold text-indigo-500 tracking-widest uppercase">EXAM SUMMARY</span>
-                  <h2 className="text-xl font-extrabold text-slate-800 mt-1">{test.name}</h2>
+                  <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 tracking-widest uppercase">EXAM SUMMARY</span>
+                  <h2 className="text-xl font-extrabold text-slate-800 dark:text-white mt-1">{test.name}</h2>
                 </div>
                 <Badge tone="blue" className="text-xs uppercase tracking-wider px-3 py-1 font-bold">{test.type.replace("_", " ")}</Badge>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Subject</span>
-                  <span className="text-sm font-bold text-slate-700 mt-1 block leading-tight text-slate-800">
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-800">
+                  <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Subject</span>
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-1 block leading-tight">
                     {Array.isArray(test.subject) ? test.subject.join(", ") : test.subject}
                   </span>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Questions</span>
-                  <span className="text-sm font-bold text-slate-700 mt-1 block leading-tight">{test.total_questions} Questions</span>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-800">
+                  <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Questions</span>
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-1 block leading-tight">{test.total_questions} Questions</span>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Total Marks</span>
-                  <span className="text-sm font-bold text-slate-700 mt-1 block leading-tight">{test.total_marks} Marks</span>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-800">
+                  <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Marks</span>
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-1 block leading-tight">{test.total_marks} Marks</span>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Duration</span>
-                  <span className="text-sm font-bold text-slate-700 mt-1 block leading-tight">{test.total_time} Minutes</span>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-800">
+                  <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Duration</span>
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-1 block leading-tight">{test.total_time} Minutes</span>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Passing Marks</span>
-                  <span className="text-sm font-bold text-slate-700 mt-1 block leading-tight">
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-800">
+                  <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Passing Marks</span>
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-1 block leading-tight">
                     {Math.ceil(test.total_marks * 0.4)} Marks (40%)
                   </span>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Negative Marking</span>
-                  <span className={`text-sm font-bold mt-1 block leading-tight ${test.wrong_marks !== 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-800">
+                  <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Negative Marking</span>
+                  <span className={`text-sm font-bold mt-1 block leading-tight ${test.wrong_marks !== 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                     {test.wrong_marks === 0 ? "0" : (test.wrong_marks < 0 ? test.wrong_marks : `-${test.wrong_marks}`)}
                   </span>
                 </div>
               </div>
             </section>
 
-            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col">
-              <h3 className="text-sm font-extrabold text-slate-800 mb-4 tracking-wide border-b border-slate-100 pb-2">
+            <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col">
+              <h3 className="text-sm font-extrabold text-slate-800 dark:text-white mb-4 tracking-wide border-b border-slate-100 dark:border-slate-800 pb-2">
                 System Readiness Checklist
               </h3>
               
               <div className="space-y-3.5 mb-6">
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
                   <div className="flex items-center gap-3">
-                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isOnline ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isOnline ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400"}`}>
                       {isOnline ? "✓" : "⚠"}
                     </span>
                     <div>
-                      <span className="text-xs font-bold text-slate-700 block">Internet Connectivity</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">{isOnline ? "High Speed Connection Active" : "No Internet Connection"}</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">Internet Connectivity</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-semibold">{isOnline ? "High Speed Connection Active" : "No Internet Connection"}</span>
                     </div>
                   </div>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isOnline ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isOnline ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"}`}>
                     {isOnline ? "Connected" : "Disconnected"}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
                   <div className="flex items-center gap-3">
-                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isScreenSizeOk ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
+                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isScreenSizeOk ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400"}`}>
                       {isScreenSizeOk ? "✓" : "⚠"}
                     </span>
                     <div>
-                      <span className="text-xs font-bold text-slate-700 block">Screen Resolution</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">Screen Resolution</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-semibold">
                         {isScreenSizeOk ? "Desktop or tablet viewport size is optimal" : "Screen is narrow. Desktop or landscape tablet is recommended."}
                       </span>
                     </div>
                   </div>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isScreenSizeOk ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isScreenSizeOk ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"}`}>
                     {isScreenSizeOk ? "Pass" : "Warning"}
                   </span>
                 </div>
 
                 {orgData?.securityFeatures?.fullscreenMode !== false && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 gap-3">
                     <div className="flex items-center gap-3">
-                      <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isFullscreen ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                      <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isFullscreen ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400"}`}>
                         {isFullscreen ? "✓" : "⚠"}
                       </span>
                       <div>
-                        <span className="text-xs font-bold text-slate-700 block">Fullscreen Mode</span>
-                        <span className="text-[10px] text-slate-400 font-semibold">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">Fullscreen Mode</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-400 font-semibold">
                           {isFullscreen ? "Secure assessment view enabled" : "Fullscreen mode is required to start the exam"}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isFullscreen ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isFullscreen ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"}`}>
                         {isFullscreen ? "Enabled" : "Required"}
                       </span>
                       {!isFullscreen && (
@@ -1632,20 +1706,20 @@ export const AttemptTestPage = () => {
                 )}
 
                 {orgData?.securityFeatures?.screenSharingDetection !== false && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 gap-3">
                     <div className="flex items-center gap-3">
-                      <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${screenStream ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                      <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${screenStream ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400"}`}>
                         {screenStream ? "✓" : "⚠"}
                       </span>
                       <div>
-                        <span className="text-xs font-bold text-slate-700 block">Screen Sharing Authorization</span>
-                        <span className="text-[10px] text-slate-400 font-semibold">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">Screen Sharing Authorization</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-400 font-semibold">
                           {screenStream ? "Active screen capture relayed to proctors" : "Screen sharing is required to start the exam"}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${screenStream ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${screenStream ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"}`}>
                         {screenStream ? "Authorized" : "Required"}
                       </span>
                       {!screenStream && (
@@ -1658,20 +1732,20 @@ export const AttemptTestPage = () => {
                 )}
 
                 {orgData?.securityFeatures?.cameraMonitoring !== false && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 gap-3">
                     <div className="flex items-center gap-3">
-                      <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${cameraStream && !streamError ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                      <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${cameraStream && !streamError ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400"}`}>
                         {cameraStream && !streamError ? "✓" : "⚠"}
                       </span>
                       <div>
-                        <span className="text-xs font-bold text-slate-700 block">Camera Verification</span>
-                        <span className="text-[10px] text-slate-400 font-semibold">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">Camera Verification</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-400 font-semibold">
                           {cameraStream && !streamError ? "Camera feed verified and active" : "Camera permission and stream are required to start the exam"}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${cameraStream && !streamError ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${cameraStream && !streamError ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"}`}>
                         {cameraStream && !streamError ? "Active" : "Required"}
                       </span>
                       {(!cameraStream || streamError) && (
@@ -1683,50 +1757,50 @@ export const AttemptTestPage = () => {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
                   <div className="flex items-center gap-3">
-                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${resourcesLoaded ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600 animate-pulse"}`}>
+                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${resourcesLoaded ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400 animate-pulse"}`}>
                       {resourcesLoaded ? "✓" : "⌛"}
                     </span>
                     <div>
-                      <span className="text-xs font-bold text-slate-700 block">Question Loading Verification</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">Question Loading Verification</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-semibold">
                         {resourcesLoaded 
                           ? "✓ Questions Loaded | ✓ Images Loaded | ✓ Assets Loaded | ✓ Test Ready" 
                           : "Preloading and verifying exam questions and graphics..."}
                       </span>
                     </div>
                   </div>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${resourcesLoaded ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${resourcesLoaded ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"}`}>
                     {resourcesLoaded ? "Ready" : "Loading"}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
                   <div className="flex items-center gap-3">
-                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${acknowledged ? "bg-emerald-100 text-emerald-600" : "bg-slate-200 text-slate-400"}`}>
+                    <span className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${acknowledged ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-slate-200 dark:bg-slate-700 text-slate-400"}`}>
                       {acknowledged ? "✓" : "–"}
                     </span>
                     <div>
-                      <span className="text-xs font-bold text-slate-700 block">Exam Rules Acknowledgement</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">Exam Rules Acknowledgement</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-semibold">
                         {acknowledged ? "Instructions signed and accepted" : "Please read and accept instructions in the right panel"}
                       </span>
                     </div>
                   </div>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${acknowledged ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${acknowledged ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"}`}>
                     {acknowledged ? "Accepted" : "Pending"}
                   </span>
                 </div>
               </div>
 
-              <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex-1">
-                  <div className="flex justify-between text-[11px] font-bold text-slate-500 mb-1.5 uppercase">
+                  <div className="flex justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">
                     <span>Environment Readiness Progress</span>
                     <span>{passedChecksCount} / {checks.length} Checks Passed ({Math.round(progressPercent)}%)</span>
                   </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div 
                       className={`h-full transition-all duration-300 rounded-full ${allChecksPassed ? "bg-emerald-500" : "bg-indigo-500"}`} 
                       style={{ width: `${progressPercent}%` }}
@@ -1786,11 +1860,11 @@ export const AttemptTestPage = () => {
               </div>
             </section>
 
-            <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
               {allChecksPassed && isSlotActive ? (
                 <Button
                   onClick={() => setEnvChecked(true)}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl text-sm transition duration-200"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl text-sm transition duration-200 cursor-pointer"
                 >
                   Start Test
                 </Button>
@@ -1798,16 +1872,16 @@ export const AttemptTestPage = () => {
                 <div className="space-y-3">
                   <Button
                     disabled
-                    className="w-full bg-slate-100 border border-slate-200 text-slate-400 font-bold h-12 rounded-xl text-sm cursor-not-allowed"
+                    className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 font-bold h-12 rounded-xl text-sm cursor-not-allowed"
                   >
                     Start Test
                   </Button>
                   {!allChecksPassed ? (
-                    <p className="text-[11px] text-center font-bold text-rose-500 leading-snug bg-rose-50 border border-rose-100 rounded-lg p-2.5">
+                    <p className="text-[11px] text-center font-bold text-rose-500 dark:text-rose-400 leading-snug bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 rounded-lg p-2.5">
                       Complete all checks before starting the exam.
                     </p>
                   ) : (
-                    <p className="text-[11px] text-center font-bold text-amber-600 leading-snug bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                    <p className="text-[11px] text-center font-bold text-amber-600 dark:text-amber-400 leading-snug bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 rounded-lg p-2.5">
                       Waiting for exam start time: {new Date(test.start_time!).toLocaleTimeString()} (starts in {Math.max(0, Math.ceil((new Date(test.start_time!).getTime() - currentTime) / 1000))}s)
                     </p>
                   )}
@@ -1850,7 +1924,7 @@ export const AttemptTestPage = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-slate-50 dark:bg-slate-955 flex flex-col select-none relative transition-colors duration-200 theme-${themeMode} ${
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col select-none relative transition-colors duration-200 theme-${themeMode} ${
       themeMode === "cyberpunk" ? "theme-cyberpunk font-mono" : 
       themeMode === "minimalist" ? "theme-minimalist" : 
       themeMode === "epaper" ? "theme-epaper" : 
@@ -1883,7 +1957,7 @@ export const AttemptTestPage = () => {
           border-color: #d3c2a0 !important;
           color: #2b2b2b !important;
         }
-        .theme-epaper .text-slate-650, .theme-epaper .text-slate-350 {
+        .theme-epaper .text-slate-600, .theme-epaper .text-slate-300 {
           color: #2c2c2c !important;
         }
 
@@ -1909,7 +1983,7 @@ export const AttemptTestPage = () => {
           color: #00ffff !important; /* neon cyan */
           text-shadow: 0 0 5px rgba(0, 255, 255, 0.5) !important;
         }
-        .theme-cyberpunk .text-slate-650, .theme-cyberpunk .text-slate-350 {
+        .theme-cyberpunk .text-slate-600, .theme-cyberpunk .text-slate-300 {
           color: #39ff14 !important;
         }
         .theme-cyberpunk button {
@@ -1954,7 +2028,7 @@ export const AttemptTestPage = () => {
           border-color: #334155 !important;
           color: #94a3b8 !important;
         }
-        .theme-minimalist .text-slate-650, .theme-minimalist .text-slate-350 {
+        .theme-minimalist .text-slate-600, .theme-minimalist .text-slate-300 {
           color: #cbd5e1 !important;
         }
 
@@ -1979,7 +2053,7 @@ export const AttemptTestPage = () => {
           color: #ffb000 !important;
           text-shadow: 0 0 3px rgba(255, 176, 0, 0.6) !important;
         }
-        .theme-terminal .text-slate-650, .theme-terminal .text-slate-350 {
+        .theme-terminal .text-slate-600, .theme-terminal .text-slate-300 {
           color: #ffb000 !important;
         }
         .theme-terminal button {
@@ -2020,7 +2094,7 @@ export const AttemptTestPage = () => {
         .theme-forest h1, .theme-forest h2, .theme-forest h3, .theme-forest h4, .theme-forest h5, .theme-forest p, .theme-forest span, .theme-forest text {
           color: #213c16 !important;
         }
-        .theme-forest .text-slate-650, .theme-forest .text-slate-350 {
+        .theme-forest .text-slate-600, .theme-forest .text-slate-300 {
           color: #2d4a22 !important;
         }
         .theme-forest button {
@@ -2062,7 +2136,7 @@ export const AttemptTestPage = () => {
         .theme-midnight h1, .theme-midnight h2, .theme-midnight h3, .theme-midnight h4, .theme-midnight h5, .theme-midnight p, .theme-midnight span, .theme-midnight text {
           color: #f8fafc !important;
         }
-        .theme-midnight .text-slate-650, .theme-midnight .text-slate-350 {
+        .theme-midnight .text-slate-600, .theme-midnight .text-slate-300 {
           color: #e2e8f0 !important;
         }
         .theme-midnight button {
@@ -2103,7 +2177,7 @@ export const AttemptTestPage = () => {
         .theme-solarized h1, .theme-solarized h2, .theme-solarized h3, .theme-solarized h4, .theme-solarized h5, .theme-solarized p, .theme-solarized span, .theme-solarized text {
           color: #073642 !important;
         }
-        .theme-solarized .text-slate-650, .theme-solarized .text-slate-350 {
+        .theme-solarized .text-slate-600, .theme-solarized .text-slate-300 {
           color: #586e75 !important;
         }
         .theme-solarized button {
@@ -2192,7 +2266,7 @@ export const AttemptTestPage = () => {
               }}
               className={`flex items-center justify-center h-10 w-10 rounded-xl border transition shrink-0 relative ${
                 showProctorFeed
-                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400"
+                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400"
                   : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900"
               }`}
               title="Live Proctor Support Feed"
@@ -2241,7 +2315,7 @@ export const AttemptTestPage = () => {
                         </div>
                       )}
                     </div>
-                    <div className="mt-2 text-[9px] text-slate-500 dark:text-slate-450 leading-relaxed font-semibold">
+                    <div className="mt-2 text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
                       Live device monitoring is active. Do not block the camera lens or exit fullscreen view.
                     </div>
                   </div>
@@ -2271,7 +2345,7 @@ export const AttemptTestPage = () => {
                             <div
                               className={`p-2 rounded-xl text-[10px] font-semibold leading-relaxed ${
                                 isProctor
-                                  ? "bg-rose-50 border border-rose-100 text-rose-855 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-350"
+                                  ? "bg-rose-50 border border-rose-100 text-rose-855 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-300"
                                   : "bg-indigo-600 text-white"
                               }`}
                             >
@@ -2290,7 +2364,7 @@ export const AttemptTestPage = () => {
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSendChatMessage()}
                       placeholder="Type a message..."
-                      className="flex-1 text-[11px] px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-850 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                      className="flex-1 text-[11px] px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
                     />
                     <Button
                       variant="primary"
@@ -2315,7 +2389,7 @@ export const AttemptTestPage = () => {
               }}
               className={`flex items-center justify-center h-10 w-10 rounded-xl border transition shrink-0 ${
                 showInstructions
-                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400"
+                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400"
                   : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900"
               }`}
               title="Show Instructions"
@@ -2324,7 +2398,7 @@ export const AttemptTestPage = () => {
             </button>
 
             {showInstructions && (
-              <div className="absolute right-0 mt-3 w-80 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 dark:from-slate-955 dark:to-slate-900 text-white p-5 shadow-2xl border border-slate-850 z-50">
+              <div className="absolute right-0 mt-3 w-80 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 dark:from-slate-950 dark:to-slate-900 text-white p-5 shadow-2xl border border-slate-800 z-50">
                 <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-2.5">
                   <h4 className="text-xs font-black tracking-wider text-slate-400 uppercase flex items-center gap-1.5">
                     <Info className="h-4 w-4 text-indigo-400" />
@@ -2356,7 +2430,7 @@ export const AttemptTestPage = () => {
               }}
               className={`flex items-center justify-center h-10 w-10 rounded-xl border transition shrink-0 ${
                 showComfortSettings
-                  ? "bg-indigo-50 border-indigo-200 text-indigo-650 dark:bg-indigo-955/40 dark:border-indigo-900/50 dark:text-indigo-400"
+                  ? "bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-950/40 dark:border-indigo-900/50 dark:text-indigo-400"
                   : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900"
               }`}
               title="Cognitive Comfort & Accessibility Settings"
@@ -2365,7 +2439,7 @@ export const AttemptTestPage = () => {
             </button>
 
             {showComfortSettings && (
-              <div className="absolute right-0 mt-3 w-80 rounded-2xl bg-white dark:bg-slate-950 text-slate-850 dark:text-slate-100 p-5 shadow-2xl border border-slate-200 dark:border-slate-800 z-50 animate-fade-in font-sans">
+              <div className="absolute right-0 mt-3 w-80 rounded-2xl bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 p-5 shadow-2xl border border-slate-200 dark:border-slate-800 z-50 animate-fade-in font-sans">
                 <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-800 pb-2.5">
                   <h4 className="text-xs font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5 font-sans">
                     <Eye className="h-4 w-4 text-indigo-500" />
@@ -2403,8 +2477,8 @@ export const AttemptTestPage = () => {
                           }}
                           className={`py-1.5 px-3 rounded-lg border text-left transition font-bold ${
                             themeMode === t.id
-                              ? "bg-indigo-600 text-white border-indigo-650"
-                              : "border-slate-250 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-350"
+                              ? "bg-indigo-600 text-white border-indigo-600"
+                              : "border-slate-300 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-300"
                           }`}
                         >
                           {t.name}
@@ -2432,7 +2506,7 @@ export const AttemptTestPage = () => {
                           }}
                           className={`flex-1 py-1 rounded-lg text-center transition font-bold ${
                             fontSize === s.id
-                              ? "bg-white dark:bg-slate-850 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                              ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
                               : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
                           }`}
                         >
@@ -2460,7 +2534,7 @@ export const AttemptTestPage = () => {
                           }}
                           className={`flex-1 py-1 rounded-lg text-center transition font-bold ${
                             lineHeight === lh.id
-                              ? "bg-white dark:bg-slate-850 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                              ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
                               : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
                           }`}
                         >
@@ -2489,8 +2563,8 @@ export const AttemptTestPage = () => {
                           }}
                           className={`py-1.5 px-3 rounded-lg border text-left transition font-bold ${
                             tintFilter === filter.id
-                              ? "bg-indigo-600 text-white border-indigo-650"
-                              : "border-slate-250 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-300"
+                              ? "bg-indigo-600 text-white border-indigo-600"
+                              : "border-slate-300 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-300"
                           }`}
                         >
                           {filter.name}
@@ -2571,7 +2645,7 @@ export const AttemptTestPage = () => {
                 : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200"
             }`}
           >
-            <Clock className={`h-4 w-4 ${timeLeft !== null && timeLeft < 300 ? "text-rose-550 animate-bounce" : "text-slate-500"}`} />
+            <Clock className={`h-4 w-4 ${timeLeft !== null && timeLeft < 300 ? "text-rose-500 animate-bounce" : "text-slate-500"}`} />
             <span>{formattedTimeLeft}</span>
           </div>
 
@@ -2605,11 +2679,11 @@ export const AttemptTestPage = () => {
                   <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
                   <span>Answered ({stats.answered})</span>
                 </div>
-                <div className="bg-rose-50 dark:bg-rose-955/20 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-350 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 shadow-sm">
+                <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 shadow-sm">
                   <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0 animate-pulse" />
                   <span>Not Answered ({stats.notAnswered})</span>
                 </div>
-                <div className="bg-purple-50 dark:bg-purple-955/20 border border-purple-200 dark:border-purple-900/50 text-purple-700 dark:text-purple-300 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 shadow-sm">
+                <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50 text-purple-700 dark:text-purple-300 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 shadow-sm">
                   <span className="h-2 w-2 rounded-full bg-purple-500 shrink-0" />
                   <span>Marked ({stats.marked})</span>
                 </div>
@@ -2652,7 +2726,7 @@ export const AttemptTestPage = () => {
                           </h3>
                         </div>
                         <div 
-                          className="text-sm text-slate-650 dark:text-slate-350 leading-relaxed whitespace-pre-wrap font-semibold max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar"
+                          className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-semibold max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar"
                           style={getPassageStyle()}
                         >
                           {passageCache[currentQuestion.passage_id].content}
@@ -2715,7 +2789,7 @@ export const AttemptTestPage = () => {
                               } active-choice`
                             : isMSQ
                               ? "border-slate-200 dark:border-slate-800/80 hover:border-fuchsia-300 dark:hover:border-fuchsia-700 bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:bg-fuchsia-50/10 dark:hover:bg-fuchsia-950/10 hover:-translate-y-0.5 hover:shadow-md"
-                              : "border-slate-200 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-700 bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:bg-indigo-50/10 dark:hover:bg-indigo-955/10 hover:-translate-y-0.5 hover:shadow-md"
+                              : "border-slate-200 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-700 bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:bg-indigo-50/10 dark:hover:bg-indigo-950/10 hover:-translate-y-0.5 hover:shadow-md"
                         }`}
                       >
                         <div className="flex items-center gap-4">
@@ -2724,7 +2798,7 @@ export const AttemptTestPage = () => {
                               className={`h-8 w-8 rounded-xl flex items-center justify-center font-extrabold text-xs border transition-all duration-300 shrink-0 ${
                                 isSelected
                                   ? "bg-gradient-to-tr from-fuchsia-600 to-purple-500 border-none text-white shadow-md shadow-fuchsia-500/25 rotate-6 scale-105 animate-scale-in"
-                                  : "border-fuchsia-100 dark:border-purple-900/50 bg-fuchsia-50/40 dark:bg-purple-955/20 text-fuchsia-600 dark:text-purple-400"
+                                  : "border-fuchsia-100 dark:border-purple-900/50 bg-fuchsia-50/40 dark:bg-purple-950/20 text-fuchsia-600 dark:text-purple-400"
                               }`}
                             >
                               {optionLetter}
@@ -2857,18 +2931,18 @@ export const AttemptTestPage = () => {
             const isCurrent = currentIdx === idx;
             const inActiveSec = isQuestionInActiveSection(idx);
 
-            let btnBg = "bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-955 dark:border-slate-800";
+            let btnBg = "bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-950 dark:border-slate-800";
 
             if (!inActiveSec) {
-              btnBg = "bg-slate-100/50 border-slate-200/45 text-slate-300 dark:bg-slate-950/40 dark:border-slate-850/50 cursor-not-allowed opacity-30";
+              btnBg = "bg-slate-100/50 border-slate-200/45 text-slate-300 dark:bg-slate-950/40 dark:border-slate-800/50 cursor-not-allowed opacity-30";
             } else if (isAns && isMarked) {
               btnBg = "bg-purple-500 border-purple-500 text-white";
             } else if (isMarked) {
-              btnBg = "bg-purple-100 border-purple-200 text-purple-700 dark:bg-purple-955/30 dark:border-purple-900/50 dark:text-purple-300";
+              btnBg = "bg-purple-100 border-purple-200 text-purple-700 dark:bg-purple-950/30 dark:border-purple-900/50 dark:text-purple-300";
             } else if (isAns) {
               btnBg = "bg-emerald-500 border-emerald-500 text-white";
             } else if (isVis) {
-              btnBg = "bg-rose-100 border-rose-200 text-rose-700 dark:bg-rose-955/30 dark:border-rose-900/50 dark:text-rose-350";
+              btnBg = "bg-rose-100 border-rose-200 text-rose-700 dark:bg-rose-950/30 dark:border-rose-900/50 dark:text-rose-300";
             }
 
             return (
@@ -2907,7 +2981,7 @@ export const AttemptTestPage = () => {
           </>
         }
       >
-        <div className="text-slate-650 dark:text-slate-300 text-sm">
+        <div className="text-slate-600 dark:text-slate-300 text-sm">
           <p className="font-bold text-slate-800 dark:text-slate-100 text-base mb-3">Are you sure you want to submit your test?</p>
           <p className="mb-4">Once submitted, you will not be able to edit any answers.</p>
 
@@ -2947,7 +3021,7 @@ export const AttemptTestPage = () => {
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed font-semibold">
             Exiting fullscreen is a proctoring violation. This event has been recorded and reported to the system administrator.
           </p>
-          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-3 inline-block font-bold text-rose-600 mb-2">
+          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-3 inline-block font-bold text-rose-600 mb-2">
             Fullscreen Violations: {fullscreenViolations}
           </div>
           <p className="text-xs text-slate-400 mt-2 font-semibold">
@@ -2977,12 +3051,12 @@ export const AttemptTestPage = () => {
           <Clock className="h-16 w-16 text-indigo-500 mx-auto mb-4 animate-pulse" />
           <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Section Time Expired!</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed font-semibold">
-            Time is up for <span className="text-indigo-650 dark:text-indigo-400 font-extrabold">"{timeoutInfo?.prevName}"</span>.
+            Time is up for <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">"{timeoutInfo?.prevName}"</span>.
           </p>
           <p className="text-xs text-slate-400 mt-2 font-semibold">
             You have been locked out of the previous section and automatically transitioned to:
           </p>
-          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-3 inline-block font-extrabold text-indigo-600 mt-2">
+          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-3 inline-block font-extrabold text-indigo-600 mt-2">
             {timeoutInfo?.nextName}
           </div>
         </div>
@@ -3010,7 +3084,7 @@ export const AttemptTestPage = () => {
           </>
         }
       >
-        <div className="text-slate-650 dark:text-slate-350 text-sm">
+        <div className="text-slate-600 dark:text-slate-300 text-sm">
           <p className="font-bold text-slate-805 dark:text-slate-100 text-base mb-3">
             Are you sure you want to submit the section "{test.sections && test.sections[activeSectionIdx]?.name}"?
           </p>

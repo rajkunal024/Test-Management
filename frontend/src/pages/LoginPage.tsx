@@ -56,6 +56,7 @@ export const LoginPage = () => {
       setCaptchaInput("");
     } catch (err) {
       console.error("Failed to load captcha:", err);
+      setError("Unable to load CAPTCHA from server. Please verify your connection or click retry.");
     } finally {
       setCaptchaLoading(false);
     }
@@ -133,7 +134,7 @@ export const LoginPage = () => {
   // ----------------------------------------------------
   if (role === "Student") {
     return (
-      <main className="relative flex min-h-screen items-center justify-center bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-950 p-6 font-outfit overflow-hidden">
+      <main className="relative flex min-h-screen items-center justify-center bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-950 p-4 sm:p-6 font-outfit overflow-hidden">
         {/* Floating background glowing circles */}
         <div className="absolute top-[10%] left-[20%] w-72 h-72 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[10%] right-[20%] w-80 h-80 rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none animate-pulse" />
@@ -144,11 +145,11 @@ export const LoginPage = () => {
         <div className="relative w-full max-w-[460px] z-10">
           <form
             onSubmit={submit}
-            className="w-full bg-white/10 dark:bg-slate-900/30 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl transition-all duration-300 hover:shadow-indigo-500/10 text-white"
+            className="w-full bg-white/10 dark:bg-slate-900/30 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl transition-all duration-300 hover:shadow-indigo-500/10 text-white"
           >
             {/* Back to Home Link */}
             <Link
-              to="/"
+              to="/#access-nodes"
               className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white font-bold mb-6 group transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
@@ -186,8 +187,8 @@ export const LoginPage = () => {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
-              {captchaData && (
-                <div className="flex gap-3 items-end mt-4">
+              {captchaData ? (
+                <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 sm:items-end mt-4">
                   {/* CAPTCHA Input */}
                   <div className="flex-1">
                     <Input
@@ -199,8 +200,8 @@ export const LoginPage = () => {
                     />
                   </div>
                   {/* CAPTCHA Display & Refresh Group */}
-                  <div className="flex items-center shrink-0 border border-[#e0e2fe] rounded-md overflow-hidden bg-[#f3f4ff] h-12">
-                    <div className="w-[150px] h-full flex items-center justify-center select-none bg-[#f3f4ff]">
+                  <div className="flex items-center justify-between sm:justify-start shrink-0 border border-[#e0e2fe] rounded-md overflow-hidden bg-[#f3f4ff] h-12">
+                    <div className="w-[140px] sm:w-[150px] h-full flex items-center justify-center select-none bg-[#f3f4ff]">
                       {captchaLoading ? (
                         <span className="text-[10px] text-indigo-600 animate-pulse font-mono font-bold tracking-wider">LOAD</span>
                       ) : (
@@ -213,12 +214,27 @@ export const LoginPage = () => {
                     <button
                       type="button"
                       onClick={refreshCaptcha}
-                      className="p-2.5 text-indigo-650 hover:text-indigo-800 hover:bg-[#e8e9ff] transition-all cursor-pointer h-full w-12 flex items-center justify-center bg-[#f3f4ff]"
+                      className="p-2.5 text-indigo-600 hover:text-indigo-800 hover:bg-[#e8e9ff] transition-all cursor-pointer h-full w-12 flex items-center justify-center bg-[#f3f4ff]"
                       title="Refresh CAPTCHA"
                     >
-                      <RotateCw className="h-4.5 w-4.5" />
+                      <RotateCw className={`h-4.5 w-4.5 ${captchaLoading ? "animate-spin" : ""}`} />
                     </button>
                   </div>
+                </div>
+              ) : (
+                <div className="mt-4 flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 text-xs">
+                  <span className="text-slate-400">
+                    {captchaLoading ? "Loading security CAPTCHA..." : "CAPTCHA not loaded"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={refreshCaptcha}
+                    disabled={captchaLoading}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 font-bold transition cursor-pointer"
+                  >
+                    <RotateCw className={`h-3.5 w-3.5 ${captchaLoading ? "animate-spin" : ""}`} />
+                    Retry
+                  </button>
                 </div>
               )}
             </div>
@@ -286,14 +302,14 @@ export const LoginPage = () => {
         </section>
 
         {/* Right Column: Form Panel */}
-        <section className="flex items-center justify-center p-8 border-l border-slate-100 dark:border-slate-800/30 relative z-10 min-h-screen">
+        <section className="flex items-center justify-center p-4 sm:p-8 border-l border-slate-100 dark:border-slate-800/30 relative z-10 min-h-screen">
           <form
             onSubmit={submit}
-            className="w-full max-w-[440px] flex flex-col justify-center bg-white dark:bg-[#0f0b18] border border-slate-200/60 dark:border-purple-950/20 rounded-3xl p-8 md:p-10 shadow-xl hover:shadow-purple-500/5 transition-all duration-300"
+            className="w-full max-w-[440px] flex flex-col justify-center bg-white dark:bg-[#0f0b18] border border-slate-200/60 dark:border-purple-950/20 rounded-3xl p-6 sm:p-8 md:p-10 shadow-xl hover:shadow-purple-500/5 transition-all duration-300"
           >
             {/* Go Back Link */}
             <Link
-              to="/"
+              to="/#access-nodes"
               className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-bold mb-6 group self-start transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
@@ -303,7 +319,7 @@ export const LoginPage = () => {
             {/* Header section */}
             <div className="mb-6 flex items-center justify-between">
               <Logo />
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black tracking-wider uppercase text-purple-600 bg-purple-550/10 border-purple-550/20 dark:text-purple-400 dark:bg-purple-500/10 dark:border-purple-500/20 font-mono">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black tracking-wider uppercase text-purple-600 bg-purple-500/10 border-purple-500/20 dark:text-purple-400 dark:bg-purple-500/10 dark:border-purple-500/20 font-mono">
                 <BookOpen className="h-3.5 w-3.5" />
                 Teacher Node
               </span>
@@ -332,8 +348,8 @@ export const LoginPage = () => {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
-              {captchaData && (
-                <div className="flex gap-3 items-end mt-4">
+              {captchaData ? (
+                <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 sm:items-end mt-4">
                   {/* CAPTCHA Input */}
                   <div className="flex-1">
                     <Input
@@ -345,8 +361,8 @@ export const LoginPage = () => {
                     />
                   </div>
                   {/* CAPTCHA Display & Refresh Group */}
-                  <div className="flex items-center shrink-0 border border-[#e0e2fe] rounded-md overflow-hidden bg-[#f3f4ff] h-12">
-                    <div className="w-[150px] h-full flex items-center justify-center select-none bg-[#f3f4ff]">
+                  <div className="flex items-center justify-between sm:justify-start shrink-0 border border-[#e0e2fe] rounded-md overflow-hidden bg-[#f3f4ff] h-12">
+                    <div className="w-[140px] sm:w-[150px] h-full flex items-center justify-center select-none bg-[#f3f4ff]">
                       {captchaLoading ? (
                         <span className="text-[10px] text-indigo-600 animate-pulse font-mono font-bold tracking-wider">LOAD</span>
                       ) : (
@@ -359,12 +375,27 @@ export const LoginPage = () => {
                     <button
                       type="button"
                       onClick={refreshCaptcha}
-                      className="p-2.5 text-indigo-650 hover:text-indigo-800 hover:bg-[#e8e9ff] transition-all cursor-pointer h-full w-12 flex items-center justify-center bg-[#f3f4ff]"
+                      className="p-2.5 text-indigo-600 hover:text-indigo-800 hover:bg-[#e8e9ff] transition-all cursor-pointer h-full w-12 flex items-center justify-center bg-[#f3f4ff]"
                       title="Refresh CAPTCHA"
                     >
-                      <RotateCw className="h-4.5 w-4.5" />
+                      <RotateCw className={`h-4.5 w-4.5 ${captchaLoading ? "animate-spin" : ""}`} />
                     </button>
                   </div>
+                </div>
+              ) : (
+                <div className="mt-4 flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+                  <span className="text-slate-500">
+                    {captchaLoading ? "Loading security CAPTCHA..." : "CAPTCHA not loaded"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={refreshCaptcha}
+                    disabled={captchaLoading}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 font-bold transition cursor-pointer"
+                  >
+                    <RotateCw className={`h-3.5 w-3.5 ${captchaLoading ? "animate-spin" : ""}`} />
+                    Retry
+                  </button>
                 </div>
               )}
             </div>
@@ -412,7 +443,7 @@ export const LoginPage = () => {
           <div className="relative z-10 flex items-center gap-3 self-start">
             <span className="text-2xl font-extrabold leading-none tracking-normal text-white font-outfit">Parikshya</span>
             <span className="h-4 w-px bg-white/20" />
-            <span className="text-[10px] font-black tracking-widest text-slate-550/80 uppercase font-mono mt-0.5">Mainframe Portal</span>
+            <span className="text-[10px] font-black tracking-widest text-slate-500/80 uppercase font-mono mt-0.5">Mainframe Portal</span>
           </div>
 
           <div className="relative z-10 flex flex-col items-start text-left my-auto max-w-md space-y-6">
@@ -432,14 +463,14 @@ export const LoginPage = () => {
         </section>
 
         {/* Right Column: Form Panel */}
-        <section className="flex items-center justify-center p-8 border-l border-slate-100 dark:border-slate-800/30 relative z-10 min-h-screen">
+        <section className="flex items-center justify-center p-4 sm:p-8 border-l border-slate-100 dark:border-slate-800/30 relative z-10 min-h-screen">
           <form
             onSubmit={submit}
-            className="w-full max-w-[440px] flex flex-col justify-center bg-white dark:bg-[#0c1322] border border-slate-200/60 dark:border-amber-950/20 rounded-3xl p-8 md:p-10 shadow-xl hover:shadow-amber-500/5 transition-all duration-300 text-slate-800 dark:text-white"
+            className="w-full max-w-[440px] flex flex-col justify-center bg-white dark:bg-[#0c1322] border border-slate-200/60 dark:border-amber-950/20 rounded-3xl p-6 sm:p-8 md:p-10 shadow-xl hover:shadow-amber-500/5 transition-all duration-300 text-slate-800 dark:text-white"
           >
             {/* Go Back Link */}
             <Link
-              to="/"
+              to="/#access-nodes"
               className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-bold mb-6 group self-start transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
@@ -449,7 +480,7 @@ export const LoginPage = () => {
             {/* Header section */}
             <div className="mb-6 flex items-center justify-between">
               <Logo />
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black tracking-wider uppercase text-amber-600 bg-amber-550/10 border-amber-550/20 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20 font-mono">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black tracking-wider uppercase text-amber-600 bg-amber-500/10 border-amber-500/20 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20 font-mono">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Admin Console
               </span>
@@ -510,8 +541,8 @@ export const LoginPage = () => {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                 />
-                {captchaData && (
-                  <div className="flex gap-3 items-end mt-4">
+                {captchaData ? (
+                  <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 sm:items-end mt-4">
                     {/* CAPTCHA Input */}
                     <div className="flex-1">
                       <Input
@@ -523,8 +554,8 @@ export const LoginPage = () => {
                       />
                     </div>
                     {/* CAPTCHA Display & Refresh Group */}
-                    <div className="flex items-center shrink-0 border border-[#e0e2fe] rounded-md overflow-hidden bg-[#f3f4ff] h-12">
-                      <div className="w-[150px] h-full flex items-center justify-center select-none bg-[#f3f4ff]">
+                    <div className="flex items-center justify-between sm:justify-start shrink-0 border border-[#e0e2fe] rounded-md overflow-hidden bg-[#f3f4ff] h-12">
+                      <div className="w-[140px] sm:w-[150px] h-full flex items-center justify-center select-none bg-[#f3f4ff]">
                         {captchaLoading ? (
                           <span className="text-[10px] text-indigo-600 animate-pulse font-mono font-bold tracking-wider">LOAD</span>
                         ) : (
@@ -537,12 +568,27 @@ export const LoginPage = () => {
                       <button
                         type="button"
                         onClick={refreshCaptcha}
-                        className="p-2.5 text-indigo-650 hover:text-indigo-800 hover:bg-[#e8e9ff] transition-all cursor-pointer h-full w-12 flex items-center justify-center bg-[#f3f4ff]"
+                        className="p-2.5 text-indigo-600 hover:text-indigo-800 hover:bg-[#e8e9ff] transition-all cursor-pointer h-full w-12 flex items-center justify-center bg-[#f3f4ff]"
                         title="Refresh CAPTCHA"
                       >
-                        <RotateCw className="h-4.5 w-4.5" />
+                        <RotateCw className={`h-4.5 w-4.5 ${captchaLoading ? "animate-spin" : ""}`} />
                       </button>
                     </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+                    <span className="text-slate-500">
+                      {captchaLoading ? "Loading security CAPTCHA..." : "CAPTCHA not loaded"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={refreshCaptcha}
+                      disabled={captchaLoading}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 font-bold transition cursor-pointer"
+                    >
+                      <RotateCw className={`h-3.5 w-3.5 ${captchaLoading ? "animate-spin" : ""}`} />
+                      Retry
+                    </button>
                   </div>
                 )}
               </div>

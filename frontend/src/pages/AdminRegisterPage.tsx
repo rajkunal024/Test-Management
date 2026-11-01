@@ -13,7 +13,13 @@ import {
   Bookmark,
   Edit2,
   Trash2,
-  Plus
+  Plus,
+  ShieldCheck,
+  Settings,
+  Users,
+  Eye,
+  Search,
+  Check
 } from "lucide-react";
 import { 
   registerUser, 
@@ -41,6 +47,7 @@ import {
   getAdminUsers,
   getErrorMessage 
 } from "../services/api";
+import { useAuthStore } from "../store/authStore";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
@@ -49,9 +56,11 @@ import { DynamicLogo } from "../components/layout/DynamicLogo";
 import { PageWrapper } from "../components/layout/PageWrapper";
 
 export const AdminRegisterPage: React.FC = () => {
+  const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"students" | "teachers" | "subjects" | "classes" | "programs" | "sessions" | "semesters">("students");
   const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
 
   // Fetch Organization profile to determine School vs College features
   const { data: orgData } = useQuery({
@@ -68,6 +77,21 @@ export const AdminRegisterPage: React.FC = () => {
   const { data: programs = [] } = useQuery({ queryKey: ["programs"], queryFn: getPrograms, enabled: !isSchool });
   const { data: semesters = [] } = useQuery({ queryKey: ["semesters"], queryFn: getSemesters, enabled: !isSchool });
   const { data: registeredUsers = [] } = useQuery({ queryKey: ["admin-users"], queryFn: getAdminUsers });
+
+  const filteredRegisteredUsers = useMemo(() => {
+    return registeredUsers
+      .filter((item) => item.role === (activeTab === "students" ? "Student" : "Teacher"))
+      .filter((item) => {
+        if (!userSearch.trim()) return true;
+        const q = userSearch.toLowerCase();
+        return (
+          (item.name || "").toLowerCase().includes(q) ||
+          (item.email || "").toLowerCase().includes(q) ||
+          (item.class || "").toLowerCase().includes(q) ||
+          (item.subject || "").toLowerCase().includes(q)
+        );
+      });
+  }, [registeredUsers, activeTab, userSearch]);
 
   useEffect(() => {
     setShowCreatePanel(false);
@@ -474,424 +498,632 @@ export const AdminRegisterPage: React.FC = () => {
   return (
     <AppShell>
       <PageWrapper>
-    <div className="admin-registration-page">
-      {/* Dynamic Heading with Branding Context */}
-      <div className="admin-registration-hero mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <span className="admin-registration-kicker">Academic operations</span>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-            Registration center
-          </h1>
-          <p className="mt-1.5 text-sm font-medium text-slate-500 dark:text-slate-400">
-            Setup classrooms, subjects, sessions, or onboard new academic staff and candidates.
-          </p>
-        </div>
-        <div className="admin-registration-org">
-          {orgData?.logo ? (
-            <DynamicLogo src={orgData.logo} alt={orgData.name || "Organization"} />
-          ) : (
-            <span className="admin-registration-org-fallback">
-              {(orgData?.name || "O").charAt(0).toUpperCase()}
-            </span>
-          )}
-          <div><b>{orgData?.name || "Organization"}</b><small>{orgData?.orgType ?? "School"} workspace</small></div>
-        </div>
-      </div>
+        <div className="space-y-6">
+          {/* ── ADMIN COMMAND CENTER HERO ── */}
+          <div className="admin-hero p-6 sm:p-8">
+            <div className="absolute bottom-0 left-0 -ml-8 -mb-8 h-48 w-48 rounded-full" style={{background:'radial-gradient(circle,rgba(6,182,212,0.12) 0%,transparent 70%)'}} />
+            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+              <div className="flex-1 min-w-0">
+                <div className="mb-3 inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-[0.14em]" style={{background:'rgba(99,102,241,0.12)',borderColor:'rgba(99,102,241,0.3)',color:'#a5b4fc'}}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                  PARIKSHYA · REGISTRATION CENTER
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                  {orgData?.name || user?.organizationName || "Organization"}<br />
+                  <span style={{background:'linear-gradient(90deg,#a5b4fc,#67e8f9)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}} className="text-xl sm:text-2xl font-black">Academic Operations Hub</span>
+                </h1>
+                <p className="mt-2.5 text-xs sm:text-sm leading-relaxed max-w-lg" style={{color:'rgba(203,213,225,0.7)'}}>
+                  Onboard students &amp; faculty, configure classrooms, subjects, sessions, and manage your entire academic infrastructure.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2 items-center">
+                  <span className="inline-flex items-center gap-2 text-[10px] font-bold rounded-lg px-3 py-1.5" style={{background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8'}}>
+                    <ShieldCheck className="h-3.5 w-3.5" style={{color: '#818cf8'}} />
+                    {user?.name || 'Administrator'} · Operations Admin
+                  </span>
+                  <span className="inline-flex items-center gap-2 text-[10px] font-bold rounded-lg px-3 py-1.5" style={{background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8'}}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Academic Engine · Active
+                  </span>
+                </div>
+              </div>
 
-      <div className="admin-registration-layout grid gap-8 lg:grid-cols-[250px_1fr]">
-        {/* Sidebar Nav Tabs inside registration page */}
-        <aside className="admin-registration-tabs space-y-1">
-          <button
-            onClick={() => { setActiveTab("students"); setFormError(""); setFormSuccess(""); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-bold transition-all uppercase tracking-wide ${
-              activeTab === "students"
-                ? "bg-[#4B52DC] text-white shadow-lg shadow-indigo-600/10"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
-            }`}
-          >
-            <UserPlus className="h-4.5 w-4.5" />
-            Students
-          </button>
-
-          <button
-            onClick={() => { setActiveTab("teachers"); setFormError(""); setFormSuccess(""); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-bold transition-all uppercase tracking-wide ${
-              activeTab === "teachers"
-                ? "bg-[#4B52DC] text-white shadow-lg shadow-indigo-600/10"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
-            }`}
-          >
-            <BookOpen className="h-4.5 w-4.5" />
-            Teachers
-          </button>
-          
-          {isSchool ? (
-            <button
-              onClick={() => { setActiveTab("classes"); setClsError(""); setClsSuccess(""); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-bold transition-all uppercase tracking-wide ${
-                activeTab === "classes"
-                  ? "bg-[#4B52DC] text-white shadow-lg shadow-indigo-600/10"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
-              }`}
-            >
-              <School className="h-4.5 w-4.5" />
-              Classes
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={() => { setActiveTab("programs"); setProgError(""); setProgSuccess(""); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-bold transition-all uppercase tracking-wide ${
-                  activeTab === "programs"
-                    ? "bg-[#4B52DC] text-white shadow-lg shadow-indigo-600/10"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
-                }`}
-              >
-                <GraduationCap className="h-4.5 w-4.5" />
-                Programs
-              </button>
-
-              <button
-                onClick={() => { setActiveTab("semesters"); setSemError(""); setSemSuccess(""); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-bold transition-all uppercase tracking-wide ${
-                  activeTab === "semesters"
-                    ? "bg-[#4B52DC] text-white shadow-lg shadow-indigo-600/10"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
-                }`}
-              >
-                <Bookmark className="h-4.5 w-4.5" />
-                Semesters
-              </button>
-            </>
-          )}
-
-          <button
-            onClick={() => { setActiveTab("subjects"); setSubjError(""); setSubjSuccess(""); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-bold transition-all uppercase tracking-wide ${
-              activeTab === "subjects"
-                ? "bg-[#4B52DC] text-white shadow-lg shadow-indigo-600/10"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
-            }`}
-          >
-            <BookOpen className="h-4.5 w-4.5" />
-            Subjects
-          </button>
-
-          <button
-            onClick={() => { setActiveTab("sessions"); setSessError(""); setSessSuccess(""); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-bold transition-all uppercase tracking-wide ${
-              activeTab === "sessions"
-                ? "bg-[#4B52DC] text-white shadow-lg shadow-indigo-600/10"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
-            }`}
-          >
-            <Calendar className="h-4.5 w-4.5" />
-            Sessions
-          </button>
-        </aside>
-
-        {/* Dynamic Details Panel */}
-        <main className="admin-registration-panel rounded-2xl border border-slate-200/80 bg-white/70 p-6 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/40 shadow-sm">
-          <div className="registration-inventory-header">
-            <div>
-              <span>Registered records</span>
-              <h2>
-                {activeTab === "students" && "Students"}
-                {activeTab === "teachers" && "Teachers"}
-                {activeTab === "subjects" && "Subjects"}
-                {activeTab === "classes" && "Classes"}
-                {activeTab === "programs" && "Programs"}
-                {activeTab === "sessions" && "Academic sessions"}
-              </h2>
+              {/* Right side command icon & strictly constrained logo box */}
+              <div className="shrink-0 flex items-center gap-3">
+                {orgData?.logo ? (
+                  <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl flex items-center justify-center p-2.5 overflow-hidden shrink-0" style={{background:'rgba(99,102,241,0.12)',border:'1px solid rgba(99,102,241,0.25)'}}>
+                    <DynamicLogo src={orgData.logo} alt={orgData.name||"Org"} className="max-h-full max-w-full object-contain" />
+                  </div>
+                ) : null}
+                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl flex flex-col items-center justify-center gap-1 shrink-0" style={{background:'rgba(99,102,241,0.12)',border:'1px solid rgba(99,102,241,0.25)'}}>
+                  <Settings className="h-7 w-7 sm:h-8 sm:w-8 animate-[spin_20s_linear_infinite]" style={{color:'#818cf8'}} />
+                  <span className="text-[8px] font-black uppercase tracking-widest" style={{color:'#6366f1'}}>ADMIN</span>
+                </div>
+              </div>
             </div>
-            <Button
-              onClick={() => {
-                setShowCreatePanel((value) => !value);
-                if (!showCreatePanel && (activeTab === "students" || activeTab === "teachers")) setRegWizardStep(1);
-              }}
-              icon={showCreatePanel ? undefined : <UserPlus className="h-4 w-4"/>}
-              variant={showCreatePanel ? "secondary" : undefined}
-            >
-              {showCreatePanel ? "View registered" : "Add new"}
-            </Button>
           </div>
 
-          {!showCreatePanel ? (
-            <div className="registration-inventory">
-              {(activeTab === "students" || activeTab === "teachers") && (
-                registeredUsers.filter((item) => item.role === (activeTab === "students" ? "Student" : "Teacher")).length > 0
-                ? (
-                  <div className="registration-people-table-wrap">
-                    <table className="registration-people-table">
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                          <th>Email</th>
-                          <th>Gender</th>
-                          <th>Date of birth</th>
-                          <th>{activeTab === "students" ? "Class" : "Subject"}</th>
-                          <th>Status</th>
-                          <th className="w-20 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {registeredUsers
-                          .filter((item) => item.role === (activeTab === "students" ? "Student" : "Teacher"))
-                          .map((item) => (
-                            <tr key={item.id || item.email}>
-                              <td>
-                                <div className="registration-person-name">
-                                  <div className="registration-inventory-avatar">
-                                    {item.profilePicture ? <img src={item.profilePicture} alt=""/> : (item.name || "U").charAt(0).toUpperCase()}
-                                  </div>
-                                  <b>{item.name}</b>
-                                </div>
-                              </td>
-                              <td>{item.email}</td>
-                              <td>{item.gender || "—"}</td>
-                              <td>{item.dob || "—"}</td>
-                              <td>
-                                <span className="registration-assignment">
-                                  {activeTab === "teachers" ? (
-                                    isSchool ? (item.subject || "—") : (item.subjects && item.subjects.length > 0 ? item.subjects.join(", ") : (item.subject || "—"))
-                                  ) : (
-                                    isSchool ? (item.class || "—") : (item.program_id ? `${programs.find(p => p.id === item.program_id)?.name || item.program_id} (Sem ${item.semester || 1})` : "—")
-                                  )}
-                                </span>
-                              </td>
-                              <td><span className="registration-active-status"><i/>Active</span></td>
-                              <td>
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    onClick={() => {
-                                      const userIdKey = (item.userId || item.email) ?? "";
-                                      setEditingUserId(userIdKey);
-                                      setRegName(item.name || "");
-                                      setRegEmail(item.email || "");
-                                      setRegDob(item.dob || "");
-                                      setRegGender(item.gender || "Male");
-                                      setRegJoinedAt(item.joined_at ? new Date(item.joined_at).toISOString().split("T")[0] : "");
-                                      setRegRole((item.role === "Teacher" ? "Teacher" : "Student") as "Student" | "Teacher");
-                                      if (item.role === "Teacher") {
-                                        setRegSubject(item.subject || "");
-                                        setRegSubjects(item.subjects || []);
-                                        setRegProgram(item.program_id || (item.program_ids && item.program_ids.length > 0 ? item.program_ids[0] : ""));
-                                      } else {
-                                        setRegClass(item.class || "");
-                                        setRegSession(item.session || "");
-                                        setRegProgram(item.program_id || "");
-                                        setRegSemester(item.semester || 1);
-                                      }
-                                      setRegMethod("manual");
-                                      setRegWizardStep(2);
-                                      setShowCreatePanel(true);
-                                    }}
-                                    className="p-1.5 text-slate-500 hover:text-[#4B52DC] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                                    title="Edit user"
-                                  >
-                                    <Edit2 className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={async () => {
-                                      const userIdKey = (item.userId || item.email) ?? "";
-                                      if (confirm(`Are you sure you want to delete ${item.name || "this user"}?`)) {
-                                        try {
-                                          await deleteUser(userIdKey);
-                                          queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-                                        } catch (err) {
-                                          alert("Error deleting user: " + getErrorMessage(err));
-                                        }
-                                      }
-                                    }}
-                                    className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
-                                    title="Delete user"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
+          {/* ── COMMAND CENTER STATS ── */}
+          <section className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: 'Students', value: registeredUsers.filter(u => u.role === 'Student').length, icon: Users, tag: 'Enrolled', accent: '#6366f1', glow: 'rgba(99,102,241,0.15)', border: 'rgba(99,102,241,0.2)' },
+              { label: 'Faculty', value: registeredUsers.filter(u => u.role === 'Teacher').length, icon: GraduationCap, tag: 'Active', accent: '#10b981', glow: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.2)' },
+              { label: 'Subjects', value: subjects.length, icon: BookOpen, tag: 'Curricula', accent: '#f59e0b', glow: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.2)' },
+              { label: isSchool ? 'Classes' : 'Programs', value: isSchool ? classes.length : programs.length, icon: School, tag: 'Academic', accent: '#8b5cf6', glow: 'rgba(139,92,246,0.15)', border: 'rgba(139,92,246,0.2)' },
+            ].map(({ label, value, icon: Icon, tag, accent, glow, border }) => (
+              <article key={label} className="admin-stat-card p-4 sm:p-5 flex flex-col gap-3">
+                <div className="card-accent-bar" style={{background: `linear-gradient(90deg, ${accent}, transparent)`}} />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{background: glow, border: `1px solid ${border}`}}>
+                    <Icon className="h-5 w-5" style={{color: accent}} />
                   </div>
-                )
-                : <div className="registration-inventory-empty">No {activeTab} have been registered yet.</div>
-              )}
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider rounded-full px-2 py-1" style={{background: glow, color: accent, border: `1px solid ${border}`}}>{tag}</span>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{color: accent}}>{label}</p>
+                  <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-0.5 tracking-tight font-mono">{value}</h3>
+                </div>
+              </article>
+            ))}
+          </section>
 
-              {activeTab === "subjects" && (
-                subjects.length > 0 ? subjects.map((item) => (
-                  <article key={item.id} className="registration-inventory-row compact">
-                    <div className="registration-inventory-icon"><BookOpen className="h-4 w-4"/></div>
-                    <div className="registration-inventory-primary">
-                      <b>{item.name}</b>
-                      {!isSchool && (item.program_semesters?.length || item.program_ids?.length) ? (
-                        <span className="text-[10px] text-[#4B52DC] font-semibold mt-0.5 block">
-                          Linked to: {
-                            item.program_semesters && item.program_semesters.length > 0
-                              ? item.program_semesters.map((ps: any) => {
-                                  const progName = programs.find(p => p.id === ps.program_id)?.name || ps.program_id;
-                                  return `${progName} (Semester ${ps.semester})`;
-                                }).join(", ")
-                              : item.program_ids && item.program_ids.length > 0
-                                ? item.program_ids.map((pid: string) => programs.find(p => p.id === pid)?.name || pid).join(", ")
-                                : "—"
-                          }
-                        </span>
+          <div className="grid gap-6 lg:grid-cols-[230px_1fr]">
+            {/* ── Sidebar Nav ── */}
+            <aside className="flex flex-row overflow-x-auto gap-1.5 lg:flex-col pb-2 lg:pb-0 scrollbar-none">
+              <div className="hidden lg:block admin-section-card p-3 space-y-1">
+                <p className="px-3 py-2 text-[9px] font-black uppercase tracking-widest text-indigo-500">User Management</p>
+                {[
+                  { tab: 'students', label: 'Students', count: registeredUsers.filter(u => u.role === 'Student').length, icon: Users, action: () => { setActiveTab('students'); setFormError(''); setFormSuccess(''); } },
+                  { tab: 'teachers', label: 'Teachers', count: registeredUsers.filter(u => u.role === 'Teacher').length, icon: GraduationCap, action: () => { setActiveTab('teachers'); setFormError(''); setFormSuccess(''); } },
+                ].map(({ tab, label, count, icon: Icon, action }) => (
+                  <button key={tab} onClick={action} className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-bold transition-all mb-0.5 cursor-pointer ${
+                    activeTab === tab ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`} style={activeTab === tab ? {background:'rgba(99,102,241,0.08)',borderLeft:'3px solid #6366f1',paddingLeft:'10px'} : {}}>
+                    <span className="flex items-center gap-2.5"><Icon className="h-4 w-4 shrink-0" />{label}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{count}</span>
+                  </button>
+                ))}
+                <p className="px-3 py-2 mt-3 text-[9px] font-black uppercase tracking-widest text-indigo-500">Academic Structure</p>
+                {isSchool ? (
+                  <button onClick={() => { setActiveTab('classes'); setClsError(''); setClsSuccess(''); }} className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-bold transition-all mb-0.5 cursor-pointer ${
+                    activeTab === 'classes' ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`} style={activeTab === 'classes' ? {background:'rgba(99,102,241,0.08)',borderLeft:'3px solid #6366f1',paddingLeft:'10px'} : {}}>
+                    <span className="flex items-center gap-2.5"><School className="h-4 w-4 shrink-0" />Classes</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{classes.length}</span>
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={() => { setActiveTab('programs'); setProgError(''); setProgSuccess(''); }} className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-bold transition-all mb-0.5 cursor-pointer ${
+                      activeTab === 'programs' ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`} style={activeTab === 'programs' ? {background:'rgba(99,102,241,0.08)',borderLeft:'3px solid #6366f1',paddingLeft:'10px'} : {}}>
+                      <span className="flex items-center gap-2.5"><GraduationCap className="h-4 w-4 shrink-0" />Programs</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{programs.length}</span>
+                    </button>
+                    <button onClick={() => { setActiveTab('semesters'); setSemError(''); setSemSuccess(''); }} className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-bold transition-all mb-0.5 cursor-pointer ${
+                      activeTab === 'semesters' ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`} style={activeTab === 'semesters' ? {background:'rgba(99,102,241,0.08)',borderLeft:'3px solid #6366f1',paddingLeft:'10px'} : {}}>
+                      <span className="flex items-center gap-2.5"><Bookmark className="h-4 w-4 shrink-0" />Semesters</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{semesters.length}</span>
+                    </button>
+                  </>
+                )}
+                {[
+                  { tab: 'subjects', label: 'Subjects', count: subjects.length, icon: BookOpen, action: () => { setActiveTab('subjects'); setSubjError(''); setSubjSuccess(''); } },
+                  { tab: 'sessions', label: 'Sessions', count: sessions.length, icon: Calendar, action: () => { setActiveTab('sessions'); setSessError(''); setSessSuccess(''); } },
+                ].map(({ tab, label, count, icon: Icon, action }) => (
+                  <button key={tab} onClick={action} className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-bold transition-all mb-0.5 cursor-pointer ${
+                    activeTab === tab ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`} style={activeTab === tab ? {background:'rgba(99,102,241,0.08)',borderLeft:'3px solid #6366f1',paddingLeft:'10px'} : {}}>
+                    <span className="flex items-center gap-2.5"><Icon className="h-4 w-4 shrink-0" />{label}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{count}</span>
+                  </button>
+                ))}
+              </div>
+              {/* Mobile horizontal scroll tabs */}
+              <div className="flex lg:hidden gap-2 overflow-x-auto pb-1 scrollbar-none">
+                {[
+                  { tab: 'students', label: 'Students', action: () => { setActiveTab('students'); setFormError(''); setFormSuccess(''); } },
+                  { tab: 'teachers', label: 'Teachers', action: () => { setActiveTab('teachers'); setFormError(''); setFormSuccess(''); } },
+                  ...(isSchool ? [{ tab: 'classes', label: 'Classes', action: () => { setActiveTab('classes'); setClsError(''); setClsSuccess(''); } }] : [{ tab: 'programs', label: 'Programs', action: () => { setActiveTab('programs'); setProgError(''); setProgSuccess(''); } }, { tab: 'semesters', label: 'Semesters', action: () => { setActiveTab('semesters'); setSemError(''); setSemSuccess(''); } }]),
+                  { tab: 'subjects', label: 'Subjects', action: () => { setActiveTab('subjects'); setSubjError(''); setSubjSuccess(''); } },
+                  { tab: 'sessions', label: 'Sessions', action: () => { setActiveTab('sessions'); setSessError(''); setSessSuccess(''); } },
+                ].map(({ tab, label, action }) => (
+                  <button key={tab} onClick={action} className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === tab ? 'text-white' : 'text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`} style={activeTab === tab ? {background:'linear-gradient(135deg,#4f46e5,#7c3aed)',boxShadow:'0 4px 12px rgba(79,70,229,0.3)'} : {}}>{label}</button>
+                ))}
+              </div>
+            </aside>
+
+            {/* Dynamic Details Panel */}
+            <main className="admin-section-card overflow-hidden">
+              <div className="admin-section-header justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="admin-section-icon">
+                    {activeTab === 'students' && <Users className="h-4 w-4" />}
+                    {activeTab === 'teachers' && <GraduationCap className="h-4 w-4" />}
+                    {activeTab === 'subjects' && <BookOpen className="h-4 w-4" />}
+                    {activeTab === 'classes' && <School className="h-4 w-4" />}
+                    {activeTab === 'programs' && <GraduationCap className="h-4 w-4" />}
+                    {activeTab === 'semesters' && <Bookmark className="h-4 w-4" />}
+                    {activeTab === 'sessions' && <Calendar className="h-4 w-4" />}
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-black text-slate-800 dark:text-white tracking-tight">
+                      {activeTab === "students" && "Registered Students"}
+                      {activeTab === "teachers" && "Faculty & Teachers"}
+                      {activeTab === "subjects" && "Curriculum Subjects"}
+                      {activeTab === "classes" && "Academic Classes"}
+                      {activeTab === "programs" && "Academic Programs"}
+                      {activeTab === "semesters" && "Academic Semesters"}
+                      {activeTab === "sessions" && "Academic Sessions"}
+                    </h2>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                      {activeTab === "students" && "Manage student enrollment, class allocations, and academic records."}
+                      {activeTab === "teachers" && "Manage teacher profiles, subject assignments, and permissions."}
+                      {activeTab === "subjects" && "Configure course subjects across departments and programs."}
+                      {activeTab === "classes" && "Organize class divisions, batches, and numeric order."}
+                      {activeTab === "programs" && "Setup degree streams, semesters, and program codes."}
+                      {activeTab === "semesters" && "Configure semesters and term structures."}
+                      {activeTab === "sessions" && "Manage academic years and current active terms."}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreatePanel((value) => !value);
+                    if (!showCreatePanel && (activeTab === "students" || activeTab === "teachers")) setRegWizardStep(1);
+                  }}
+                  className="admin-btn-primary"
+                >
+                  {showCreatePanel ? <Eye className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                  {showCreatePanel ? "View Registered" : `Add New ${activeTab === "students" ? "Student" : activeTab === "teachers" ? "Teacher" : "Record"}`}
+                </button>
+              </div>
+
+              {!showCreatePanel ? (
+                <div>
+                  {(activeTab === "students" || activeTab === "teachers") && (
+                    <>
+                      <div className="p-4 flex gap-3 flex-wrap items-center border-b border-[#e8ecff] dark:border-[rgba(99,102,241,0.12)]">
+                        <div className="relative flex-1 min-w-[200px]">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                          <input
+                            type="text"
+                            className="admin-search"
+                            placeholder={`Search ${activeTab === 'students' ? 'students' : 'teachers'} by name or email...`}
+                            value={userSearch}
+                            onChange={(e) => setUserSearch(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {filteredRegisteredUsers.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[780px] text-left text-sm admin-table">
+                            <thead>
+                              <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Gender</th>
+                                <th>Date of birth</th>
+                                <th>{activeTab === "students" ? "Class" : "Subject"}</th>
+                                <th>Status</th>
+                                <th className="text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredRegisteredUsers.map((item) => (
+                                <tr key={item.id || item.email}>
+                                  <td className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                                    <div className="flex items-center gap-3">
+                                      <div className="h-9 w-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 overflow-hidden" style={{background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.2)'}}>
+                                        {item.profilePicture ? <img src={item.profilePicture} alt="" className="h-full w-full object-cover"/> : (item.name || "U").charAt(0).toUpperCase()}
+                                      </div>
+                                      <span className="font-bold">{item.name}</span>
+                                    </div>
+                                  </td>
+                                  <td className="text-xs text-slate-500 dark:text-slate-400 font-mono">{item.email}</td>
+                                  <td className="text-xs text-slate-600 dark:text-slate-300 font-medium">{item.gender || "—"}</td>
+                                  <td className="text-xs text-slate-500 dark:text-slate-400 font-medium">{item.dob || "—"}</td>
+                                  <td>
+                                    <span className="text-[10px] font-bold rounded-md px-2.5 py-1" style={{background:'rgba(99,102,241,0.08)', color:'#6366f1', border:'1px solid rgba(99,102,241,0.15)'}}>
+                                      {activeTab === "teachers" ? (
+                                        isSchool ? (item.subject || "—") : (item.subjects && item.subjects.length > 0 ? item.subjects.join(", ") : (item.subject || "—"))
+                                      ) : (
+                                        isSchool ? (item.class || "—") : (item.program_id ? `${programs.find(p => p.id === item.program_id)?.name || item.program_id} (Sem ${item.semester || 1})` : "—")
+                                      )}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className="admin-badge-live">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                      Active
+                                    </span>
+                                  </td>
+                                  <td className="text-right">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <button
+                                        onClick={() => {
+                                          const userIdKey = (item.userId || item.email) ?? "";
+                                          setEditingUserId(userIdKey);
+                                          setRegName(item.name || "");
+                                          setRegEmail(item.email || "");
+                                          setRegDob(item.dob || "");
+                                          setRegGender(item.gender || "Male");
+                                          setRegJoinedAt(item.joined_at ? new Date(item.joined_at).toISOString().split("T")[0] : "");
+                                          setRegRole((item.role === "Teacher" ? "Teacher" : "Student") as "Student" | "Teacher");
+                                          if (item.role === "Teacher") {
+                                            setRegSubject(item.subject || "");
+                                            setRegSubjects(item.subjects || []);
+                                            setRegProgram(item.program_id || (item.program_ids && item.program_ids.length > 0 ? item.program_ids[0] : ""));
+                                          } else {
+                                            setRegClass(item.class || "");
+                                            setRegSession(item.session || "");
+                                            setRegProgram(item.program_id || "");
+                                            setRegSemester(item.semester || 1);
+                                          }
+                                          setRegMethod("manual");
+                                          setRegWizardStep(2);
+                                          setShowCreatePanel(true);
+                                        }}
+                                        className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                                        title="Edit user"
+                                      >
+                                        <Edit2 className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={async () => {
+                                          const userIdKey = (item.userId || item.email) ?? "";
+                                          if (confirm(`Are you sure you want to delete ${item.name || "this user"}?`)) {
+                                            try {
+                                              await deleteUser(userIdKey);
+                                              queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+                                            } catch (err) {
+                                              alert("Error deleting user: " + getErrorMessage(err));
+                                            }
+                                          }
+                                        }}
+                                        className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                        title="Delete user"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       ) : (
-                        <span>Available for assessment setup</span>
+                        <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-sm font-semibold">
+                          No {activeTab} found matching your criteria.
+                        </div>
                       )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingSubjectId(item.id);
-                          setSubjName(item.name);
-                          const linkedProgs = item.program_semesters 
-                            ? item.program_semesters.map((ps: any) => ps.program_id) 
-                            : (item.program_ids || []);
-                          setSubjPrograms(linkedProgs);
-                          const semsObj: Record<string, number> = {};
-                          item.program_semesters?.forEach((ps: any) => {
-                            semsObj[ps.program_id] = ps.semester;
-                          });
-                          setSubjSems(semsObj);
-                          setShowCreatePanel(true);
-                        }}
-                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition"
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm("Are you sure you want to delete this subject?")) {
-                            deleteSubjMutation.mutate(item.id);
-                          }
-                        }}
-                        disabled={deleteSubjMutation.isPending}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </article>
-                )) : <div className="registration-inventory-empty">No subjects have been registered yet.</div>
-              )}
+                    </>
+                  )}
 
-              {activeTab === "classes" && (
-                classes.length > 0 ? classes.map((item: any) => (
-                  <article key={item.id} className="registration-inventory-row compact">
-                    <div className="registration-inventory-icon"><School className="h-4 w-4"/></div>
-                    <div className="registration-inventory-primary"><b>{item.name}</b><span>Order {item.numericOrder ?? "—"}</span></div>
-                  </article>
-                )) : <div className="registration-inventory-empty">No classes have been registered yet.</div>
-              )}
+                  {activeTab === "subjects" && (
+                    subjects.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[700px] text-left text-sm admin-table">
+                          <thead>
+                            <tr>
+                              <th>Subject Name</th>
+                              <th>Curriculum Allocation</th>
+                              <th className="text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {subjects.map((item) => (
+                              <tr key={item.id}>
+                                <td className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{background:'rgba(99,102,241,0.1)', color:'#6366f1'}}>
+                                      <BookOpen className="h-4 w-4" />
+                                    </div>
+                                    {item.name}
+                                  </div>
+                                </td>
+                                <td>
+                                  {!isSchool && (item.program_semesters?.length || item.program_ids?.length) ? (
+                                    <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                                      Linked to: {
+                                        item.program_semesters && item.program_semesters.length > 0
+                                          ? item.program_semesters.map((ps: any) => {
+                                              const progName = programs.find(p => p.id === ps.program_id)?.name || ps.program_id;
+                                              return `${progName} (Sem ${ps.semester})`;
+                                            }).join(", ")
+                                          : item.program_ids && item.program_ids.length > 0
+                                            ? item.program_ids.map((pid: string) => programs.find(p => p.id === pid)?.name || pid).join(", ")
+                                            : "—"
+                                      }
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-slate-400 font-medium">Standard Assessment Curriculum</span>
+                                  )}
+                                </td>
+                                <td className="text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingSubjectId(item.id);
+                                        setSubjName(item.name);
+                                        const linkedProgs = item.program_semesters 
+                                          ? item.program_semesters.map((ps: any) => ps.program_id) 
+                                          : (item.program_ids || []);
+                                        setSubjPrograms(linkedProgs);
+                                        const semsObj: Record<string, number> = {};
+                                        item.program_semesters?.forEach((ps: any) => {
+                                          semsObj[ps.program_id] = ps.semester;
+                                        });
+                                        setSubjSems(semsObj);
+                                        setShowCreatePanel(true);
+                                      }}
+                                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                                      title="Edit subject"
+                                    >
+                                      <Edit2 className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (confirm("Are you sure you want to delete this subject?")) {
+                                          deleteSubjMutation.mutate(item.id);
+                                        }
+                                      }}
+                                      disabled={deleteSubjMutation.isPending}
+                                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                      title="Delete subject"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-sm font-semibold">No subjects have been registered yet.</div>
+                    )
+                  )}
 
-              {activeTab === "programs" && (
-                programs.length > 0 ? programs.map((item: any) => (
-                  <article key={item.id} className="registration-inventory-row compact">
-                    <div className="registration-inventory-icon"><GraduationCap className="h-4 w-4"/></div>
-                    <div className="registration-inventory-primary"><b>{item.name}</b><span>{item.code || "Program"}</span></div>
-                    
-                    <div className="flex items-center gap-3">
-                      <span className="registration-inventory-meta">{item.totalSemesters || "—"} semesters</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingProgramId(item.id);
-                          setProgName(item.name);
-                          setProgCode(item.code);
-                          setProgSems(item.totalSemesters);
-                          setShowCreatePanel(true);
-                        }}
-                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition"
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm("Are you sure you want to delete this program?")) {
-                            deleteProgMutation.mutate(item.id);
-                          }
-                        }}
-                        disabled={deleteProgMutation.isPending}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </article>
-                )) : <div className="registration-inventory-empty">No programs have been registered yet.</div>
-              )}
+                  {activeTab === "classes" && (
+                    classes.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[500px] text-left text-sm admin-table">
+                          <thead>
+                            <tr>
+                              <th>Class Name</th>
+                              <th>Numeric Order</th>
+                              <th className="text-right">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {classes.map((item: any) => (
+                              <tr key={item.id}>
+                                <td className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{background:'rgba(99,102,241,0.1)', color:'#6366f1'}}>
+                                      <School className="h-4 w-4" />
+                                    </div>
+                                    {item.name}
+                                  </div>
+                                </td>
+                                <td className="text-xs text-slate-500 font-mono">Order {item.numericOrder ?? "—"}</td>
+                                <td className="text-right">
+                                  <span className="admin-badge-live">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Active
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-sm font-semibold">No classes have been registered yet.</div>
+                    )
+                  )}
 
-              {activeTab === "semesters" && (
-                semesters.length > 0 ? semesters.map((item: any) => (
-                  <article key={item.id} className="registration-inventory-row compact">
-                    <div className="registration-inventory-icon"><Bookmark className="h-4 w-4"/></div>
-                    <div className="registration-inventory-primary">
-                      <b>{item.name}</b>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingSemesterId(item.id);
-                          setSemName(item.name);
-                          setShowCreatePanel(true);
-                        }}
-                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition"
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm("Are you sure you want to delete this semester?")) {
-                            deleteSemMutation.mutate(item.id);
-                          }
-                        }}
-                        disabled={deleteSemMutation.isPending}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </article>
-                )) : <div className="registration-inventory-empty">No semesters have been registered yet.</div>
-              )}
+                  {activeTab === "programs" && (
+                    programs.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[650px] text-left text-sm admin-table">
+                          <thead>
+                            <tr>
+                              <th>Program Name</th>
+                              <th>Code</th>
+                              <th>Duration</th>
+                              <th className="text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {programs.map((item: any) => (
+                              <tr key={item.id}>
+                                <td className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{background:'rgba(99,102,241,0.1)', color:'#6366f1'}}>
+                                      <GraduationCap className="h-4 w-4" />
+                                    </div>
+                                    {item.name}
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                    {item.code || "N/A"}
+                                  </span>
+                                </td>
+                                <td className="text-xs text-slate-500 font-medium">{item.totalSemesters || "—"} Semesters</td>
+                                <td className="text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingProgramId(item.id);
+                                        setProgName(item.name);
+                                        setProgCode(item.code);
+                                        setProgSems(item.totalSemesters);
+                                        setShowCreatePanel(true);
+                                      }}
+                                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                                      title="Edit program"
+                                    >
+                                      <Edit2 className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (confirm("Are you sure you want to delete this program?")) {
+                                          deleteProgMutation.mutate(item.id);
+                                        }
+                                      }}
+                                      disabled={deleteProgMutation.isPending}
+                                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                      title="Delete program"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-sm font-semibold">No programs have been registered yet.</div>
+                    )
+                  )}
 
-              {activeTab === "sessions" && (
-                sessions.length > 0 ? sessions.map((item: any) => (
-                  <article key={item.id} className="registration-inventory-row compact">
-                    <div className="registration-inventory-icon"><Calendar className="h-4 w-4"/></div>
-                    <div className="registration-inventory-primary"><b>{item.name}</b><span>Academic session</span></div>
-                    
-                    <div className="flex items-center gap-3">
-                      <span className={`registration-session-status ${item.isCurrent ? "current" : ""}`}>
-                        {item.isCurrent ? "Current" : "Registered"}
-                      </span>
-                      {!item.isCurrent && (
-                        <button
-                          type="button"
-                          onClick={() => setSessionCurrentMutation.mutate(item.id)}
-                          disabled={setSessionCurrentMutation.isPending}
-                          className="px-2 py-1 text-[10px] font-bold text-indigo-650 hover:text-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100/80 rounded-md border border-indigo-200/50 dark:border-indigo-900/40 transition-all cursor-pointer"
-                        >
-                          {setSessionCurrentMutation.isPending && setSessionCurrentMutation.variables === item.id ? "Setting..." : "Make Current"}
-                        </button>
-                      )}
-                    </div>
-                  </article>
-                )) : <div className="registration-inventory-empty">No academic sessions have been registered yet.</div>
-              )}
-            </div>
-          ) : (
-          <>
+                  {activeTab === "semesters" && (
+                    semesters.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[550px] text-left text-sm admin-table">
+                          <thead>
+                            <tr>
+                              <th>Semester Name</th>
+                              <th>Status</th>
+                              <th className="text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {semesters.map((item: any) => (
+                              <tr key={item.id}>
+                                <td className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{background:'rgba(99,102,241,0.1)', color:'#6366f1'}}>
+                                      <Bookmark className="h-4 w-4" />
+                                    </div>
+                                    {item.name}
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className="admin-badge-live">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Active Term
+                                  </span>
+                                </td>
+                                <td className="text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingSemesterId(item.id);
+                                        setSemName(item.name);
+                                        setShowCreatePanel(true);
+                                      }}
+                                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                                      title="Edit semester"
+                                    >
+                                      <Edit2 className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (confirm("Are you sure you want to delete this semester?")) {
+                                          deleteSemMutation.mutate(item.id);
+                                        }
+                                      }}
+                                      disabled={deleteSemMutation.isPending}
+                                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                      title="Delete semester"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-sm font-semibold">No semesters have been registered yet.</div>
+                    )
+                  )}
+
+                  {activeTab === "sessions" && (
+                    sessions.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[600px] text-left text-sm admin-table">
+                          <thead>
+                            <tr>
+                              <th>Academic Session</th>
+                              <th>Status</th>
+                              <th className="text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sessions.map((item: any) => (
+                              <tr key={item.id}>
+                                <td className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{background:'rgba(99,102,241,0.1)', color:'#6366f1'}}>
+                                      <Calendar className="h-4 w-4" />
+                                    </div>
+                                    {item.name}
+                                  </div>
+                                </td>
+                                <td>
+                                  {item.isCurrent ? (
+                                    <span className="admin-badge-live">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                      Current Active Session
+                                    </span>
+                                  ) : (
+                                    <span className="admin-badge-draft">Registered</span>
+                                  )}
+                                </td>
+                                <td className="text-right">
+                                  {!item.isCurrent && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSessionCurrentMutation.mutate(item.id)}
+                                      disabled={setSessionCurrentMutation.isPending}
+                                      className="h-8 px-3 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition cursor-pointer"
+                                    >
+                                      {setSessionCurrentMutation.isPending && setSessionCurrentMutation.variables === item.id ? "Setting..." : "Make Current"}
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-sm font-semibold">No academic sessions have been registered yet.</div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <div className="p-6 sm:p-8 space-y-6">
           
           {/* Tab 1: User Register Tab */}
           {(activeTab === "students" || activeTab === "teachers") && (
@@ -1021,7 +1253,7 @@ export const AdminRegisterPage: React.FC = () => {
                           />
                         ) : (
                           <div className="md:col-span-2 space-y-2">
-                            <label className="block text-xs font-extrabold uppercase text-slate-750 dark:text-slate-355 tracking-wider">
+                            <label className="block text-xs font-extrabold uppercase text-slate-700 dark:text-slate-355 tracking-wider">
                               Assigned Subjects (Select Multiple)
                             </label>
                             <div className="grid grid-cols-2 gap-2 border border-slate-200 dark:border-slate-800/85 p-4 rounded-xl bg-white/50 dark:bg-slate-900/20 max-h-40 overflow-y-auto">
@@ -1033,7 +1265,7 @@ export const AdminRegisterPage: React.FC = () => {
                                 return availableSubjects.map((s) => {
                                   const isChecked = regSubjects.includes(s.name);
                                   return (
-                                    <label key={s.id} className="flex items-center gap-2 text-xs font-semibold text-slate-650 dark:text-slate-350 cursor-pointer">
+                                    <label key={s.id} className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer">
                                       <input
                                         type="checkbox"
                                         checked={isChecked}
@@ -1136,7 +1368,7 @@ export const AdminRegisterPage: React.FC = () => {
                   </div>
 
                   <label className="block">
-                    <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-350">
+                    <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
                       Paste CSV Content Below
                     </span>
                     <textarea
@@ -1201,7 +1433,7 @@ export const AdminRegisterPage: React.FC = () => {
                 <Input label="Subject Name" placeholder="E.g., Mathematics, physics" value={subjName} onChange={(e) => setSubjName(e.target.value)} required />
                 {!isSchool && (
                   <div className="md:col-span-2 space-y-2">
-                    <label className="block text-xs font-extrabold uppercase text-slate-750 dark:text-slate-350 tracking-wider">
+                    <label className="block text-xs font-extrabold uppercase text-slate-700 dark:text-slate-300 tracking-wider">
                       Link to Programs (Select Multiple)
                     </label>
                     <div className="space-y-3 border border-slate-200 dark:border-slate-800/85 p-4 rounded-xl bg-white/50 dark:bg-slate-900/20 max-h-56 overflow-y-auto">
@@ -1209,7 +1441,7 @@ export const AdminRegisterPage: React.FC = () => {
                         const isChecked = subjPrograms.includes(p.id);
                         return (
                           <div key={p.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800/50 pb-2 last:border-b-0 last:pb-0">
-                            <label className="flex items-center gap-2 text-xs font-semibold text-slate-650 dark:text-slate-350 cursor-pointer">
+                            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={isChecked}
@@ -1226,7 +1458,7 @@ export const AdminRegisterPage: React.FC = () => {
                                     setSubjSems(prev => ({ ...prev, [p.id]: 1 }));
                                   }
                                 }}
-                                className="rounded border-slate-300 dark:border-slate-850 text-[#4B52DC] focus:ring-indigo-500"
+                                className="rounded border-slate-300 dark:border-slate-800 text-[#4B52DC] focus:ring-indigo-500"
                               />
                               <span>{p.name}</span>
                             </label>
@@ -1240,7 +1472,7 @@ export const AdminRegisterPage: React.FC = () => {
                                     const val = Number(e.target.value);
                                     setSubjSems(prev => ({ ...prev, [p.id]: val }));
                                   }}
-                                  className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-750 px-2 py-1 rounded-lg focus:outline-none focus:border-indigo-500 font-semibold text-slate-750 dark:text-slate-200"
+                                  className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded-lg focus:outline-none focus:border-indigo-500 font-semibold text-slate-700 dark:text-slate-200"
                                 >
                                   {Array.from({ length: p.totalSemesters || 10 }, (_, idx) => (
                                     <option key={idx + 1} value={idx + 1}>Semester {idx + 1}</option>
@@ -1450,12 +1682,11 @@ export const AdminRegisterPage: React.FC = () => {
               </div>
             </form>
           )}
-
-          </>
-          )}
-        </main>
-      </div>
-    </div>
+                </div>
+              )}
+            </main>
+          </div>
+        </div>
       </PageWrapper>
     </AppShell>
   );
