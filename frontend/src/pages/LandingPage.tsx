@@ -21,9 +21,25 @@ import {
 } from "lucide-react";
 import { Logo } from "../components/layout/Logo";
 import { useTheme } from "../context/ThemeContext";
+import { getOrganizationByDomainApi, TenantDomainInfo } from "../services/api";
 
 export const LandingPage = () => {
   const { toggleTheme, isDark } = useTheme();
+  const [tenantInfo, setTenantInfo] = useState<TenantDomainInfo | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    getOrganizationByDomainApi()
+      .then((info) => {
+        if (isMounted && info) {
+          setTenantInfo(info);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Gaze Tracking Cursor Offset State
   const [cursorPos, setCursorPos] = useState({ x: 150, y: 110 });
@@ -90,6 +106,14 @@ export const LandingPage = () => {
   return (
     <div className="min-h-screen bg-[#fafbfc] text-[#263246] font-outfit flex flex-col selection:bg-indigo-500 selection:text-white dark:bg-[#07090f] dark:text-slate-150 transition-colors duration-300 relative overflow-hidden">
       
+      {/* Optional Tenant Welcome Banner */}
+      {tenantInfo?.brandingBannerText && (
+        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 text-white text-xs font-bold py-2 px-4 text-center tracking-wide font-mono relative z-50 shadow-sm flex items-center justify-center gap-2">
+          <span>🏛️</span>
+          <span>{tenantInfo.name} — {tenantInfo.brandingBannerText}</span>
+        </div>
+      )}
+
       {/* Decorative Matrix Grid & Blob Backgrounds */}
       <div className="absolute inset-0 grid-cyber opacity-80 pointer-events-none" />
       <div className="absolute top-[-15%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-tr from-indigo-500/10 to-cyan-500/5 dark:from-indigo-950/15 dark:to-cyan-950/5 rounded-full blur-[140px] pointer-events-none animate-float -z-10" />
@@ -97,8 +121,22 @@ export const LandingPage = () => {
 
       {/* Glassmorphic Cyber Header */}
       <header className="h-20 bg-white/60 backdrop-blur-xl border-b border-slate-200/50 dark:bg-[#090d16]/70 dark:border-slate-800/80 px-6 sm:px-12 flex items-center justify-between sticky top-0 z-50 transition-all duration-300 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Logo />
+        <div className="flex items-center gap-3">
+          {tenantInfo?.logo ? (
+            <img src={tenantInfo.logo} alt={tenantInfo.name} className="h-9 w-9 object-contain rounded-lg p-1 bg-slate-100 dark:bg-white/10" />
+          ) : (
+            <Logo />
+          )}
+          {tenantInfo && (
+            <div className="flex flex-col">
+              <span className="font-extrabold text-base tracking-tight text-slate-800 dark:text-white font-outfit leading-tight">
+                {tenantInfo.name}
+              </span>
+              <span className="text-[10px] font-black tracking-widest text-indigo-500 uppercase font-mono">
+                {tenantInfo.code} Exam Portal
+              </span>
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-3 sm:gap-6">

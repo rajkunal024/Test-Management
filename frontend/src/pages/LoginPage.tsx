@@ -1,6 +1,6 @@
 import { FormEvent, useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { getErrorMessage, signupAdmin, fetchCaptcha, CaptchaResponse } from "../services/api";
+import { getErrorMessage, signupAdmin, fetchCaptcha, CaptchaResponse, getOrganizationByDomainApi, TenantDomainInfo } from "../services/api";
 import { useLogin } from "../hooks/useAuth";
 import { Logo } from "../components/layout/Logo";
 import { Button } from "../components/ui/Button";
@@ -78,6 +78,28 @@ export const LoginPage = () => {
   const [adminName, setAdminName] = useState("");
   const [adminKey, setAdminKey] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [tenantInfo, setTenantInfo] = useState<TenantDomainInfo | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchOrg = async () => {
+      try {
+        const org = await getOrganizationByDomainApi();
+        if (isMounted && org) {
+          setTenantInfo(org);
+          if (org.code) {
+            setAdminKey(org.code);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not resolve organization by domain:", err);
+      }
+    };
+    fetchOrg();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -156,15 +178,35 @@ export const LoginPage = () => {
               Back to Home
             </Link>
 
-            {/* Avatar Welcome graphic */}
+            {/* Avatar Welcome graphic / Tenant Branding */}
             <div className="flex flex-col items-center text-center mb-6">
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-cyan-400 to-indigo-500 text-3xl shadow-lg border-2 border-white/20 mb-3">
-                🎓
-              </div>
-              <Logo />
-              <span className="text-[10px] font-black tracking-widest text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-full px-3 py-0.5 mt-2 uppercase font-mono">
-                Student Portal
-              </span>
+              {tenantInfo?.logo ? (
+                <div className="h-16 w-16 rounded-2xl bg-white/10 p-2 flex items-center justify-center mb-3 shadow-lg border border-white/20">
+                  <img src={tenantInfo.logo} alt={tenantInfo.name} className="max-h-full max-w-full object-contain" />
+                </div>
+              ) : (
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-cyan-400 to-indigo-500 text-3xl shadow-lg border-2 border-white/20 mb-3">
+                  🎓
+                </div>
+              )}
+              {tenantInfo ? (
+                <div className="flex flex-col items-center">
+                  <h2 className="text-xl font-extrabold text-white font-outfit">{tenantInfo.name}</h2>
+                  <span className="text-[10px] font-black tracking-widest text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-full px-3 py-0.5 mt-1 uppercase font-mono">
+                    {tenantInfo.code} • Student Portal
+                  </span>
+                  {tenantInfo.brandingBannerText && (
+                    <p className="text-xs text-slate-300 mt-2 text-center max-w-xs">{tenantInfo.brandingBannerText}</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <Logo />
+                  <span className="text-[10px] font-black tracking-widest text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-full px-3 py-0.5 mt-2 uppercase font-mono">
+                    Student Portal
+                  </span>
+                </>
+              )}
             </div>
 
             <h1 className="mb-6 text-xl font-black text-center text-white font-outfit">
@@ -280,9 +322,16 @@ export const LoginPage = () => {
           <div className="absolute top-[15%] right-[-10%] w-[350px] h-[350px] rounded-full blur-[120px] bg-purple-500/20 pointer-events-none opacity-30 z-0" />
 
           <div className="relative z-10 flex items-center gap-3 self-start">
-            <span className="text-2xl font-extrabold leading-none tracking-normal text-white font-outfit">Parikshya</span>
+            {tenantInfo?.logo ? (
+              <img src={tenantInfo.logo} alt={tenantInfo.name} className="h-8 w-8 object-contain rounded-lg bg-white/10 p-1" />
+            ) : null}
+            <span className="text-2xl font-extrabold leading-none tracking-normal text-white font-outfit">
+              {tenantInfo?.name || "Parikshya"}
+            </span>
             <span className="h-4 w-px bg-white/20" />
-            <span className="text-[10px] font-black tracking-widest text-slate-500/80 uppercase font-mono mt-0.5">Authoring Centre</span>
+            <span className="text-[10px] font-black tracking-widest text-slate-500/80 uppercase font-mono mt-0.5">
+              {tenantInfo?.code ? `${tenantInfo.code} • ` : ""}Authoring Centre
+            </span>
           </div>
 
           <div className="relative z-10 flex flex-col items-start text-left my-auto max-w-md space-y-6">
@@ -318,7 +367,19 @@ export const LoginPage = () => {
 
             {/* Header section */}
             <div className="mb-6 flex items-center justify-between">
-              <Logo />
+              {tenantInfo ? (
+                <div className="flex items-center gap-2.5">
+                  {tenantInfo.logo && (
+                    <img src={tenantInfo.logo} alt={tenantInfo.name} className="h-8 w-8 object-contain rounded-lg bg-slate-100 dark:bg-white/10 p-1" />
+                  )}
+                  <div>
+                    <h2 className="text-lg font-black text-slate-800 dark:text-white leading-none font-outfit">{tenantInfo.name}</h2>
+                    <span className="text-[9px] font-bold text-slate-400 font-mono">{tenantInfo.code} Portal</span>
+                  </div>
+                </div>
+              ) : (
+                <Logo />
+              )}
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black tracking-wider uppercase text-purple-600 bg-purple-500/10 border-purple-500/20 dark:text-purple-400 dark:bg-purple-500/10 dark:border-purple-500/20 font-mono">
                 <BookOpen className="h-3.5 w-3.5" />
                 Teacher Node
@@ -412,9 +473,10 @@ export const LoginPage = () => {
 
             {/* Alert logs */}
             {error && (
-              <p className="mt-4 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 px-4 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 font-mono">
-                {error}
-              </p>
+              <div className="mt-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 px-4 py-3 text-xs font-bold text-rose-600 dark:text-rose-400 font-mono text-center flex items-center justify-center gap-2">
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
             )}
 
             {/* Submit button */}
@@ -441,9 +503,16 @@ export const LoginPage = () => {
           <div className="absolute top-[15%] right-[-10%] w-[350px] h-[350px] rounded-full blur-[120px] bg-amber-500/20 pointer-events-none opacity-30 z-0" />
 
           <div className="relative z-10 flex items-center gap-3 self-start">
-            <span className="text-2xl font-extrabold leading-none tracking-normal text-white font-outfit">Parikshya</span>
+            {tenantInfo?.logo ? (
+              <img src={tenantInfo.logo} alt={tenantInfo.name} className="h-8 w-8 object-contain rounded-lg bg-white/10 p-1" />
+            ) : null}
+            <span className="text-2xl font-extrabold leading-none tracking-normal text-white font-outfit">
+              {tenantInfo?.name || "Parikshya"}
+            </span>
             <span className="h-4 w-px bg-white/20" />
-            <span className="text-[10px] font-black tracking-widest text-slate-500/80 uppercase font-mono mt-0.5">Mainframe Portal</span>
+            <span className="text-[10px] font-black tracking-widest text-slate-500/80 uppercase font-mono mt-0.5">
+              {tenantInfo?.code ? `${tenantInfo.code} • ` : ""}Mainframe Portal
+            </span>
           </div>
 
           <div className="relative z-10 flex flex-col items-start text-left my-auto max-w-md space-y-6">
@@ -479,7 +548,19 @@ export const LoginPage = () => {
 
             {/* Header section */}
             <div className="mb-6 flex items-center justify-between">
-              <Logo />
+              {tenantInfo ? (
+                <div className="flex items-center gap-2.5">
+                  {tenantInfo.logo && (
+                    <img src={tenantInfo.logo} alt={tenantInfo.name} className="h-8 w-8 object-contain rounded-lg bg-slate-100 dark:bg-white/10 p-1" />
+                  )}
+                  <div>
+                    <h2 className="text-lg font-black text-slate-800 dark:text-white leading-none font-outfit">{tenantInfo.name}</h2>
+                    <span className="text-[9px] font-bold text-slate-400 font-mono">{tenantInfo.code} Portal</span>
+                  </div>
+                </div>
+              ) : (
+                <Logo />
+              )}
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black tracking-wider uppercase text-amber-600 bg-amber-500/10 border-amber-500/20 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20 font-mono">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Admin Console
@@ -625,9 +706,10 @@ export const LoginPage = () => {
               </p>
             )}
             {error && (
-              <p className="mt-4 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 px-4 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 font-mono font-mono">
-                {error}
-              </p>
+              <div className="mt-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 px-4 py-3 text-xs font-bold text-rose-600 dark:text-rose-400 font-mono text-center flex items-center justify-center gap-2">
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
             )}
 
             {/* Submit button */}

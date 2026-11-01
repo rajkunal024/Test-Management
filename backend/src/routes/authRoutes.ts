@@ -1,8 +1,12 @@
 import { IncomingMessage, ServerResponse } from "node:http";
-import { signupAdmin, login, logout, changePassword, forgotPassword, verifyOtpController, resetPassword, uploadProfilePicture, getCaptcha, loginStudentWithCaptcha, loginTeacherWithCaptcha, loginAdminWithCaptcha, getMe } from "../controllers/authController.js";
+import { signupAdmin, login, logout, changePassword, forgotPassword, verifyOtpController, resetPassword, uploadProfilePicture, getCaptcha, loginStudentWithCaptcha, loginTeacherWithCaptcha, loginAdminWithCaptcha, getMe, getOrganizationByDomain } from "../controllers/authController.js";
 import { json } from "../middlewares/utils.js";
 
 export const handleAuthRoutes = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
+  if (path === "/api/auth/organization-by-domain" && method === "GET") {
+    await getOrganizationByDomain(request, response);
+    return;
+  }
   if (path === "/api/auth/me" && method === "GET") {
     await getMe(request, response);
     return;

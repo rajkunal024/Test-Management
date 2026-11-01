@@ -40,8 +40,8 @@ export const getCorsOrigin = (origin?: string): string => {
     return origin;
   }
 
-  // Allow local network IP addresses (e.g. 192.168.x.x, 10.x.x.x)
-  if (/^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+  // Allow localhost, subdomains (*.localhost, *.local), and local network IP addresses
+  if (/^https?:\/\/([a-zA-Z0-9-]+\.)*(localhost|local|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin)) {
     return origin;
   }
 

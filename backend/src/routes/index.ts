@@ -29,6 +29,7 @@ const isPublicRoute = (path: string, method: string): boolean => {
   ) return true;
   
   const publicAuthPaths = [
+    "/api/auth/organization-by-domain",
     "/api/auth/login",
     "/api/auth/signup-admin",
     "/api/auth/forgot-password",

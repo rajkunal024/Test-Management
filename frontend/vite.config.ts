@@ -4,12 +4,19 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: "127.0.0.1",
+    host: true,
     proxy: {
       "/api": {
         target: process.env.VITE_PROXY_TARGET || "http://127.0.0.1:4000",
         changeOrigin: true,
         ws: true,
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq, req) => {
+            if (req.headers.host) {
+              proxyReq.setHeader("x-forwarded-host", req.headers.host);
+            }
+          });
+        },
       },
     },
   },

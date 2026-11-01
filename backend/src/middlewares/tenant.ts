@@ -2,6 +2,7 @@ import { IncomingMessage, ServerResponse } from "node:http";
 import { verifyToken } from "../utils/crypto.js";
 import { OrganizationModel } from "../models/index.js";
 import { json } from "./utils.js";
+import { getTenantFromRequest } from "../utils/tenantHelper.js";
 
 export interface AuthenticatedRequest extends IncomingMessage {
   user?: {
@@ -91,6 +92,16 @@ export const resolveTenant = async (
 
   if (organization.status !== "Active") {
     json(response, 403, { success: false, message: "Organization account is deactivated. Please contact support." });
+    return false;
+  }
+
+  // Enforce domain tenant isolation: if accessing via an organization domain/subdomain, token must match that organization
+  const domainOrg = await getTenantFromRequest(request);
+  if (domainOrg && orgId !== domainOrg.id) {
+    json(response, 403, {
+      success: false,
+      message: `Access denied: Your account belongs to a different organization and cannot perform actions on ${domainOrg.name}'s portal.`
+    });
     return false;
   }
 

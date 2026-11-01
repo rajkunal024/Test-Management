@@ -57,10 +57,27 @@ const collectErrorMessages = (value: unknown): string[] => {
   return [];
 };
 
+export const getTenantSubdomain = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const hostname = window.location.hostname;
+  const parts = hostname.split(".");
+  if (parts.length > 1) {
+    const sub = parts[0].toLowerCase().trim();
+    if (sub !== "www" && sub !== "localhost" && sub !== "127" && sub !== "app" && sub !== "api") {
+      return sub;
+    }
+  }
+  return null;
+};
+
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = useAuthStore.getState().token ?? localStorage.getItem("parikshya_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  const tenantSub = getTenantSubdomain();
+  if (tenantSub) {
+    config.headers["x-tenant-id"] = tenantSub;
   }
   // Strip leading slash from relative paths so baseURL subpath (/api/) is preserved
   if (config.url && config.url.startsWith("/") && !config.url.startsWith("//")) {
@@ -72,8 +89,8 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      const isLoginRequest = error.config?.url?.endsWith("/auth/login");
+    if (error.response?.status === 401 || (error.response?.status === 403 && (error.response?.data as any)?.message?.includes("different organization"))) {
+      const isLoginRequest = error.config?.url?.includes("/login") || error.config?.url?.includes("/auth/login");
       if (!isLoginRequest) {
         useAuthStore.getState().clearAuth();
         window.location.href = "/";
@@ -92,6 +109,22 @@ export const getErrorMessage = (error: unknown): string => {
   }
   if (error instanceof Error) return error.message;
   return "Something went wrong. Please try again.";
+};
+
+export interface TenantDomainInfo {
+  id: string;
+  name: string;
+  code: string;
+  logo?: string;
+  brandingBannerText?: string;
+  brandingColor?: string;
+  orgType?: string;
+  status?: string;
+}
+
+export const getOrganizationByDomainApi = async (): Promise<TenantDomainInfo | null> => {
+  const { data } = await api.get<ApiEnvelope<TenantDomainInfo | null>>("/auth/organization-by-domain");
+  return unwrap(data);
 };
 
 export const login = async (payload: LoginRequest): Promise<AuthResponse> => {

@@ -270,7 +270,8 @@ export const createOrganization = async (request: IncomingMessage, response: Ser
       status: status || "Active",
       brandingBannerText: brandingBannerText || "Welcome to Parikshya Online Testing Portal",
       brandingColor: brandingColor || "#4B52DC",
-      orgType: orgType || "School"
+      orgType: orgType || "School",
+      domain: (body.domain || code.toLowerCase().trim()).toLowerCase()
     });
 
     await newOrg.save();
@@ -638,6 +639,7 @@ export const updateOrganization = async (request: IncomingMessage, response: Ser
     if (contactEmail) org.contactEmail = contactEmail.toLowerCase().trim();
     if (phone !== undefined) org.phone = phone;
     if (address !== undefined) org.address = address;
+    if (body.domain !== undefined) org.set("domain", body.domain.toLowerCase().trim());
     if (brandingBannerText !== undefined) org.set("brandingBannerText", brandingBannerText);
     if (brandingColor !== undefined) org.set("brandingColor", brandingColor);
 

@@ -7,6 +7,33 @@ import { getUserFromRequest } from "../middlewares/auth.js";
 import bcrypt from "bcryptjs";
 import { requestOtp, verifyOtp as checkOtp, deleteOtp } from "../utils/otpStore.js";
 import { ImageKit } from "@imagekit/nodejs";
+import { getTenantFromRequest } from "../utils/tenantHelper.js";
+
+export const getOrganizationByDomain = async (request: IncomingMessage, response: ServerResponse) => {
+  try {
+    const org = await getTenantFromRequest(request);
+    if (!org) {
+      json(response, 200, { success: true, data: null });
+      return;
+    }
+    json(response, 200, {
+      success: true,
+      data: {
+        id: org.id,
+        name: org.name,
+        code: org.code,
+        logo: org.logo,
+        brandingBannerText: org.brandingBannerText,
+        brandingColor: org.brandingColor,
+        orgType: org.orgType,
+        status: org.status
+      }
+    });
+  } catch (e) {
+    console.error("Error fetching organization by domain:", e);
+    json(response, 500, { success: false, message: "Internal server error" });
+  }
+};
 
 export const signupAdmin = async (request: IncomingMessage, response: ServerResponse) => {
   try {
@@ -93,6 +120,16 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
         $or: [{ userId }, { email: userId }]
       });
       if (admin && verifyPassword(password, admin.password)) {
+        // Enforce domain tenant isolation
+        const domainOrg = await getTenantFromRequest(request);
+        if (domainOrg && admin.organization_id !== domainOrg.id) {
+          json(response, 403, {
+            success: false,
+            message: `Access denied: This account belongs to a different organization and cannot log in to ${domainOrg.name}'s portal.`
+          });
+          return;
+        }
+
         // Validate organization status
         const org = await OrganizationModel.findOne({ id: admin.organization_id });
         if (!org || org.status !== "Active") {
@@ -134,6 +171,16 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
         $or: [{ userId }, { email: userId }]
       });
       if (teacher && verifyPassword(password, teacher.password)) {
+        // Enforce domain tenant isolation
+        const domainOrg = await getTenantFromRequest(request);
+        if (domainOrg && teacher.organization_id !== domainOrg.id) {
+          json(response, 403, {
+            success: false,
+            message: `Access denied: This account belongs to a different organization and cannot log in to ${domainOrg.name}'s portal.`
+          });
+          return;
+        }
+
         // Validate organization status
         const org = await OrganizationModel.findOne({ id: teacher.organization_id });
         if (!org || org.status !== "Active") {
@@ -181,6 +228,16 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
         $or: [{ userId }, { email: userId }]
       });
       if (student && verifyPassword(password, student.password)) {
+        // Enforce domain tenant isolation
+        const domainOrg = await getTenantFromRequest(request);
+        if (domainOrg && student.organization_id !== domainOrg.id) {
+          json(response, 403, {
+            success: false,
+            message: `Access denied: This account belongs to a different organization and cannot log in to ${domainOrg.name}'s portal.`
+          });
+          return;
+        }
+
         // Validate organization status
         const org = await OrganizationModel.findOne({ id: student.organization_id });
         if (!org || org.status !== "Active") {
@@ -318,6 +375,16 @@ export const forgotPassword = async (request: IncomingMessage, response: ServerR
       return;
     }
 
+    // Enforce domain tenant isolation
+    const domainOrg = await getTenantFromRequest(request);
+    if (domainOrg && userDoc.organization_id !== domainOrg.id) {
+      json(response, 403, {
+        success: false,
+        message: `Access denied: This account belongs to a different organization and cannot access ${domainOrg.name}'s portal.`
+      });
+      return;
+    }
+
     // Attempt to generate/store OTP (managing rate limit map internally)
     const otpResult = requestOtp(email);
     if (!otpResult.success) {
@@ -432,6 +499,16 @@ export const resetPassword = async (request: IncomingMessage, response: ServerRe
 
     if (!userDoc) {
       json(response, 404, { success: false, message: "User not found" });
+      return;
+    }
+
+    // Enforce domain tenant isolation
+    const domainOrg = await getTenantFromRequest(request);
+    if (domainOrg && userDoc.organization_id !== domainOrg.id) {
+      json(response, 403, {
+        success: false,
+        message: `Access denied: This account belongs to a different organization and cannot access ${domainOrg.name}'s portal.`
+      });
       return;
     }
 
@@ -621,6 +698,16 @@ export const getMe = async (request: IncomingMessage, response: ServerResponse) 
 
     if (!userDoc) {
       json(response, 404, { success: false, message: "User not found" });
+      return;
+    }
+
+    // Enforce domain tenant isolation
+    const domainOrg = await getTenantFromRequest(request);
+    if (domainOrg && userDoc.organization_id !== domainOrg.id) {
+      json(response, 403, {
+        success: false,
+        message: `Access denied: This account belongs to a different organization and cannot access ${domainOrg.name}'s portal.`
+      });
       return;
     }
 
@@ -835,6 +922,16 @@ export const loginStudentWithCaptcha = async (request: IncomingMessage, response
       return;
     }
 
+    // Enforce domain tenant isolation
+    const domainOrg = await getTenantFromRequest(request);
+    if (domainOrg && student.organization_id !== domainOrg.id) {
+      json(response, 403, {
+        success: false,
+        message: `Access denied: This account belongs to a different organization and cannot log in to ${domainOrg.name}'s portal.`
+      });
+      return;
+    }
+
     const org = await OrganizationModel.findOne({ id: student.organization_id });
     if (!org || org.status !== "Active") {
       json(response, 403, { success: false, message: "Organization account is deactivated. Please contact support." });
@@ -912,6 +1009,16 @@ export const loginTeacherWithCaptcha = async (request: IncomingMessage, response
       return;
     }
 
+    // Enforce domain tenant isolation
+    const domainOrg = await getTenantFromRequest(request);
+    if (domainOrg && teacher.organization_id !== domainOrg.id) {
+      json(response, 403, {
+        success: false,
+        message: `Access denied: This account belongs to a different organization and cannot log in to ${domainOrg.name}'s portal.`
+      });
+      return;
+    }
+
     const org = await OrganizationModel.findOne({ id: teacher.organization_id });
     if (!org || org.status !== "Active") {
       json(response, 403, { success: false, message: "Organization account is deactivated. Please contact support." });
@@ -985,6 +1092,16 @@ export const loginAdminWithCaptcha = async (request: IncomingMessage, response: 
 
     if (!admin || !verifyPassword(password, admin.password)) {
       json(response, 400, { success: false, message: "Invalid credentials" });
+      return;
+    }
+
+    // Enforce domain tenant isolation
+    const domainOrg = await getTenantFromRequest(request);
+    if (domainOrg && admin.organization_id !== domainOrg.id) {
+      json(response, 403, {
+        success: false,
+        message: `Access denied: This account belongs to a different organization and cannot log in to ${domainOrg.name}'s portal.`
+      });
       return;
     }
 
