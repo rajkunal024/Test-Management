@@ -1,4 +1,5 @@
 import { IncomingMessage, ServerResponse } from "node:http";
+import mongoose from "mongoose";
 import { json, readBody, readBodyBuffer } from "../middlewares/utils.js";
 import { AdminModel, TeacherModel, StudentModel, OrganizationModel, CaptchaModel } from "../models/index.js";
 import { hashPassword, verifyPassword, signToken } from "../utils/crypto.js";
@@ -714,25 +715,86 @@ const generateCaptchaCode = (): string => {
   return code;
 };
 
+// Resilient in-memory store for CAPTCHAs so captcha never fails to load even if DB is reconnecting
+const memoryCaptchaStore = new Map<string, { captcha: string; expires: number }>();
+
+const validateAndConsumeCaptcha = async (captchaId: string, captcha: string): Promise<{ valid: boolean; message?: string }> => {
+  if (!captchaId || !captcha) {
+    return { valid: false, message: "CAPTCHA is required." };
+  }
+
+  let storedCaptcha: string | null = null;
+  const memoryEntry = memoryCaptchaStore.get(captchaId);
+  if (memoryEntry) {
+    if (memoryEntry.expires < Date.now()) {
+      memoryCaptchaStore.delete(captchaId);
+      return { valid: false, message: "CAPTCHA expired." };
+    }
+    storedCaptcha = memoryEntry.captcha;
+    memoryCaptchaStore.delete(captchaId);
+  } else if (mongoose.connection.readyState === 1) {
+    try {
+      const captchaDoc = await CaptchaModel.findById(captchaId);
+      if (!captchaDoc) {
+        return { valid: false, message: "CAPTCHA expired." };
+      }
+      storedCaptcha = captchaDoc.captcha;
+      await CaptchaModel.deleteOne({ _id: captchaId }).catch(() => {});
+    } catch {
+      return { valid: false, message: "CAPTCHA expired." };
+    }
+  } else {
+    return { valid: false, message: "CAPTCHA expired." };
+  }
+
+  if (storedCaptcha !== captcha) {
+    return { valid: false, message: "Invalid CAPTCHA." };
+  }
+
+  return { valid: true };
+};
+
 export const getCaptcha = async (request: IncomingMessage, response: ServerResponse) => {
   try {
     const code = generateCaptchaCode();
-    const expires = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes expiry
+    const expiresMs = Date.now() + 2 * 60 * 1000; // 2 minutes expiry
+    const expires = new Date(expiresMs);
     const svg = generateCaptchaSvg(code);
 
-    const captchaDoc = new CaptchaModel({
-      captcha: code,
-      expires
-    });
-    await captchaDoc.save();
+    const captchaId = new mongoose.Types.ObjectId().toString();
+
+    // Store in memory cache immediately so CAPTCHA generation always succeeds
+    memoryCaptchaStore.set(captchaId, { captcha: code, expires: expiresMs });
+
+    // Clean up expired items periodically
+    if (memoryCaptchaStore.size > 200) {
+      const now = Date.now();
+      for (const [k, v] of memoryCaptchaStore.entries()) {
+        if (v.expires < now) memoryCaptchaStore.delete(k);
+      }
+    }
+
+    // Also persist to DB if MongoDB is connected
+    if (mongoose.connection.readyState === 1) {
+      try {
+        const captchaDoc = new CaptchaModel({
+          _id: captchaId,
+          captcha: code,
+          expires
+        });
+        await captchaDoc.save();
+      } catch (dbErr) {
+        console.warn("Could not save CAPTCHA to MongoDB, using memory fallback:", dbErr);
+      }
+    }
 
     json(response, 200, {
       success: true,
-      captchaId: captchaDoc._id.toString(),
+      captchaId,
       captcha: code,
       captchaSvg: svg,
       data: {
-        captchaId: captchaDoc._id.toString(),
+        captchaId,
         captcha: code,
         captchaSvg: svg
       }
@@ -748,22 +810,14 @@ export const loginStudentWithCaptcha = async (request: IncomingMessage, response
     const body = JSON.parse(await readBody(request));
     const { email, password, captchaId, captcha } = body;
 
-    if (!captchaId || !captcha) {
-      json(response, 400, { success: false, message: "CAPTCHA is required." });
+    const captchaValidation = await validateAndConsumeCaptcha(captchaId, captcha);
+    if (!captchaValidation.valid) {
+      json(response, 400, { success: false, message: captchaValidation.message || "Invalid CAPTCHA." });
       return;
     }
 
-    const captchaDoc = await CaptchaModel.findById(captchaId);
-    if (!captchaDoc) {
-      json(response, 400, { success: false, message: "CAPTCHA expired." });
-      return;
-    }
-
-    const storedCaptcha = captchaDoc.captcha;
-    await CaptchaModel.deleteOne({ _id: captchaId });
-
-    if (storedCaptcha !== captcha) {
-      json(response, 400, { success: false, message: "Invalid CAPTCHA." });
+    if (mongoose.connection.readyState !== 1) {
+      json(response, 503, { success: false, message: "Database connection in progress. Please check MongoDB Atlas connection." });
       return;
     }
 
@@ -833,22 +887,14 @@ export const loginTeacherWithCaptcha = async (request: IncomingMessage, response
     const body = JSON.parse(await readBody(request));
     const { email, password, captchaId, captcha } = body;
 
-    if (!captchaId || !captcha) {
-      json(response, 400, { success: false, message: "CAPTCHA is required." });
+    const captchaValidation = await validateAndConsumeCaptcha(captchaId, captcha);
+    if (!captchaValidation.valid) {
+      json(response, 400, { success: false, message: captchaValidation.message || "Invalid CAPTCHA." });
       return;
     }
 
-    const captchaDoc = await CaptchaModel.findById(captchaId);
-    if (!captchaDoc) {
-      json(response, 400, { success: false, message: "CAPTCHA expired." });
-      return;
-    }
-
-    const storedCaptcha = captchaDoc.captcha;
-    await CaptchaModel.deleteOne({ _id: captchaId });
-
-    if (storedCaptcha !== captcha) {
-      json(response, 400, { success: false, message: "Invalid CAPTCHA." });
+    if (mongoose.connection.readyState !== 1) {
+      json(response, 503, { success: false, message: "Database connection in progress. Please check MongoDB Atlas connection." });
       return;
     }
 
@@ -917,22 +963,14 @@ export const loginAdminWithCaptcha = async (request: IncomingMessage, response: 
     const body = JSON.parse(await readBody(request));
     const { email, password, captchaId, captcha } = body;
 
-    if (!captchaId || !captcha) {
-      json(response, 400, { success: false, message: "CAPTCHA is required." });
+    const captchaValidation = await validateAndConsumeCaptcha(captchaId, captcha);
+    if (!captchaValidation.valid) {
+      json(response, 400, { success: false, message: captchaValidation.message || "Invalid CAPTCHA." });
       return;
     }
 
-    const captchaDoc = await CaptchaModel.findById(captchaId);
-    if (!captchaDoc) {
-      json(response, 400, { success: false, message: "CAPTCHA expired." });
-      return;
-    }
-
-    const storedCaptcha = captchaDoc.captcha;
-    await CaptchaModel.deleteOne({ _id: captchaId });
-
-    if (storedCaptcha !== captcha) {
-      json(response, 400, { success: false, message: "Invalid CAPTCHA." });
+    if (mongoose.connection.readyState !== 1) {
+      json(response, 503, { success: false, message: "Database connection in progress. Please check MongoDB Atlas connection." });
       return;
     }
 

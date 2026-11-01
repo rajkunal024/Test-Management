@@ -1,4 +1,5 @@
 import { IncomingMessage, ServerResponse } from "node:http";
+import mongoose from "mongoose";
 import { handleAuthRoutes } from "./authRoutes.js";
 import { handleParikshyaAdminRoutes } from "./parikshyaAdminRoutes.js";
 import { handleSubjectsRoutes } from "./subjectRoutes.js";
@@ -40,7 +41,14 @@ const isPublicRoute = (path: string, method: string): boolean => {
 export const routeRequest = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
   if (isPublicRoute(path, method)) {
     if (path === "/api/health" || path === "/health" || path === "/") {
-      json(response, 200, { success: true, status: "healthy", service: "parikshya-backend", timestamp: new Date().toISOString() });
+      const dbConnected = mongoose.connection.readyState === 1;
+      json(response, 200, {
+        success: true,
+        status: "healthy",
+        database: dbConnected ? "connected" : "disconnected",
+        service: "parikshya-backend",
+        timestamp: new Date().toISOString()
+      });
       return;
     }
     if (path.startsWith("/api/parikshya-admin")) {
