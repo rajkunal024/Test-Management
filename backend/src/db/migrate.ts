@@ -13,11 +13,12 @@ import {
   QuestionModel,
   ResultModel,
   TestModel,
-  NotificationModel
+  NotificationModel,
+  SessionModel,
+  ClassModel
 } from "../models/index.js";
 import { hashPassword } from "../utils/crypto.js";
 
-// Tiny helper to load .env since we run this script directly
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -52,8 +53,8 @@ async function runMigration() {
   console.log("Connected successfully to database.");
 
   // 1. Seed Default Organization
-  const defaultOrgId = "tester";
-  let defaultOrg = await OrganizationModel.findOne({ id: defaultOrgId });
+  let defaultOrgId = "tester";
+  let defaultOrg = await OrganizationModel.findOne({ $or: [{ id: defaultOrgId }, { code: "TESTER" }] });
   if (!defaultOrg) {
     console.log("Default Organization 'tester' not found. Creating...");
     defaultOrg = new OrganizationModel({
@@ -85,7 +86,8 @@ async function runMigration() {
     await defaultOrg.save();
     console.log("Created Default Organization: tester");
   } else {
-    console.log("Default Organization 'tester' already exists.");
+    defaultOrgId = defaultOrg.id;
+    console.log(`Default Organization '${defaultOrg.name}' already exists with ID: ${defaultOrgId}`);
   }
 
   // 2. Seed Default Parikshya Admin
@@ -106,7 +108,160 @@ async function runMigration() {
     console.log("Parikshya Admin already exists.");
   }
 
-  // 3. Migrate all existing collections to have organization_id
+  // 3. Seed Default Academic Session
+  const sessionCount = await SessionModel.countDocuments({ organization_id: defaultOrgId });
+  if (sessionCount === 0) {
+    await SessionModel.create({
+      id: `session-${defaultOrgId}-1`,
+      name: "2026-2027",
+      isCurrent: true,
+      organization_id: defaultOrgId
+    });
+    console.log("Seeded default academic session: 2026-2027.");
+  }
+
+  // 4. Seed Default Subjects
+  console.log("Checking default subjects...");
+  const defaultSubjects = [
+    { id: "sub-math", name: "Mathematics", organization_id: defaultOrgId },
+    { id: "sub-cs", name: "Computer Science", organization_id: defaultOrgId },
+    { id: "sub-dsa", name: "DSA", organization_id: defaultOrgId },
+    { id: "sub-oops", name: "OOPS", organization_id: defaultOrgId },
+    { id: "sub-physics", name: "Physics", organization_id: defaultOrgId },
+    { id: "sub-chem", name: "Chemistry", organization_id: defaultOrgId },
+    { id: "sub-eng", name: "English", organization_id: defaultOrgId }
+  ];
+  for (const sub of defaultSubjects) {
+    const exists = await SubjectModel.findOne({ id: sub.id, organization_id: defaultOrgId });
+    if (!exists) {
+      await SubjectModel.create(sub);
+    }
+  }
+
+  // 5. Seed Default Faculty / Teachers
+  console.log("Checking default faculty accounts...");
+  const defaultTeachers = [
+    {
+      userId: "teacher1",
+      name: "Aqsa Teacher",
+      email: "teacher1@tester.teacher.com",
+      password: hashPassword("abc123"),
+      subject: "DSA",
+      subjects: ["DSA", "OOPS"],
+      dob: "1990-01-10",
+      gender: "Female",
+      organization_id: defaultOrgId
+    },
+    {
+      userId: "teacher2",
+      name: "David Miller",
+      email: "teacher2@tester.teacher.com",
+      password: hashPassword("abc123"),
+      subject: "Mathematics",
+      subjects: ["Mathematics"],
+      dob: "1988-03-22",
+      gender: "Male",
+      organization_id: defaultOrgId
+    }
+  ];
+  for (const t of defaultTeachers) {
+    const exists = await TeacherModel.findOne({ userId: t.userId, organization_id: defaultOrgId });
+    if (!exists) {
+      await TeacherModel.create(t);
+    }
+  }
+
+  // 6. Seed Default Students
+  console.log("Checking default student accounts...");
+  const defaultStudents = [
+    {
+      userId: "student1",
+      name: "Ben Student",
+      email: "student1@tester.student.com",
+      password: hashPassword("abc123"),
+      class: "Semester 1",
+      semester: 1,
+      session: "2026-2027",
+      dob: "2002-05-15",
+      gender: "Male",
+      organization_id: defaultOrgId
+    },
+    {
+      userId: "student2",
+      name: "Alice Johnson",
+      email: "student2@tester.student.com",
+      password: hashPassword("abc123"),
+      class: "Semester 1",
+      semester: 1,
+      session: "2026-2027",
+      dob: "2003-08-20",
+      gender: "Female",
+      organization_id: defaultOrgId
+    },
+    {
+      userId: "student3",
+      name: "Charlie Brown",
+      email: "student3@tester.student.com",
+      password: hashPassword("abc123"),
+      class: "Semester 1",
+      semester: 1,
+      session: "2026-2027",
+      dob: "2003-11-12",
+      gender: "Male",
+      organization_id: defaultOrgId
+    }
+  ];
+  for (const stu of defaultStudents) {
+    const exists = await StudentModel.findOne({ userId: stu.userId, organization_id: defaultOrgId });
+    if (!exists) {
+      await StudentModel.create(stu);
+    }
+  }
+
+  // 7. Seed Default Test Configurations
+  console.log("Checking default test configurations...");
+  const test1Exists = await TestModel.findOne({ id: "test-mock-1" });
+  if (!test1Exists) {
+    await TestModel.create({
+      id: "test-mock-1",
+      name: "tester-mock-test",
+      type: "mcq",
+      subject: "Mathematics",
+      correct_marks: 4,
+      wrong_marks: 1,
+      unattempt_marks: 0,
+      difficulty: "medium",
+      total_time: 60,
+      total_marks: 100,
+      total_questions: 25,
+      status: "completed",
+      class: "Semester 1",
+      organization_id: defaultOrgId,
+      created_at: new Date()
+    });
+  }
+  const test2Exists = await TestModel.findOne({ id: "test-mock-2" });
+  if (!test2Exists) {
+    await TestModel.create({
+      id: "test-mock-2",
+      name: "testing-test5",
+      type: "mcq",
+      subject: "Mathematics",
+      correct_marks: 4,
+      wrong_marks: 1,
+      unattempt_marks: 0,
+      difficulty: "hard",
+      total_time: 45,
+      total_marks: 80,
+      total_questions: 20,
+      status: "completed",
+      class: "Semester 1",
+      organization_id: defaultOrgId,
+      created_at: new Date()
+    });
+  }
+
+  // 8. Multi-tenant fallback for all collections
   const collectionsToMigrate = [
     { name: "Subject", model: SubjectModel },
     { name: "Topic", model: TopicModel },
@@ -121,17 +276,14 @@ async function runMigration() {
     { name: "Notification", model: NotificationModel }
   ];
 
-  console.log("Starting data migration for multi-tenancy...");
   for (const col of collectionsToMigrate) {
-    console.log(`Migrating missing organization_ids in collection: ${col.name}...`);
-    const result = await col.model.updateMany(
+    await col.model.updateMany(
       { organization_id: { $exists: false } },
       { $set: { organization_id: defaultOrgId } }
     );
-    console.log(`- Matched and updated: ${result.modifiedCount} documents in ${col.name}.`);
   }
 
-  console.log("Migration and Seeding completed successfully.");
+  console.log("Database Seeding & Migration completed successfully!");
   await mongoose.disconnect();
   console.log("Disconnected from database.");
   process.exit(0);

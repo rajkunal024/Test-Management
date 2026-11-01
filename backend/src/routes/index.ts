@@ -38,7 +38,8 @@ const isPublicRoute = (path: string, method: string): boolean => {
   return publicAuthPaths.includes(path);
 };
 
-export const routeRequest = async (request: IncomingMessage, response: ServerResponse, path: string, method: string) => {
+export const routeRequest = async (request: IncomingMessage, response: ServerResponse, rawPath: string, method: string) => {
+  const path = rawPath.startsWith("/api") ? rawPath : (rawPath === "/" || rawPath === "/health" ? rawPath : `/api${rawPath}`);
   if (isPublicRoute(path, method)) {
     if (path === "/api/health" || path === "/health" || path === "/") {
       const dbConnected = mongoose.connection.readyState === 1;

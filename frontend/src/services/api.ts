@@ -20,7 +20,14 @@ import {
 import { useAuthStore } from "../store/authStore";
 
 const rawBaseUrl = import.meta.env.VITE_API_BASE_URL;
-const BASE_URL = rawBaseUrl && rawBaseUrl.trim() !== "" ? rawBaseUrl : "/api";
+let BASE_URL = "/api/";
+if (rawBaseUrl && rawBaseUrl.trim() !== "") {
+  let cleaned = rawBaseUrl.trim().replace(/\/+$/, "");
+  if (!cleaned.endsWith("/api")) {
+    cleaned = `${cleaned}/api`;
+  }
+  BASE_URL = `${cleaned}/`;
+}
 
 export const api = axios.create({
   baseURL: BASE_URL,
@@ -54,6 +61,10 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = useAuthStore.getState().token ?? localStorage.getItem("parikshya_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // Strip leading slash from relative paths so baseURL subpath (/api/) is preserved
+  if (config.url && config.url.startsWith("/") && !config.url.startsWith("//")) {
+    config.url = config.url.substring(1);
   }
   return config;
 });
