@@ -178,18 +178,21 @@ export const logout = async (): Promise<void> => {
   await api.post("/auth/logout");
 };
 
-export const getSubjects = async (): Promise<Subject[]> => {
-  const { data } = await api.get<ApiEnvelope<Subject[]> | Subject[]>("/subjects");
+export const getSubjects = async (classFilter?: string | any): Promise<Subject[]> => {
+  const filter = typeof classFilter === "string" ? classFilter : undefined;
+  const { data } = await api.get<ApiEnvelope<Subject[]> | Subject[]>("/subjects", {
+    params: filter ? { class: filter } : undefined
+  });
   return unwrap(data);
 };
 
-export const createSubject = async (payload: string | { name: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[] }): Promise<Subject> => {
+export const createSubject = async (payload: string | { name: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[]; classes?: string[] }): Promise<Subject> => {
   const body = typeof payload === "string" ? { name: payload } : payload;
   const { data } = await api.post<ApiEnvelope<Subject> | Subject>("/subjects", body);
   return unwrap(data);
 };
 
-export const updateSubject = async (subjectId: string, payload: { name: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[] }): Promise<Subject> => {
+export const updateSubject = async (subjectId: string, payload: { name: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[]; classes?: string[] }): Promise<Subject> => {
   const { data } = await api.put<ApiEnvelope<Subject> | Subject>(`/subjects/${subjectId}`, payload);
   return unwrap(data);
 };
@@ -608,7 +611,7 @@ export const getMe = async (): Promise<User> => {
   return unwrap(data);
 };
 
-export const getMaterialsApi = async (params: { program_id?: string; semester?: number; subject_id?: string }): Promise<LmsMaterial[]> => {
+export const getMaterialsApi = async (params: { program_id?: string; semester?: number; class?: string; subject_id?: string }): Promise<LmsMaterial[]> => {
   const { data } = await api.get<ApiEnvelope<LmsMaterial[]> | LmsMaterial[]>("/lms/materials", { params });
   return unwrap(data);
 };
@@ -627,11 +630,13 @@ export const createMaterialUrlApi = async (payload: {
   description?: string;
   file_url: string;
   resource_type: string;
-  program_id: string;
-  semester: number;
+  program_id?: string;
+  semester?: number;
+  class?: string;
   subject_id: string;
   readme_content?: string;
   html_content?: string;
+  text_content?: string;
 }): Promise<LmsMaterial> => {
   const { data } = await api.post<ApiEnvelope<LmsMaterial> | LmsMaterial>("/lms/materials", payload);
   return unwrap(data);
@@ -646,11 +651,13 @@ export const updateMaterialApi = async (
   payload: {
     title: string;
     description?: string;
-    program_id: string;
-    semester: number;
+    program_id?: string;
+    semester?: number;
+    class?: string;
     subject_id: string;
     readme_content?: string;
     html_content?: string;
+    text_content?: string;
   }
 ): Promise<LmsMaterial> => {
   const { data } = await api.put<ApiEnvelope<LmsMaterial> | LmsMaterial>(`/lms/materials/${materialId}`, payload);

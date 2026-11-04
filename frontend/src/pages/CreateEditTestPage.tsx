@@ -224,7 +224,18 @@ export const CreateEditTestPage = () => {
     });
   }, [subjects, selectedProgram, selectedSemester, isSchool]);
 
-  const visibleSubjects = isSchool ? subjects : filteredSubjectsForCollege;
+  const visibleSubjects = useMemo(() => {
+    if (isSchool) {
+      if (!selectedClass) return subjects;
+      return subjects.filter((sub: any) => {
+        if (sub.classes && sub.classes.length > 0) {
+          return sub.classes.includes(selectedClass);
+        }
+        return true;
+      });
+    }
+    return filteredSubjectsForCollege;
+  }, [isSchool, subjects, selectedClass, filteredSubjectsForCollege]);
 
   // Filter topics dynamically by the selected class questions
   const filteredTopics = useMemo(() => {

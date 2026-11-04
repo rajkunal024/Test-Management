@@ -220,7 +220,9 @@ export const StudentDashboard = () => {
       const isSchool = orgData?.orgType !== "College";
       let classMatches = false;
       if (isSchool) {
-        classMatches = String(t.class || "").toLowerCase().trim() === String(user?.class || "").toLowerCase().trim();
+        const testClass = String(t.class || "").toLowerCase().trim();
+        const userClass = String(user?.class || "").toLowerCase().trim();
+        classMatches = testClass === userClass || testClass === "all" || testClass === "all classes";
       } else {
         const testClassLower = String(t.class || "").toLowerCase().trim();
         const userClassLower = String(user?.class || "").toLowerCase().trim();

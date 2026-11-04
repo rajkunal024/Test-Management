@@ -68,6 +68,7 @@ export const OrganizationSchema = new Schema({
   brandingBannerText: { type: String, default: "Welcome to Parikshya Online Testing Portal" },
   brandingColor: { type: String, default: "#4B52DC" },
   orgType: { type: String, enum: ["School", "College"], default: "School" },
+  lmsEnabled: { type: Boolean, default: false },
   domain: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now }
 });
@@ -93,6 +94,7 @@ export const SubjectSchema = new Schema({
     }],
     default: []
   },
+  classes: { type: [String], default: [] },
   organization_id: { type: String, required: true }
 });
 export const SubjectModel = mongoose.model("Subject", SubjectSchema);
@@ -484,10 +486,12 @@ export const MaterialSchema = new Schema({
   file_url: { type: String },
   readme_content: { type: String },
   html_content: { type: String },
-  resource_type: { type: String, enum: ["document", "video", "link", "readme", "html"], default: "document" },
+  text_content: { type: String, default: "" },
+  resource_type: { type: String, enum: ["document", "video", "link", "readme", "html", "text"], default: "document" },
   organization_id: { type: String, required: true },
-  program_id: { type: String, required: true },
-  semester: { type: Number, required: true },
+  program_id: { type: String, default: "" },
+  semester: { type: Number, default: 0 },
+  class: { type: String, default: "" },
   subject_id: { type: String, required: true },
   uploaded_by: { type: String, required: true },
   uploaded_by_name: { type: String, required: true },

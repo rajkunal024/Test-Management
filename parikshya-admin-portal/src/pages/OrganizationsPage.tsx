@@ -31,6 +31,7 @@ interface Organization {
   status: "Active" | "Inactive";
   createdAt: string;
   orgType?: "School" | "College";
+  lmsEnabled?: boolean;
   counts: OrgCounts;
   adminName: string;
   adminEmail: string;
@@ -60,6 +61,7 @@ export const OrganizationsPage: React.FC = () => {
   const [brandingBannerText, setBrandingBannerText] = useState("Welcome to Parikshya Online Testing Portal");
   const [brandingColor, setBrandingColor] = useState("#4B52DC");
   const [orgType, setOrgType] = useState<"School" | "College">("School");
+  const [lmsEnabled, setLmsEnabled] = useState(false);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -126,6 +128,7 @@ export const OrganizationsPage: React.FC = () => {
     setBrandingBannerText("Welcome to Parikshya Online Testing Portal");
     setBrandingColor("#4B52DC");
     setOrgType("School");
+    setLmsEnabled(false);
     setWizardError(null);
     setIsWizardOpen(false);
   };
@@ -161,7 +164,8 @@ export const OrganizationsPage: React.FC = () => {
         status: "Active",
         brandingBannerText,
         brandingColor,
-        orgType
+        orgType,
+        lmsEnabled
       };
 
       const response = await api.post("/organizations", payload);
@@ -176,6 +180,21 @@ export const OrganizationsPage: React.FC = () => {
       setWizardError(err.response?.data?.message || "Server error occurred during registration.");
     } finally {
       setWizardLoading(false);
+    }
+  };
+
+  const toggleLms = async (orgId: string, currentLmsState: boolean) => {
+    const nextLms = !currentLmsState;
+    try {
+      const response = await api.put(`/organizations/${orgId}`, { lmsEnabled: nextLms });
+      if (response.data.success) {
+        setOrganizations((prev) =>
+          prev.map((org) => (org.id === orgId ? { ...org, lmsEnabled: nextLms } : org))
+        );
+      }
+    } catch (err) {
+      console.error("Error toggling LMS feature:", err);
+      alert("Failed to update LMS feature setting.");
     }
   };
 
@@ -286,6 +305,8 @@ export const OrganizationsPage: React.FC = () => {
                   <th className="px-6 py-4">Tenant Code</th>
                   <th className="px-6 py-4">Organization Profiling</th>
                   <th className="px-6 py-4">Primary Admin</th>
+                  <th className="px-6 py-4 text-center">Type</th>
+                  <th className="px-6 py-4 text-center">LMS Feature</th>
                   <th className="px-6 py-4 text-center">Students</th>
                   <th className="px-6 py-4 text-center">Teachers</th>
                   <th className="px-6 py-4">Enrolled Date</th>
@@ -319,6 +340,29 @@ export const OrganizationsPage: React.FC = () => {
                       <div className="text-[10px] text-slate-500 dark:text-slate-450 mt-0.5 truncate max-w-[160px]" title={org.adminEmail}>
                         {org.adminEmail}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                        org.orgType === "College"
+                          ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
+                          : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                      }`}>
+                        {org.orgType || "School"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => toggleLms(org.id, Boolean(org.lmsEnabled))}
+                        className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border cursor-pointer transition ${
+                          org.lmsEnabled
+                            ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/25 hover:bg-teal-500/20"
+                            : "bg-slate-500/10 text-slate-400 dark:text-slate-500 border-slate-500/20 hover:bg-slate-500/20"
+                        }`}
+                        title="Click to toggle LMS feature"
+                      >
+                        {org.lmsEnabled ? "LMS Active" : "Disabled"}
+                      </button>
                     </td>
                     <td className="px-6 py-4 font-bold text-center text-slate-900 dark:text-white">
                       {org.counts.students.toLocaleString()}
@@ -455,6 +499,28 @@ export const OrganizationsPage: React.FC = () => {
                         <option value="College">College</option>
                       </select>
                     </label>
+
+                    <div className="tenant-v2-field full mt-2 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-bold text-xs text-slate-900 dark:text-white block">Learning Management System (LMS)</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                            {orgType === "School"
+                              ? "Allows school teachers to upload PDF notes and write text materials, and students to access course library."
+                              : "Allows college teachers to upload documents, READMEs, HTML articles, and media resources for students."}
+                          </span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+                          <input
+                            type="checkbox"
+                            checked={lmsEnabled}
+                            onChange={(e) => setLmsEnabled(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </section>
 

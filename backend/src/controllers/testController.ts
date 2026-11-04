@@ -1,7 +1,7 @@
 import { IncomingMessage, ServerResponse } from "node:http";
 import { json, readBody } from "../middlewares/utils.js";
-import { checkRole } from "../middlewares/auth.js";
-import { TestModel, ResultModel, StudentModel, QuestionModel, NotificationModel, SubjectModel, TopicModel, SubTopicModel } from "../models/index.js";
+import { checkRole, getUserFromRequest } from "../middlewares/auth.js";
+import { TestModel, ResultModel, StudentModel, QuestionModel, NotificationModel, SubjectModel, TopicModel, SubTopicModel, OrganizationModel } from "../models/index.js";
 import { performShareResults } from "../services/shareService.js";
 
 const distributeQuestionsIntoSections = async (testQuestions: string[], sections: any[]) => {
@@ -81,8 +81,13 @@ const calculateTestDifficulty = async (questionIds: string[], defaultDiff: strin
 
 export const getTests = async (request: IncomingMessage, response: ServerResponse) => {
   try {
+    const user = getUserFromRequest(request);
     const now = new Date().getTime();
-    const tests = await TestModel.find({});
+    const query: Record<string, any> = {};
+    if (user?.organization_id) {
+      query.organization_id = user.organization_id;
+    }
+    const tests = await TestModel.find(query);
     for (const test of tests) {
       if (test.status === "scheduled" && test.start_time) {
         const start = new Date(test.start_time).getTime();
@@ -91,7 +96,7 @@ export const getTests = async (request: IncomingMessage, response: ServerRespons
           await test.save();
 
           try {
-            let studentQuery = {};
+            let studentQuery: any = { organization_id: test.organization_id };
             if (test.class) {
               if (test.class.includes("-sem-")) {
                 const parts = test.class.split("-sem-");
@@ -100,6 +105,7 @@ export const getTests = async (request: IncomingMessage, response: ServerRespons
                 const prefixed_program_id = `program-${clean_program_id}`;
                 const semester = parseInt(parts[1], 10);
                 studentQuery = {
+                  organization_id: test.organization_id,
                   $or: [
                     { class: test.class },
                     { program_id: program_id, semester },
@@ -108,7 +114,7 @@ export const getTests = async (request: IncomingMessage, response: ServerRespons
                   ]
                 };
               } else {
-                studentQuery = { class: test.class };
+                studentQuery = { organization_id: test.organization_id, class: test.class };
               }
             }
             const students = await StudentModel.find(studentQuery);
@@ -135,6 +141,33 @@ export const getTests = async (request: IncomingMessage, response: ServerRespons
         }
       }
     }
+
+    if (user && user.role === "Student") {
+      const student = await StudentModel.findOne({ userId: user.userId, organization_id: user.organization_id });
+      const org = await OrganizationModel.findOne({ id: user.organization_id });
+      const isSchool = org ? org.get("orgType") !== "College" : true;
+
+      const filteredTests = tests.filter((test) => {
+        if (isSchool) {
+          const testClass = (test.class || "").toLowerCase().trim();
+          const studentClass = (student?.class || "").toLowerCase().trim();
+          return !testClass || testClass === "all" || testClass === "all classes" || testClass === studentClass;
+        } else {
+          const testClassLower = (test.class || "").toLowerCase().trim();
+          const studentClassLower = (student?.class || "").toLowerCase().trim();
+          const expectedUserClass = `${student?.program_id || ""}-sem-${student?.semester || ""}`.toLowerCase().trim();
+          return (
+            testClassLower === "all" ||
+            testClassLower === "all classes" ||
+            testClassLower === studentClassLower ||
+            Boolean(student?.program_id && student?.semester && testClassLower === expectedUserClass)
+          );
+        }
+      });
+      json(response, 200, { success: true, data: filteredTests });
+      return;
+    }
+
     json(response, 200, { success: true, data: tests });
   } catch (e) {
     json(response, 500, { success: false, message: "Server error" });
@@ -196,6 +229,25 @@ export const createTest = async (request: IncomingMessage, response: ServerRespo
     if (payload.questions && Array.isArray(payload.questions) && payload.questions.length > 0) {
       difficulty = await calculateTestDifficulty(payload.questions, difficulty);
     }
+
+    const user = getUserFromRequest(request);
+    const org = await OrganizationModel.findOne({ id: user?.organization_id || payload.organization_id });
+    const isSchool = org ? org.get("orgType") !== "College" : true;
+    if (isSchool && payload.class && payload.subject_ids && Array.isArray(payload.subject_ids) && payload.subject_ids.length > 0) {
+      for (const subId of payload.subject_ids) {
+        const subDoc = await SubjectModel.findOne({ id: subId, organization_id: user?.organization_id || payload.organization_id });
+        if (subDoc && subDoc.classes && subDoc.classes.length > 0) {
+          if (!subDoc.classes.includes(payload.class) && payload.class !== "all") {
+            json(response, 400, {
+              success: false,
+              message: `Subject '${subDoc.name}' is only linked to classes: ${subDoc.classes.join(", ")}`
+            });
+            return;
+          }
+        }
+      }
+    }
+
     const newTest = new TestModel({
       id: `test-${Date.now()}`,
       ...payload,
@@ -255,12 +307,34 @@ export const createTest = async (request: IncomingMessage, response: ServerRespo
 
 export const getTestById = async (request: IncomingMessage, response: ServerResponse, id: string) => {
   try {
+    const user = getUserFromRequest(request);
     const test = await TestModel.findOne({ id });
-    if (test) {
-      json(response, 200, { success: true, data: test });
-    } else {
+    if (!test) {
       json(response, 404, { success: false, message: "Test not found" });
+      return;
     }
+
+    if (user && user.organization_id && test.organization_id && test.organization_id !== user.organization_id) {
+      json(response, 403, { success: false, message: "Forbidden" });
+      return;
+    }
+
+    if (user && user.role === "Student") {
+      const student = await StudentModel.findOne({ userId: user.userId, organization_id: user.organization_id });
+      const org = await OrganizationModel.findOne({ id: user.organization_id });
+      const isSchool = org ? org.get("orgType") !== "College" : true;
+
+      if (isSchool && student?.class) {
+        const testClass = (test.class || "").toLowerCase().trim();
+        const studentClass = (student.class || "").toLowerCase().trim();
+        if (testClass && testClass !== "all" && testClass !== "all classes" && testClass !== studentClass) {
+          json(response, 403, { success: false, message: "Forbidden: This test is not assigned to your class" });
+          return;
+        }
+      }
+    }
+
+    json(response, 200, { success: true, data: test });
   } catch (e) {
     json(response, 500, { success: false, message: "Server error" });
   }

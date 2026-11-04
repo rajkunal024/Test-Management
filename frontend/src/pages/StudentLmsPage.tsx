@@ -8,6 +8,7 @@ import {
   BookOpenCheck,
   CalendarDays,
   GraduationCap,
+  School,
   Layers3,
   Download,
   ExternalLink,
@@ -77,10 +78,28 @@ const getSubjectTheme = (subjectStr: string) => {
   };
 };
 
+export const formatTextToHtml = (text: string): string => {
+  if (!text || !text.trim()) return "";
+  const escape = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  const paragraphs = text.split(/\n\s*\n/);
+  return paragraphs
+    .map((p) => `<p>${escape(p).replace(/\n/g, "<br />")}</p>`)
+    .join("\n");
+};
+
 const getMaterialIcon = (type: LmsMaterial["resource_type"]) => {
   if (type === "video") return Youtube;
   if (type === "link") return Link2;
   if (type === "html") return Code;
+  if (type === "readme") return Code;
+  if (type === "text") return FileText;
   return FileText;
 };
 
@@ -122,16 +141,35 @@ export const StudentLmsPage = () => {
     enabled: Boolean(user),
   });
 
+  const isSchool = (orgData?.orgType ?? user?.orgType) !== "College";
+  const isLmsAllowed = Boolean(
+    orgData?.lmsEnabled ?? user?.lmsEnabled ?? (orgData?.orgType === "College" || user?.orgType === "College")
+  );
+
   const { data: materials = [], isLoading: isLoadingMaterials } = useQuery({
-    queryKey: ["lmsMaterials", user?.program_id, user?.semester],
-    queryFn: () => getMaterialsApi({ program_id: user?.program_id || "", semester: user?.semester || undefined }),
-    enabled: Boolean(user && orgData?.orgType === "College"),
+    queryKey: ["lmsMaterials", isSchool ? user?.class : `${user?.program_id}-${user?.semester}`],
+    queryFn: () => getMaterialsApi(
+      isSchool
+        ? { class: user?.class || "" }
+        : { program_id: user?.program_id || "", semester: user?.semester || undefined }
+    ),
+    enabled: Boolean(user && isLmsAllowed),
   });
+
+  const displayMaterials = useMemo(() => {
+    if (!isSchool || user?.role === "Teacher") return materials;
+    const userClass = (user?.class || "").toLowerCase().trim();
+    if (!userClass) return materials;
+    return materials.filter((m) => {
+      const matClass = (m.class || "").toLowerCase().trim();
+      return !matClass || matClass === "all" || matClass === "all classes" || matClass === userClass;
+    });
+  }, [materials, isSchool, user]);
 
   const { data: programs = [] } = useQuery({
     queryKey: ["programs"],
     queryFn: getPrograms,
-    enabled: Boolean(user && orgData?.orgType === "College"),
+    enabled: Boolean(user && !isSchool && isLmsAllowed),
   });
 
   const currentProgramCode = useMemo(() => {
@@ -140,243 +178,177 @@ export const StudentLmsPage = () => {
     return program?.code || user.program_id;
   }, [programs, user?.program_id]);
 
-  const collegeCohortSubjects = useMemo(() => {
-    if (orgData?.orgType !== "College" || !user?.program_id || !user?.semester) return [];
+  const cohortSubjects = useMemo(() => {
+    if (isSchool) {
+      const userClass = user?.class;
+      if (!userClass) return allSubjects;
+      return allSubjects.filter((sub) => {
+        if (sub.classes && sub.classes.length > 0) {
+          return sub.classes.includes(userClass);
+        }
+        return true;
+      });
+    }
+    if (!user?.program_id || !user?.semester) return [];
     return allSubjects.filter((sub) => {
       if (!sub.program_semesters) return false;
       return sub.program_semesters.some(
         (ps: any) => ps.program_id === user.program_id && Number(ps.semester) === Number(user.semester)
       );
     });
-  }, [allSubjects, user, orgData]);
+  }, [allSubjects, user, isSchool]);
 
   return (
     <AppShell>
       <PageWrapper>
         <div className="space-y-8">
-          <section className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 dark:border-slate-800 bg-slate-950 p-6 md:p-8 shadow-xl shadow-slate-200/60 dark:shadow-black/20">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(99,102,241,.35),transparent_34%),radial-gradient(circle_at_90%_5%,rgba(20,184,166,.28),transparent_30%),linear-gradient(135deg,rgba(15,23,42,.96),rgba(30,41,59,.92))]" />
-            <div className="absolute -bottom-24 right-8 h-56 w-56 rounded-full bg-indigo-500/20 blur-3xl" />
-            <div className="relative z-10 grid gap-7 lg:grid-cols-[1fr_320px] lg:items-end">
-              <div>
-                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.24em] text-indigo-100 backdrop-blur">
-                  <FolderOpen className="h-4 w-4" />
-                  LMS Study Portal
-                </div>
-                <h1 className="max-w-3xl text-3xl font-black leading-tight tracking-tight text-white md:text-5xl">
-                  Your semester learning library, organized by subject.
-                </h1>
-                <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-slate-300">
-                  Access notes, videos, reference links, and study documents uploaded for your current program and semester.
-                </p>
+          {!isLmsAllowed ? (
+            <div className="rounded-[2rem] border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center bg-white/70 dark:bg-slate-900/50">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500">
+                <FolderOpen className="h-8 w-8" />
               </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur-xl">
-                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-300">Current cohort</p>
-                <div className="mt-4 grid gap-3">
-                  <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-3 text-white">
-                    <GraduationCap className="h-5 w-5 text-teal-300" />
-                    <span className="text-sm font-extrabold">{currentProgramCode}</span>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-3 text-white">
-                    <CalendarDays className="h-5 w-5 text-indigo-300" />
-                    <span className="text-sm font-extrabold">Semester {user?.semester || "—"}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {isLoadingMaterials ? (
-            <div className="flex h-56 items-center justify-center rounded-3xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 text-slate-500">
-              <Spinner /> <span className="ml-2 font-bold">Loading study materials...</span>
-            </div>
-          ) : collegeCohortSubjects.length === 0 ? (
-            <div className="rounded-[2rem] border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center bg-white/70 dark:bg-slate-900/50">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                <Layers3 className="h-7 w-7" />
-              </div>
-              <p className="text-base font-black text-slate-800 dark:text-slate-100">No registered subjects found</p>
-              <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">There are no subjects assigned to your program and semester currently.</p>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white">LMS Feature Not Enabled</h2>
+              <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                The Learning Management System (LMS) feature is currently not active for your institution. Please contact your administrator to enable it.
+              </p>
             </div>
           ) : (
-            <div className="space-y-8">
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 shadow-sm">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Subjects</p>
-                  <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{collegeCohortSubjects.length}</p>
+            <>
+              <section className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 dark:border-slate-800 bg-slate-950 p-6 md:p-8 shadow-xl shadow-slate-200/60 dark:shadow-black/20">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(99,102,241,.35),transparent_34%),radial-gradient(circle_at_90%_5%,rgba(20,184,166,.28),transparent_30%),linear-gradient(135deg,rgba(15,23,42,.96),rgba(30,41,59,.92))]" />
+                <div className="absolute -bottom-24 right-8 h-56 w-56 rounded-full bg-indigo-500/20 blur-3xl" />
+                <div className="relative z-10 grid gap-7 lg:grid-cols-[1fr_320px] lg:items-end">
+                  <div>
+                    <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.24em] text-indigo-100 backdrop-blur">
+                      <FolderOpen className="h-4 w-4" />
+                      LMS Study Portal
+                    </div>
+                    <h1 className="max-w-3xl text-3xl font-black leading-tight tracking-tight text-white md:text-5xl">
+                      {isSchool
+                        ? "Your class study portal & materials library."
+                        : "Your semester learning library, organized by subject."}
+                    </h1>
+                    <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-slate-300">
+                      {isSchool
+                        ? "Access notes, PDF documents, and text study materials published by your school teachers."
+                        : "Access notes, videos, reference links, and study documents uploaded for your current program and semester."}
+                    </p>
+                  </div>
+
+                  <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur-xl">
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-300">
+                      {isSchool ? "Enrolled Class" : "Current cohort"}
+                    </p>
+                    <div className="mt-4 grid gap-3">
+                      {isSchool ? (
+                        <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-3 text-white">
+                          <School className="h-5 w-5 text-teal-300" />
+                          <span className="text-sm font-extrabold">{user?.class || "General Class"}</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-3 text-white">
+                            <GraduationCap className="h-5 w-5 text-teal-300" />
+                            <span className="text-sm font-extrabold">{currentProgramCode}</span>
+                          </div>
+                          <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-3 text-white">
+                            <CalendarDays className="h-5 w-5 text-indigo-300" />
+                            <span className="text-sm font-extrabold">Semester {user?.semester || "—"}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 shadow-sm">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Resources</p>
-                  <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{materials.length}</p>
+              </section>
+
+              {isLoadingMaterials ? (
+                <div className="flex h-56 items-center justify-center rounded-3xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 text-slate-500">
+                  <Spinner /> <span className="ml-2 font-bold">Loading study materials...</span>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 shadow-sm">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Latest upload</p>
-                  <p className="mt-2 text-sm font-black text-slate-900 dark:text-white">
-                    {materials[0]?.created_at ? new Date(materials[0].created_at).toLocaleDateString([], { dateStyle: "medium" }) : "No uploads yet"}
+              ) : cohortSubjects.length === 0 ? (
+                <div className="rounded-[2rem] border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center bg-white/70 dark:bg-slate-900/50">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                    <Layers3 className="h-7 w-7" />
+                  </div>
+                  <p className="text-base font-black text-slate-800 dark:text-slate-100">No registered subjects found</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                    {isSchool
+                      ? "There are no subjects registered in your school yet."
+                      : "There are no subjects assigned to your program and semester currently."}
                   </p>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white">Your Subjects</h2>
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Select a subject to view its study materials</p>
-                </div>
-                <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/40">
-                  <button
-                    type="button"
-                    onClick={() => handleSetViewMode("card")}
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
-                      viewMode === "card"
-                        ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400"
-                        : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                    }`}
-                    title="Card View"
-                  >
-                    <LayoutGrid className="h-4.5 w-4.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSetViewMode("list")}
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
-                      viewMode === "list"
-                        ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400"
-                        : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                    }`}
-                    title="List View"
-                  >
-                    <List className="h-4.5 w-4.5" />
-                  </button>
-                </div>
-              </div>
-
-              {viewMode === "card" ? (
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {collegeCohortSubjects.map((subject) => {
-                    const subjectMaterials = materials.filter((m) => m.subject_id === subject.id);
-                    const theme = getSubjectTheme(subject.name);
-                    const readmeCount = subjectMaterials.filter((m) => m.resource_type === "readme").length;
-                    const externalCount = subjectMaterials.length - readmeCount;
-
-                    return (
-                      <Link
-                        key={subject.id}
-                        to={`/lms/subjects/${encodeURIComponent(subject.id)}`}
-                        className={`group overflow-hidden rounded-2xl border ${theme.border} bg-white dark:bg-[#0c1220] shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/70 dark:hover:shadow-black/20`}
-                      >
-                        <div className={`border-b ${theme.borderLine} bg-gradient-to-br ${theme.gradient} p-5`}>
-                          <div className="flex items-start justify-between gap-4">
-                            <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${theme.accent}`}>
-                              <BookOpenCheck className="h-7 w-7" />
-                            </div>
-                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm transition group-hover:bg-slate-950 group-hover:text-white dark:bg-slate-950 dark:group-hover:bg-white dark:group-hover:text-slate-950">
-                              <ArrowRight className="h-5 w-5" />
-                            </div>
-                          </div>
-                          <h3 className="mt-6 text-2xl font-black leading-tight text-slate-900 dark:text-white">{subject.name}</h3>
-                          <span className="mt-2 block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                            Subject Code: {subject.id.toUpperCase()}
-                          </span>
-                        </div>
-
-                        <div className="space-y-5 p-5">
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="rounded-2xl bg-slate-50 p-3 text-center dark:bg-slate-950/40">
-                              <p className="text-2xl font-black text-slate-900 dark:text-white">{subjectMaterials.length}</p>
-                              <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Topics</p>
-                            </div>
-                            <div className="rounded-2xl bg-slate-50 p-3 text-center dark:bg-slate-950/40">
-                              <p className="text-2xl font-black text-slate-900 dark:text-white">{readmeCount}</p>
-                              <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Readme</p>
-                            </div>
-                            <div className="rounded-2xl bg-slate-50 p-3 text-center dark:bg-slate-950/40">
-                              <p className="text-2xl font-black text-slate-900 dark:text-white">{externalCount}</p>
-                              <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Files</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <Badge tone={theme.badgeTone} className="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider">
-                              Semester {user?.semester}
-                            </Badge>
-                            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">Open subject</span>
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
               ) : (
-                <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-                  <div className="overflow-x-auto p-5">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-black uppercase tracking-wider text-slate-400">
-                          <th className="pb-3 pl-3">Subject</th>
-                          <th className="pb-3">Subject Code</th>
-                          <th className="pb-3">Audience</th>
-                          <th className="pb-3 text-right pr-3">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                        {collegeCohortSubjects.map((subject) => {
-                          const subjectMaterials = materials.filter((m) => m.subject_id === subject.id);
-                          const theme = getSubjectTheme(subject.name);
-                          const readmeCount = subjectMaterials.filter((m) => m.resource_type === "readme").length;
-                          const externalCount = subjectMaterials.length - readmeCount;
-                          const btnClass = getButtonClass(theme.badgeTone);
+                <div className="space-y-8">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 shadow-sm">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Subjects</p>
+                      <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{cohortSubjects.length}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 shadow-sm">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Resources</p>
+                      <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{displayMaterials.length}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-blue-900/40 bg-white dark:bg-[#0b152b] p-5 shadow-sm">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Latest upload</p>
+                      <p className="mt-2 text-sm font-black text-slate-900 dark:text-white">
+                        {displayMaterials[0]?.created_at ? new Date(displayMaterials[0].created_at).toLocaleDateString([], { dateStyle: "medium" }) : "No uploads yet"}
+                      </p>
+                    </div>
+                  </div>
 
-                          return (
-                            <tr key={subject.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors">
-                              <td className="py-4 pl-3">
-                                <div className="flex items-center gap-3.5">
-                                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${theme.accent}`}>
-                                    <BookOpenCheck className="h-5 w-5" />
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate max-w-[280px]">
-                                        {subject.name}
-                                      </h4>
-                                      <Badge tone={theme.badgeTone} className="rounded-full text-[8px] font-black uppercase tracking-wider scale-90 origin-left">
-                                        Subject
-                                      </Badge>
-                                    </div>
-                                    <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500 truncate max-w-[340px]">
-                                      {subjectMaterials.length} topics • {readmeCount} readme • {externalCount} files
-                                    </p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="py-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
-                                <code className="px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-950 text-[10px] font-mono text-slate-700 dark:text-slate-200 uppercase font-bold border border-slate-200/50 dark:border-slate-800/80">
-                                  {subject.id}
-                                </code>
-                              </td>
-                              <td className="py-4 text-xs font-bold text-slate-500">
-                                <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300 font-extrabold uppercase">
-                                  {currentProgramCode} · Sem {user?.semester || 1}
-                                </span>
-                              </td>
-                              <td className="py-4 text-right pr-3">
-                                <div className="flex items-center justify-end gap-2">
-                                  <Link to={`/lms/subjects/${encodeURIComponent(subject.id)}`}>
-                                    <Button className={`h-8 rounded-xl text-[10px] font-bold px-3.5 flex items-center gap-1.5 shadow-sm border-none ${btnClass}`}>
-                                      <BookOpenCheck className="h-3.5 w-3.5" /> Open Subject
-                                    </Button>
-                                  </Link>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+                    <div>
+                      <h2 className="text-xl font-black text-slate-900 dark:text-white">Registered Subjects</h2>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        {isSchool
+                          ? "Select a subject to view textbooks, PDF notes, and text articles"
+                          : "Select a subject to view lecture notes, videos, and reading materials"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {cohortSubjects.map((subject) => {
+                      const subjectMaterials = displayMaterials.filter((m) => m.subject_id === subject.id);
+                      const theme = getSubjectTheme(subject.name);
+                      return (
+                        <div
+                          key={subject.id}
+                          className="flex flex-col justify-between rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm hover:shadow-md transition duration-200"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-4">
+                              <span className={`px-2.5 py-1 rounded-xl text-xs font-black ${theme.accent}`}>
+                                {subject.name.slice(0, 2).toUpperCase()}
+                              </span>
+                              <Badge tone={theme.badgeTone} className="rounded-full text-[9px] font-black uppercase tracking-wider">
+                                {subjectMaterials.length} {subjectMaterials.length === 1 ? "Resource" : "Resources"}
+                              </Badge>
+                            </div>
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white">{subject.name}</h3>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              {subjectMaterials.length > 0
+                                ? `Latest: ${subjectMaterials[0].title}`
+                                : "No resources uploaded yet"}
+                            </p>
+                          </div>
+
+                          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <Link to={`/lms/subjects/${encodeURIComponent(subject.id)}`}>
+                              <Button className="w-full h-10 rounded-2xl text-xs font-bold flex items-center justify-center gap-2">
+                                <span>Browse Subject</span>
+                                <ArrowRight className="h-3.5 w-3.5" />
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </PageWrapper>
@@ -408,20 +380,32 @@ export const StudentLmsSubjectPage = () => {
     enabled: Boolean(user),
   });
 
+  const isSchool = (orgData?.orgType ?? user?.orgType) !== "College";
+  const isLmsAllowed = Boolean(
+    orgData?.lmsEnabled ?? user?.lmsEnabled ?? (orgData?.orgType === "College" || user?.orgType === "College")
+  );
+
   const { data: programs = [] } = useQuery({
     queryKey: ["programs"],
     queryFn: getPrograms,
-    enabled: Boolean(user && orgData?.orgType === "College"),
+    enabled: Boolean(user && !isSchool && isLmsAllowed),
   });
 
   const { data: materials = [], isLoading } = useQuery({
-    queryKey: ["lmsMaterials", user?.program_id, user?.semester, decodedSubjectId],
-    queryFn: () => getMaterialsApi({
-      program_id: user?.program_id || "",
-      semester: user?.semester || undefined,
-      subject_id: decodedSubjectId,
-    }),
-    enabled: Boolean(user && orgData?.orgType === "College" && decodedSubjectId),
+    queryKey: ["lmsMaterials", isSchool ? user?.class : `${user?.program_id}-${user?.semester}`, decodedSubjectId],
+    queryFn: () => getMaterialsApi(
+      isSchool
+        ? {
+            subject_id: decodedSubjectId,
+            class: user?.role === "Teacher" ? undefined : (user?.class || undefined),
+          }
+        : {
+            program_id: user?.role === "Teacher" ? undefined : (user?.program_id || ""),
+            semester: user?.role === "Teacher" ? undefined : (user?.semester || undefined),
+            subject_id: decodedSubjectId,
+          }
+    ),
+    enabled: Boolean(user && isLmsAllowed && decodedSubjectId),
   });
 
   const subject = useMemo(() => allSubjects.find((item) => item.id === decodedSubjectId), [allSubjects, decodedSubjectId]);
@@ -430,7 +414,26 @@ export const StudentLmsSubjectPage = () => {
     return programs.find((item) => item.id === user.program_id)?.code || user.program_id;
   }, [programs, user?.program_id]);
 
-  const readmeCount = materials.filter((item) => item.resource_type === "readme").length;
+  const isSubjectAssignedToStudentClass = useMemo(() => {
+    if (!isSchool || user?.role === "Teacher") return true;
+    if (!subject || !subject.classes || subject.classes.length === 0) return true;
+    const userClass = user?.class;
+    if (!userClass) return true;
+    return subject.classes.includes(userClass);
+  }, [subject, isSchool, user]);
+
+  const displayMaterials = useMemo(() => {
+    if (!isSchool || user?.role === "Teacher") return materials;
+    const userClass = (user?.class || "").toLowerCase().trim();
+    if (!userClass) return materials;
+    return materials.filter((m) => {
+      const matClass = (m.class || "").toLowerCase().trim();
+      return !matClass || matClass === "all" || matClass === "all classes" || matClass === userClass;
+    });
+  }, [materials, isSchool, user]);
+
+  const readmeCount = displayMaterials.filter((item) => item.resource_type === "readme").length;
+  const textCount = displayMaterials.filter((item) => item.resource_type === "text" || item.resource_type === "readme" || item.resource_type === "html").length;
 
   return (
     <AppShell>
@@ -439,9 +442,12 @@ export const StudentLmsSubjectPage = () => {
           <section className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-slate-950 p-6 shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:shadow-black/20 md:p-8">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_18%,rgba(99,102,241,.34),transparent_32%),radial-gradient(circle_at_85%_12%,rgba(245,158,11,.24),transparent_30%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(30,41,59,.94))]" />
             <div className="relative z-10">
-              <Link to="/lms" className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.2em] text-slate-200 transition hover:bg-white/15">
+              <Link
+                to={user?.role === "Teacher" ? "/dashboard?tab=lms" : "/lms"}
+                className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.2em] text-slate-200 transition hover:bg-white/15"
+              >
                 <ArrowLeft className="h-4 w-4" />
-                Back to subjects
+                {user?.role === "Teacher" ? "Back to LMS Portal" : "Back to subjects"}
               </Link>
               <div className="grid gap-6 lg:grid-cols-[1fr_340px] lg:items-end">
                 <div>
@@ -452,32 +458,48 @@ export const StudentLmsSubjectPage = () => {
                     {subject?.name || "Subject materials"}
                   </h1>
                   <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-slate-300">
-                    Choose a topic below. README topics open as a full-page preview here; files and links open externally.
+                    {isSchool
+                      ? "Choose a topic below. Text notes open as full-screen articles; PDF documents open in the reader."
+                      : "Choose a topic below. README topics and HTML articles open as reader previews; files and links open externally."}
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-3 rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur-xl">
                   <div className="rounded-2xl bg-white/10 p-3 text-center">
-                    <p className="text-2xl font-black text-white">{materials.length}</p>
+                    <p className="text-2xl font-black text-white">{displayMaterials.length}</p>
                     <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-300">Topics</p>
                   </div>
                   <div className="rounded-2xl bg-white/10 p-3 text-center">
-                    <p className="text-2xl font-black text-white">{readmeCount}</p>
-                    <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-300">Readme</p>
+                    <p className="text-2xl font-black text-white">{isSchool ? textCount : readmeCount}</p>
+                    <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-300">
+                      {isSchool ? "Articles" : "Readme"}
+                    </p>
                   </div>
                   <div className="rounded-2xl bg-white/10 p-3 text-center">
-                    <p className="text-sm font-black text-white">{currentProgramCode}</p>
-                    <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-300">Program</p>
+                    <p className="text-sm font-black text-white">{isSchool ? (user?.class || "General") : currentProgramCode}</p>
+                    <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-300">
+                      {isSchool ? "Class" : "Program"}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          {isLoading ? (
+          {!isSubjectAssignedToStudentClass ? (
+            <div className="rounded-[2rem] border border-dashed border-rose-300 bg-rose-50/50 p-10 text-center dark:border-rose-900/50 dark:bg-rose-950/20">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400">
+                <Layers3 className="h-7 w-7" />
+              </div>
+              <p className="text-base font-black text-slate-800 dark:text-slate-100">Subject Not Available For Your Class</p>
+              <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                This subject is not assigned to your class ({user?.class || "N/A"}).
+              </p>
+            </div>
+          ) : isLoading ? (
             <div className="flex h-56 items-center justify-center rounded-3xl border border-slate-200 bg-white/70 text-slate-500 dark:border-slate-800 dark:bg-slate-900/70">
               <Spinner /> <span className="ml-2 font-bold">Loading topics...</span>
             </div>
-          ) : materials.length === 0 ? (
+          ) : displayMaterials.length === 0 ? (
             <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white/70 p-10 text-center dark:border-slate-700 dark:bg-slate-900/50">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 dark:text-slate-400 dark:bg-slate-800">
                 <Layers3 className="h-7 w-7" />
@@ -522,11 +544,12 @@ export const StudentLmsSubjectPage = () => {
 
               {viewMode === "card" ? (
                 <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {materials.map((mat) => {
+                  {displayMaterials.map((mat) => {
                     const Icon = getMaterialIcon(mat.resource_type);
+                    const isText = mat.resource_type === "text";
                     const isReadme = mat.resource_type === "readme";
                     const isHtml = mat.resource_type === "html";
-                    const isPdf = mat.resource_type === "document" && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf');
+                    const isPdf = (mat.resource_type === "document" && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf')) || (isSchool && mat.resource_type === "document");
                     return (
                       <article
                         key={mat.id}
@@ -541,6 +564,8 @@ export const StudentLmsSubjectPage = () => {
                                   ? "bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
                                 : isHtml
                                   ? "bg-teal-100 text-teal-600 dark:bg-teal-950/40 dark:text-teal-300"
+                                : isText
+                                  ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
                                 : mat.resource_type === "document"
                                   ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
                                   : "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
@@ -548,7 +573,7 @@ export const StudentLmsSubjectPage = () => {
                               <Icon className="h-6 w-6" />
                             </div>
                             <Badge tone="slate" className="rounded-full text-[9px] font-black uppercase tracking-wider">
-                              {mat.resource_type === "readme" ? "README.md file" : mat.resource_type === "html" ? "HTML Article" : mat.resource_type}
+                              {isText ? "Text Article" : isReadme ? "README.md file" : isHtml ? "HTML Article" : isPdf ? "PDF Document" : mat.resource_type}
                             </Badge>
                           </div>
                           <h2 className="text-lg font-black leading-tight text-slate-900 line-clamp-2 dark:text-white">{mat.title}</h2>
@@ -561,7 +586,14 @@ export const StudentLmsSubjectPage = () => {
                           <p className="mb-3 text-[10px] font-bold text-slate-400">
                             By {mat.uploaded_by_name} · {new Date(mat.created_at).toLocaleDateString([], { dateStyle: "medium" })}
                           </p>
-                          {isReadme ? (
+                          {isText ? (
+                            <Link to={`/lms/subjects/${encodeURIComponent(decodedSubjectId)}/text/${encodeURIComponent(mat.id)}`}>
+                              <Button className="h-10 w-full rounded-2xl text-[11px] font-black shadow-sm flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white border-none">
+                                <FileText className="h-3.5 w-3.5" />
+                                Read Text Article
+                              </Button>
+                            </Link>
+                          ) : isReadme ? (
                             <Link to={`/lms/subjects/${encodeURIComponent(decodedSubjectId)}/readme/${encodeURIComponent(mat.id)}`}>
                               <Button className="h-10 w-full rounded-2xl text-[11px] font-black shadow-sm flex items-center justify-center gap-2">
                                 <FileText className="h-3.5 w-3.5" />
@@ -615,17 +647,19 @@ export const StudentLmsSubjectPage = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                        {materials.map((mat) => {
+                        {displayMaterials.map((mat) => {
                           const isDoc = mat.resource_type === "document";
                           const isVideo = mat.resource_type === "video";
                           const isReadme = mat.resource_type === "readme";
                           const isHtml = mat.resource_type === "html";
-                          const isPdf = isDoc && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf');
+                          const isText = mat.resource_type === "text";
+                          const isPdf = (isDoc && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf')) || (isSchool && isDoc);
                           
                           let ResourceIcon = FileText;
                           if (isVideo) ResourceIcon = Youtube;
                           else if (isReadme) ResourceIcon = FileText;
                           else if (isHtml) ResourceIcon = Code;
+                          else if (isText) ResourceIcon = FileText;
                           else if (mat.resource_type === "link") ResourceIcon = Link2;
 
                           return (
@@ -639,6 +673,8 @@ export const StudentLmsSubjectPage = () => {
                                         ? "bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
                                       : isHtml
                                         ? "bg-teal-100 text-teal-600 dark:bg-teal-950/40 dark:text-teal-300"
+                                      : isText
+                                        ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
                                       : isDoc
                                         ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
                                         : "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
@@ -651,7 +687,7 @@ export const StudentLmsSubjectPage = () => {
                                         {mat.title}
                                       </h4>
                                       <Badge tone="slate" className="rounded-full text-[8px] font-black uppercase tracking-wider scale-90 origin-left">
-                                        {mat.resource_type === "readme" ? "README.md file" : mat.resource_type === "html" ? "HTML Article" : mat.resource_type}
+                                        {isText ? "Text Article" : isReadme ? "README.md file" : isHtml ? "HTML Article" : isPdf ? "PDF Document" : mat.resource_type}
                                       </Badge>
                                     </div>
                                     {mat.description && (
@@ -667,12 +703,18 @@ export const StudentLmsSubjectPage = () => {
                               </td>
                               <td className="py-4 text-xs font-bold text-slate-500">
                                 <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300 font-extrabold uppercase">
-                                  {currentProgramCode} · Sem {user?.semester || 1}
+                                  {isSchool ? (mat.class || user?.class || "General Class") : `${currentProgramCode} · Sem ${user?.semester || 1}`}
                                 </span>
                               </td>
                               <td className="py-4 text-right pr-3">
                                 <div className="flex items-center justify-end gap-2">
-                                  {isReadme ? (
+                                  {isText ? (
+                                    <Link to={`/lms/subjects/${encodeURIComponent(decodedSubjectId)}/text/${encodeURIComponent(mat.id)}`}>
+                                      <Button className="h-8 rounded-xl text-[10px] font-bold px-3.5 flex items-center gap-1.5 shadow-sm border-none bg-indigo-600 hover:bg-indigo-700 text-white">
+                                        <FileText className="h-3.5 w-3.5" /> Read
+                                      </Button>
+                                    </Link>
+                                  ) : isReadme ? (
                                     <Link to={`/lms/subjects/${encodeURIComponent(decodedSubjectId)}/readme/${encodeURIComponent(mat.id)}`}>
                                       <Button className="h-8 rounded-xl text-[10px] font-bold px-3.5 flex items-center gap-1.5 shadow-sm border-none bg-indigo-600 hover:bg-indigo-700 text-white">
                                         <FileText className="h-3.5 w-3.5" /> Preview
@@ -741,18 +783,41 @@ export const StudentLmsReadmePreviewPage = () => {
     enabled: Boolean(user),
   });
 
+  const isSchool = (orgData?.orgType ?? user?.orgType) !== "College";
+  const isLmsAllowed = Boolean(
+    orgData?.lmsEnabled ?? user?.lmsEnabled ?? (orgData?.orgType === "College" || user?.orgType === "College")
+  );
+
   const { data: materials = [], isLoading } = useQuery({
-    queryKey: ["lmsMaterials", user?.program_id, user?.semester, decodedSubjectId],
-    queryFn: () => getMaterialsApi({
-      program_id: user?.role === "Teacher" ? undefined : (user?.program_id || undefined),
-      semester: user?.role === "Teacher" ? undefined : (user?.semester || undefined),
-      subject_id: decodedSubjectId,
-    }),
-    enabled: Boolean(user && orgData?.orgType === "College" && decodedSubjectId),
+    queryKey: ["lmsMaterials", isSchool ? user?.class : `${user?.program_id}-${user?.semester}`, decodedSubjectId],
+    queryFn: () => getMaterialsApi(
+      isSchool
+        ? {
+            subject_id: decodedSubjectId,
+            class: user?.role === "Teacher" ? undefined : (user?.class || undefined),
+          }
+        : {
+            program_id: user?.role === "Teacher" ? undefined : (user?.program_id || undefined),
+            semester: user?.role === "Teacher" ? undefined : (user?.semester || undefined),
+            subject_id: decodedSubjectId,
+          }
+    ),
+    enabled: Boolean(user && isLmsAllowed && decodedSubjectId),
   });
 
   const subject = useMemo(() => allSubjects.find((item) => item.id === decodedSubjectId), [allSubjects, decodedSubjectId]);
-  const material = useMemo(() => materials.find((item) => item.id === decodedMaterialId), [materials, decodedMaterialId]);
+  const material = useMemo(() => {
+    const found = materials.find((item) => item.id === decodedMaterialId);
+    if (!found) return null;
+    if (isSchool && user?.role === "Student") {
+      const userClass = (user?.class || "").toLowerCase().trim();
+      const matClass = (found.class || "").toLowerCase().trim();
+      if (userClass && matClass && matClass !== "all" && matClass !== "all classes" && matClass !== userClass) {
+        return null;
+      }
+    }
+    return found;
+  }, [materials, decodedMaterialId, isSchool, user]);
 
   const closeUrl = useMemo(() => {
     return user?.role === "Teacher"
@@ -794,17 +859,20 @@ export const StudentLmsReadmePreviewPage = () => {
                   {materials.map((mat) => {
                     const isR = mat.resource_type === "readme";
                     const isH = mat.resource_type === "html";
-                    const isP = mat.resource_type === "document" && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf');
+                    const isT = mat.resource_type === "text";
+                    const isP = (mat.resource_type === "document" && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf')) || (isSchool && mat.resource_type === "document");
                     const isActive = mat.id === decodedMaterialId;
                     
                     let targetLink = "";
                     if (isR) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/readme/${encodeURIComponent(mat.id)}`;
                     else if (isH) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/html/${encodeURIComponent(mat.id)}`;
+                    else if (isT) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/text/${encodeURIComponent(mat.id)}`;
                     else if (isP) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/pdf/${encodeURIComponent(mat.id)}`;
 
                     let Icon = FileText;
                     if (mat.resource_type === "video") Icon = Youtube;
                     else if (isH) Icon = Code;
+                    else if (isT) Icon = FileText;
                     else if (mat.resource_type === "link") Icon = Link2;
 
                     const itemContent = (
@@ -920,18 +988,41 @@ export const StudentLmsPdfPreviewPage = () => {
     enabled: Boolean(user),
   });
 
+  const isSchool = (orgData?.orgType ?? user?.orgType) !== "College";
+  const isLmsAllowed = Boolean(
+    orgData?.lmsEnabled ?? user?.lmsEnabled ?? (orgData?.orgType === "College" || user?.orgType === "College")
+  );
+
   const { data: materials = [], isLoading } = useQuery({
-    queryKey: ["lmsMaterials", user?.program_id, user?.semester, decodedSubjectId],
-    queryFn: () => getMaterialsApi({
-      program_id: user?.role === "Teacher" ? undefined : (user?.program_id || undefined),
-      semester: user?.role === "Teacher" ? undefined : (user?.semester || undefined),
-      subject_id: decodedSubjectId,
-    }),
-    enabled: Boolean(user && orgData?.orgType === "College" && decodedSubjectId),
+    queryKey: ["lmsMaterials", isSchool ? user?.class : `${user?.program_id}-${user?.semester}`, decodedSubjectId],
+    queryFn: () => getMaterialsApi(
+      isSchool
+        ? {
+            subject_id: decodedSubjectId,
+            class: user?.role === "Teacher" ? undefined : (user?.class || undefined),
+          }
+        : {
+            program_id: user?.role === "Teacher" ? undefined : (user?.program_id || undefined),
+            semester: user?.role === "Teacher" ? undefined : (user?.semester || undefined),
+            subject_id: decodedSubjectId,
+          }
+    ),
+    enabled: Boolean(user && isLmsAllowed && decodedSubjectId),
   });
 
   const subject = useMemo(() => allSubjects.find((item) => item.id === decodedSubjectId), [allSubjects, decodedSubjectId]);
-  const material = useMemo(() => materials.find((item) => item.id === decodedMaterialId), [materials, decodedMaterialId]);
+  const material = useMemo(() => {
+    const found = materials.find((item) => item.id === decodedMaterialId);
+    if (!found) return null;
+    if (isSchool && user?.role === "Student") {
+      const userClass = (user?.class || "").toLowerCase().trim();
+      const matClass = (found.class || "").toLowerCase().trim();
+      if (userClass && matClass && matClass !== "all" && matClass !== "all classes" && matClass !== userClass) {
+        return null;
+      }
+    }
+    return found;
+  }, [materials, decodedMaterialId, isSchool, user]);
 
   const closeUrl = useMemo(() => {
     return user?.role === "Teacher"
@@ -977,17 +1068,20 @@ export const StudentLmsPdfPreviewPage = () => {
                 {materials.map((mat) => {
                   const isR = mat.resource_type === "readme";
                   const isH = mat.resource_type === "html";
-                  const isP = mat.resource_type === "document" && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf');
+                  const isT = mat.resource_type === "text";
+                  const isP = (mat.resource_type === "document" && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf')) || (isSchool && mat.resource_type === "document");
                   const isActive = mat.id === decodedMaterialId;
                   
                   let targetLink = "";
                   if (isR) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/readme/${encodeURIComponent(mat.id)}`;
                   else if (isH) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/html/${encodeURIComponent(mat.id)}`;
+                  else if (isT) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/text/${encodeURIComponent(mat.id)}`;
                   else if (isP) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/pdf/${encodeURIComponent(mat.id)}`;
 
                   let Icon = FileText;
                   if (mat.resource_type === "video") Icon = Youtube;
                   else if (isH) Icon = Code;
+                  else if (isT) Icon = FileText;
                   else if (mat.resource_type === "link") Icon = Link2;
 
                   const itemContent = (
@@ -1107,18 +1201,41 @@ export const StudentLmsHtmlPreviewPage = () => {
     enabled: Boolean(user),
   });
 
+  const isSchool = (orgData?.orgType ?? user?.orgType) !== "College";
+  const isLmsAllowed = Boolean(
+    orgData?.lmsEnabled ?? user?.lmsEnabled ?? (orgData?.orgType === "College" || user?.orgType === "College")
+  );
+
   const { data: materials = [], isLoading } = useQuery({
-    queryKey: ["lmsMaterials", user?.program_id, user?.semester, decodedSubjectId],
-    queryFn: () => getMaterialsApi({
-      program_id: user?.role === "Teacher" ? undefined : (user?.program_id || undefined),
-      semester: user?.role === "Teacher" ? undefined : (user?.semester || undefined),
-      subject_id: decodedSubjectId,
-    }),
-    enabled: Boolean(user && orgData?.orgType === "College" && decodedSubjectId),
+    queryKey: ["lmsMaterials", isSchool ? user?.class : `${user?.program_id}-${user?.semester}`, decodedSubjectId],
+    queryFn: () => getMaterialsApi(
+      isSchool
+        ? {
+            subject_id: decodedSubjectId,
+            class: user?.role === "Teacher" ? undefined : (user?.class || undefined),
+          }
+        : {
+            program_id: user?.role === "Teacher" ? undefined : (user?.program_id || undefined),
+            semester: user?.role === "Teacher" ? undefined : (user?.semester || undefined),
+            subject_id: decodedSubjectId,
+          }
+    ),
+    enabled: Boolean(user && isLmsAllowed && decodedSubjectId),
   });
 
   const subject = useMemo(() => allSubjects.find((item) => item.id === decodedSubjectId), [allSubjects, decodedSubjectId]);
-  const material = useMemo(() => materials.find((item) => item.id === decodedMaterialId), [materials, decodedMaterialId]);
+  const material = useMemo(() => {
+    const found = materials.find((item) => item.id === decodedMaterialId);
+    if (!found) return null;
+    if (isSchool && user?.role === "Student") {
+      const userClass = (user?.class || "").toLowerCase().trim();
+      const matClass = (found.class || "").toLowerCase().trim();
+      if (userClass && matClass && matClass !== "all" && matClass !== "all classes" && matClass !== userClass) {
+        return null;
+      }
+    }
+    return found;
+  }, [materials, decodedMaterialId, isSchool, user]);
 
   const closeUrl = useMemo(() => {
     return user?.role === "Teacher"
@@ -1151,11 +1268,11 @@ export const StudentLmsHtmlPreviewPage = () => {
 
         {isLoading ? (
           <div className="flex h-56 items-center justify-center rounded-3xl border border-slate-200 bg-white/70 text-slate-500 dark:text-slate-400 dark:border-slate-800 dark:bg-slate-900/70">
-            <Spinner /> <span className="ml-2 font-bold">Loading HTML Article...</span>
+            <Spinner /> <span className="ml-2 font-bold">Loading Article...</span>
           </div>
-        ) : !material || material.resource_type !== "html" ? (
+        ) : !material || (material.resource_type !== "html" && material.resource_type !== "text") ? (
           <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white/70 p-10 text-center dark:border-slate-700 dark:bg-slate-900/50">
-            <p className="text-base font-black text-slate-800 dark:text-slate-100">HTML Article not found</p>
+            <p className="text-base font-black text-slate-800 dark:text-slate-100">Article not found</p>
             <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">The selected article could not be loaded.</p>
           </div>
         ) : (
@@ -1170,17 +1287,20 @@ export const StudentLmsHtmlPreviewPage = () => {
                   {materials.map((mat) => {
                     const isR = mat.resource_type === "readme";
                     const isH = mat.resource_type === "html";
-                    const isP = mat.resource_type === "document" && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf');
+                    const isT = mat.resource_type === "text";
+                    const isP = (mat.resource_type === "document" && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf')) || (isSchool && mat.resource_type === "document");
                     const isActive = mat.id === decodedMaterialId;
                     
                     let targetLink = "";
                     if (isR) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/readme/${encodeURIComponent(mat.id)}`;
                     else if (isH) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/html/${encodeURIComponent(mat.id)}`;
+                    else if (isT) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/text/${encodeURIComponent(mat.id)}`;
                     else if (isP) targetLink = `/lms/subjects/${encodeURIComponent(decodedSubjectId)}/pdf/${encodeURIComponent(mat.id)}`;
 
                     let Icon = FileText;
                     if (mat.resource_type === "video") Icon = Youtube;
                     else if (isH) Icon = Code;
+                    else if (isT) Icon = FileText;
                     else if (mat.resource_type === "link") Icon = Link2;
 
                     const itemContent = (
@@ -1227,8 +1347,8 @@ export const StudentLmsHtmlPreviewPage = () => {
                 <div className="flex flex-col gap-4 border-b border-current/15 bg-black/5 p-6 md:flex-row md:items-center md:justify-between rounded-t-[1.75rem] print:hidden">
                   <div>
                     <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-teal-500/10 border border-teal-500/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-teal-600">
-                      <Code className="h-3.5 w-3.5" />
-                      HTML Article Reader
+                      {material.resource_type === "text" ? <FileText className="h-3.5 w-3.5" /> : <Code className="h-3.5 w-3.5" />}
+                      {material.resource_type === "text" ? "Text Article Reader" : "HTML Article Reader"}
                     </div>
                     <h1 className="text-2xl font-black md:text-3xl">{material.title}</h1>
                     <p className="mt-1 text-xs font-semibold opacity-70">
@@ -1318,7 +1438,11 @@ export const StudentLmsHtmlPreviewPage = () => {
                 <div className="py-8 px-[40px] flex-1 overflow-y-auto">
                   <div className="w-full max-w-none">
                     <MarkdownPreview
-                      content={material.html_content || ""}
+                      content={
+                        material.resource_type === "text"
+                          ? formatTextToHtml(material.text_content || material.html_content || "")
+                          : (material.html_content || "")
+                      }
                       variant={readComfortMode === "light" ? "light" : readComfortMode === "sepia" ? "sepia" : "reader"}
                       isHtml={true}
                     />

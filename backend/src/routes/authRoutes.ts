@@ -76,6 +76,7 @@ export const handleAuthRoutes = async (request: IncomingMessage, response: Serve
         name: org?.name,
         logo: org?.logo,
         orgType: org?.get("orgType") || "School",
+        lmsEnabled: org?.get("lmsEnabled") !== undefined ? Boolean(org?.get("lmsEnabled")) : (org?.get("orgType") === "College"),
         securityFeatures: org?.securityFeatures,
         brandingBannerText: org?.get("brandingBannerText"),
         brandingColor: org?.get("brandingColor")

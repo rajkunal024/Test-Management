@@ -2,7 +2,7 @@ import { IncomingMessage, ServerResponse } from "node:http";
 import { ImageKit } from "@imagekit/nodejs";
 import { json, readBody, readBodyBuffer } from "../middlewares/utils.js";
 import { getUserFromRequest, checkRole } from "../middlewares/auth.js";
-import { MaterialModel, OrganizationModel, TeacherModel, AdminModel } from "../models/index.js";
+import { MaterialModel, OrganizationModel, TeacherModel, AdminModel, StudentModel, SubjectModel } from "../models/index.js";
 
 let imageKitclient: ImageKit | null = null;
 const getImageKitClient = () => {
@@ -22,20 +22,83 @@ export const getMaterials = async (request: IncomingMessage, response: ServerRes
       return;
     }
 
+    const org = await OrganizationModel.findOne({ id: user.organization_id });
+    const isLmsEnabled = org ? (org.get("lmsEnabled") !== undefined ? Boolean(org.get("lmsEnabled")) : (org.get("orgType") === "College")) : false;
+    if (!isLmsEnabled) {
+      json(response, 403, { success: false, message: "LMS feature is not enabled for your organization" });
+      return;
+    }
+
+    const isSchool = org ? org.get("orgType") !== "College" : true;
     const requestUrl = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
     const program_id = requestUrl.searchParams.get("program_id");
     const semester = requestUrl.searchParams.get("semester");
     const subject_id = requestUrl.searchParams.get("subject_id");
+    const class_name = requestUrl.searchParams.get("class");
 
     const query: Record<string, any> = {
       organization_id: user.organization_id
     };
 
-    if (program_id) query.program_id = program_id;
-    if (semester) query.semester = Number(semester);
     if (subject_id) query.subject_id = subject_id;
 
-    const materials = await MaterialModel.find(query).sort({ created_at: -1 });
+    if (user.role === "Student") {
+      const student = await StudentModel.findOne({ userId: user.userId, organization_id: user.organization_id });
+      if (isSchool) {
+        const studentClass = (student?.class || class_name || "").trim();
+        if (studentClass) {
+          query.$or = [{ class: studentClass }, { class: "all" }, { class: "All" }];
+        }
+        // If subject_id is specified, ensure it is assigned to this student's class
+        if (subject_id && studentClass) {
+          const subjectDoc = await SubjectModel.findOne({ id: subject_id, organization_id: user.organization_id });
+          if (subjectDoc && subjectDoc.classes && subjectDoc.classes.length > 0) {
+            if (!subjectDoc.classes.includes(studentClass)) {
+              json(response, 200, { success: true, data: [] });
+              return;
+            }
+          }
+        }
+      } else {
+        const studentProg = student?.program_id || program_id;
+        const studentSem = student?.semester || (semester ? Number(semester) : undefined);
+        if (studentProg) query.program_id = studentProg;
+        if (studentSem) query.semester = Number(studentSem);
+      }
+    } else {
+      if (isSchool) {
+        if (class_name) {
+          query.$or = [{ class: class_name }, { class: "all" }, { class: "All" }];
+        }
+      } else {
+        if (program_id) query.program_id = program_id;
+        if (semester) query.semester = Number(semester);
+        if (class_name) {
+          query.$or = [{ class: class_name }, { class: "all" }, { class: "" }, { class: null }, { program_id: class_name }];
+        }
+      }
+    }
+
+    let materials = await MaterialModel.find(query).sort({ created_at: -1 });
+
+    // For school student, also make sure materials whose subject is strictly linked only to other classes are excluded
+    if (user.role === "Student" && isSchool) {
+      const student = await StudentModel.findOne({ userId: user.userId, organization_id: user.organization_id });
+      const studentClass = (student?.class || class_name || "").trim();
+      if (studentClass) {
+        const allSubjects = await SubjectModel.find({ organization_id: user.organization_id });
+        const disallowedSubjectIds = new Set<string>();
+        for (const s of allSubjects) {
+          if (s.classes && s.classes.length > 0 && !s.classes.includes(studentClass)) {
+            disallowedSubjectIds.add(s.id);
+          }
+        }
+        if (disallowedSubjectIds.size > 0) {
+          materials = materials.filter(m => !disallowedSubjectIds.has(m.subject_id));
+        }
+      }
+    }
+
     json(response, 200, { success: true, data: materials });
   } catch (e: any) {
     console.error("GET MATERIALS EXCEPTION:", e);
@@ -50,21 +113,27 @@ export const createMaterial = async (request: IncomingMessage, response: ServerR
     return;
   }
 
-  // Get organization configuration to make sure LMS is only used by colleges
+  let org: any = null;
   try {
-    const org = await OrganizationModel.findOne({ id: user.organization_id });
-    if (org?.orgType !== "College") {
-      json(response, 400, { success: false, message: "LMS features are restricted to colleges only" });
+    org = await OrganizationModel.findOne({ id: user.organization_id });
+    const isLmsEnabled = org ? (org.get("lmsEnabled") !== undefined ? Boolean(org.get("lmsEnabled")) : (org.get("orgType") === "College")) : false;
+    if (!isLmsEnabled) {
+      json(response, 403, { success: false, message: "LMS feature is not enabled for your organization" });
       return;
     }
   } catch (err) {
     console.error("LMS organization check failed:", err);
   }
 
+  const isSchool = org?.get("orgType") !== "College";
+
   try {
     const contentType = request.headers["content-type"] || "";
     let payload: Record<string, any> = {};
     let fileUrl = "";
+    let uploadedFileName = "";
+    let uploadedFileMime = "";
+    let fileBufferData: Buffer | null = null;
 
     if (contentType.includes("multipart/form-data")) {
       const bodyBuffer = await readBodyBuffer(request);
@@ -119,8 +188,10 @@ export const createMaterial = async (request: IncomingMessage, response: ServerR
             if (filenameMatch) {
               fileBuffer = data;
               fileName = filenameMatch[1];
+              uploadedFileName = fileName;
               if (headers["content-type"]) {
                 fileMime = headers["content-type"];
+                uploadedFileMime = fileMime;
               }
             } else {
               payload[fieldName] = data.toString("utf-8").trim();
@@ -131,10 +202,17 @@ export const createMaterial = async (request: IncomingMessage, response: ServerR
         index = nextBoundaryIndex;
       }
 
+      fileBufferData = fileBuffer;
       if (fileBuffer && fileBuffer.length > 0) {
         // Size Check: 10MB limit
         if (fileBuffer.length > 10 * 1024 * 1024) {
           json(response, 400, { success: false, message: "File size limit is 10MB" });
+          return;
+        }
+
+        // For school, verify uploaded file is PDF
+        if (isSchool && !fileName.toLowerCase().endsWith(".pdf")) {
+          json(response, 400, { success: false, message: "School teachers can only upload PDF documents (.pdf)" });
           return;
         }
 
@@ -150,7 +228,18 @@ export const createMaterial = async (request: IncomingMessage, response: ServerR
       payload = JSON.parse(await readBody(request));
     }
 
-    const { title, description, resource_type, program_id, semester, subject_id, readme_content, html_content } = payload;
+    const {
+      title,
+      description,
+      resource_type,
+      program_id,
+      semester,
+      subject_id,
+      readme_content,
+      html_content,
+      text_content,
+      class: classInput
+    } = payload;
     const finalFileUrl = fileUrl || payload.file_url || "";
     const finalResourceType = resource_type || "document";
 
@@ -158,27 +247,53 @@ export const createMaterial = async (request: IncomingMessage, response: ServerR
       json(response, 400, { success: false, message: "Title is required" });
       return;
     }
-    if (!program_id || !semester || !subject_id) {
-      json(response, 400, { success: false, message: "Program, Semester, and Subject identifiers are required" });
-      return;
-    }
-    if (finalResourceType === "readme" && !String(readme_content || "").trim()) {
-      json(response, 400, { success: false, message: "README.md content is required" });
-      return;
-    }
-    if (finalResourceType === "html" && !String(html_content || "").trim()) {
-      json(response, 400, { success: false, message: "HTML Article content is required" });
-      return;
-    }
-    if (finalResourceType !== "readme" && finalResourceType !== "html" && !finalFileUrl.trim()) {
-      json(response, 400, { success: false, message: "File or URL is required" });
-      return;
+
+    if (isSchool) {
+      if (finalResourceType !== "document" && finalResourceType !== "text") {
+        json(response, 400, { success: false, message: "School teachers can only upload PDF documents or write text" });
+        return;
+      }
+      if (finalResourceType === "document") {
+        if (!finalFileUrl.trim() && !fileBufferData) {
+          json(response, 400, { success: false, message: "PDF file or URL is required" });
+          return;
+        }
+        if (finalFileUrl && !finalFileUrl.toLowerCase().split("?")[0].endsWith(".pdf") && (!uploadedFileName || !uploadedFileName.toLowerCase().endsWith(".pdf"))) {
+          json(response, 400, { success: false, message: "Only PDF documents (.pdf) can be uploaded for schools" });
+          return;
+        }
+      }
+      if (finalResourceType === "text" && !String(text_content || "").trim()) {
+        json(response, 400, { success: false, message: "Text content is required" });
+        return;
+      }
+      if (!subject_id) {
+        json(response, 400, { success: false, message: "Subject is required" });
+        return;
+      }
+    } else {
+      if (!program_id || !semester || !subject_id) {
+        json(response, 400, { success: false, message: "Program, Semester, and Subject identifiers are required" });
+        return;
+      }
+      if (finalResourceType === "readme" && !String(readme_content || "").trim()) {
+        json(response, 400, { success: false, message: "README.md content is required" });
+        return;
+      }
+      if (finalResourceType === "html" && !String(html_content || "").trim()) {
+        json(response, 400, { success: false, message: "HTML Article content is required" });
+        return;
+      }
+      if (finalResourceType !== "readme" && finalResourceType !== "html" && !finalFileUrl.trim()) {
+        json(response, 400, { success: false, message: "File or URL is required" });
+        return;
+      }
     }
 
     let userDoc: any = null;
     if (user.role === "Teacher") {
       userDoc = await TeacherModel.findOne({ userId: user.userId });
-      if (userDoc) {
+      if (userDoc && !isSchool) {
         const teacherProgs = userDoc.program_ids || [];
         const hasProgram = teacherProgs.includes(program_id) || userDoc.program_id === program_id;
         if (!hasProgram) {
@@ -191,6 +306,27 @@ export const createMaterial = async (request: IncomingMessage, response: ServerR
     }
     const uploadedByName = userDoc?.name || "Faculty Member";
 
+    const assignedClass = classInput || (isSchool ? (program_id || "") : "");
+    const assignedProgram = program_id || (isSchool ? assignedClass : "");
+    const assignedSemester = semester ? Number(semester) : 1;
+
+    if (isSchool) {
+      if (!assignedClass || !assignedClass.trim()) {
+        json(response, 400, { success: false, message: "Target class is required for school LMS material" });
+        return;
+      }
+      const subjectDoc = await SubjectModel.findOne({ id: subject_id, organization_id: user.organization_id });
+      if (subjectDoc && subjectDoc.classes && subjectDoc.classes.length > 0) {
+        if (!subjectDoc.classes.includes(assignedClass) && assignedClass !== "all") {
+          json(response, 400, {
+            success: false,
+            message: `Subject '${subjectDoc.name}' is only linked to classes: ${subjectDoc.classes.join(", ")}`
+          });
+          return;
+        }
+      }
+    }
+
     const newMaterial = new MaterialModel({
       id: `mat-${Date.now()}`,
       title: title.trim(),
@@ -198,10 +334,12 @@ export const createMaterial = async (request: IncomingMessage, response: ServerR
       file_url: finalFileUrl,
       readme_content: readme_content ? String(readme_content).trim() : "",
       html_content: html_content ? String(html_content).trim() : "",
+      text_content: text_content ? String(text_content).trim() : "",
       resource_type: finalResourceType,
       organization_id: user.organization_id,
-      program_id,
-      semester: Number(semester),
+      program_id: assignedProgram,
+      semester: assignedSemester,
+      class: assignedClass,
       subject_id,
       uploaded_by: user.userId,
       uploaded_by_name: uploadedByName
@@ -257,8 +395,8 @@ export const updateMaterial = async (request: IncomingMessage, response: ServerR
       return;
     }
 
-    if (material.resource_type !== "readme" && material.resource_type !== "html") {
-      json(response, 400, { success: false, message: "Only README and HTML materials can be edited" });
+    if (material.resource_type !== "readme" && material.resource_type !== "html" && material.resource_type !== "text") {
+      json(response, 400, { success: false, message: "Only README, HTML, and Text materials can be edited" });
       return;
     }
 
@@ -268,14 +406,14 @@ export const updateMaterial = async (request: IncomingMessage, response: ServerR
     }
 
     const payload = JSON.parse(await readBody(request));
-    const { title, description, readme_content, html_content, program_id, semester, subject_id } = payload;
+    const { title, description, readme_content, html_content, text_content, program_id, semester, subject_id, class: classInput } = payload;
 
     if (!title || !title.trim()) {
       json(response, 400, { success: false, message: "Title is required" });
       return;
     }
-    if (!program_id || !semester || !subject_id) {
-      json(response, 400, { success: false, message: "Program, Semester, and Subject are required" });
+    if (!subject_id) {
+      json(response, 400, { success: false, message: "Subject is required" });
       return;
     }
 
@@ -287,17 +425,39 @@ export const updateMaterial = async (request: IncomingMessage, response: ServerR
       json(response, 400, { success: false, message: "HTML Article content is required" });
       return;
     }
+    if (material.resource_type === "text" && !String(text_content || "").trim()) {
+      json(response, 400, { success: false, message: "Text content is required" });
+      return;
+    }
 
     material.title = title.trim();
     material.description = description ? description.trim() : "";
-    material.program_id = program_id;
-    material.semester = Number(semester);
+    if (program_id) material.program_id = program_id;
+    if (semester !== undefined) material.semester = Number(semester);
+    if (classInput !== undefined) material.class = classInput;
     material.subject_id = subject_id;
+
+    const org = await OrganizationModel.findOne({ id: user.organization_id });
+    const isSchool = org ? org.get("orgType") !== "College" : true;
+    if (isSchool && material.class) {
+      const subjectDoc = await SubjectModel.findOne({ id: subject_id, organization_id: user.organization_id });
+      if (subjectDoc && subjectDoc.classes && subjectDoc.classes.length > 0) {
+        if (!subjectDoc.classes.includes(material.class) && material.class !== "all") {
+          json(response, 400, {
+            success: false,
+            message: `Subject '${subjectDoc.name}' is only linked to classes: ${subjectDoc.classes.join(", ")}`
+          });
+          return;
+        }
+      }
+    }
     
     if (material.resource_type === "readme") {
       material.readme_content = String(readme_content).trim();
     } else if (material.resource_type === "html") {
       material.html_content = String(html_content).trim();
+    } else if (material.resource_type === "text") {
+      material.text_content = String(text_content).trim();
     }
 
     await material.save();

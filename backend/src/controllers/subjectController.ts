@@ -5,7 +5,19 @@ import { SubjectModel, TopicModel, SubTopicModel, OrganizationModel } from "../m
 
 export const getSubjects = async (request: IncomingMessage, response: ServerResponse) => {
   try {
-    const subjects = await SubjectModel.find({});
+    const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
+    const classFilter = url.searchParams.get("class");
+    let filter: any = {};
+    if (classFilter) {
+      filter = {
+        $or: [
+          { classes: classFilter },
+          { classes: { $size: 0 } },
+          { classes: { $exists: false } }
+        ]
+      };
+    }
+    const subjects = await SubjectModel.find(filter);
     json(response, 200, { success: true, data: subjects });
   } catch (e) {
     json(response, 500, { success: false, message: "Server error" });
@@ -21,7 +33,7 @@ export const createSubject = async (request: IncomingMessage, response: ServerRe
   }
   try {
     const body = JSON.parse(await readBody(request));
-    const { name, program_ids, program_semesters } = body;
+    const { name, program_ids, program_semesters, classes } = body;
     
     if (!name || !name.trim()) {
       json(response, 400, { success: false, message: "Subject name is required" });
@@ -80,6 +92,7 @@ export const createSubject = async (request: IncomingMessage, response: ServerRe
       name: name.trim(),
       program_ids: resolvedProgramIds,
       program_semesters: program_semesters || [],
+      classes: Array.isArray(classes) ? classes : [],
       organization_id
     });
     await newSubject.save();
@@ -116,7 +129,7 @@ export const updateSubject = async (request: IncomingMessage, response: ServerRe
   }
   try {
     const body = JSON.parse(await readBody(request));
-    const { name, program_ids, program_semesters } = body;
+    const { name, program_ids, program_semesters, classes } = body;
     if (!name || !name.trim()) {
       json(response, 400, { success: false, message: "Subject name is required" });
       return;
@@ -129,7 +142,8 @@ export const updateSubject = async (request: IncomingMessage, response: ServerRe
       {
         name: name.trim(),
         program_ids: resolvedProgramIds,
-        program_semesters: program_semesters || []
+        program_semesters: program_semesters || [],
+        classes: Array.isArray(classes) ? classes : []
       },
       { new: true }
     );

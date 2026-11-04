@@ -19,6 +19,8 @@ export interface User {
   profilePicture?: string;
   organizationName?: string;
   organizationLogo?: string;
+  orgType?: string;
+  lmsEnabled?: boolean;
 }
 
 export interface LoginRequest {
@@ -40,6 +42,7 @@ export interface Subject {
   name: string;
   program_ids?: string[];
   program_semesters?: { program_id: string; semester: number }[];
+  classes?: string[];
 }
 
 export interface Topic {
@@ -239,6 +242,7 @@ export interface Organization {
   brandingBannerText?: string;
   brandingColor?: string;
   orgType?: "School" | "College";
+  lmsEnabled?: boolean;
 }
 
 export interface Program {
@@ -261,7 +265,9 @@ export interface LmsMaterial {
   file_url: string;
   readme_content?: string;
   html_content?: string;
-  resource_type: "document" | "video" | "link" | "readme" | "html";
+  text_content?: string;
+  class?: string;
+  resource_type: "document" | "video" | "link" | "readme" | "html" | "text";
   organization_id: string;
   program_id: string;
   semester: number;

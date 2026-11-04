@@ -69,6 +69,7 @@ import { useSubTopics, useTopics } from "../hooks/useTests";
 import { useAuthStore } from "../store/authStore";
 import { CorrectOption, Question, Passage, LmsMaterial } from "../types";
 import { questionSchema, QuestionFormValues } from "../utils/validators";
+import { formatTextToHtml } from "./StudentLmsPage";
 
 const emptyQuestion = {
   type: "mcq" as const,
@@ -425,29 +426,35 @@ export const TeacherDashboard = () => {
     return defaultSubject || { id: "sub-1", name: user?.subject || "Mathematics" };
   }, [subjects, user?.subject]);
 
-  const isSchool = orgData?.orgType !== "College";
+  const isSchool = (orgData?.orgType ?? user?.orgType) !== "College";
+  const isLmsAllowed = Boolean(
+    orgData?.lmsEnabled ?? user?.lmsEnabled ?? (orgData?.orgType === "College" || user?.orgType === "College")
+  );
 
   // LMS Materials Hooks & Handlers
   const { data: lmsMaterials = [], refetch: refetchLmsMaterials } = useQuery({
     queryKey: ["lmsMaterials"],
     queryFn: () => getMaterialsApi({}),
-    enabled: Boolean(user && orgData?.orgType === "College"),
+    enabled: Boolean(user && isLmsAllowed),
   });
 
   const [lmsSubTab, setLmsSubTab] = useState<"library" | "publish">("library");
   const [isEditingReadme, setIsEditingReadme] = useState(false);
   const [isEditingHtml, setIsEditingHtml] = useState(false);
+  const [isEditingText, setIsEditingText] = useState(false);
   const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
   const [lmsFilterSubjectId, setLmsFilterSubjectId] = useState<string>("all");
   const [lmsTitle, setLmsTitle] = useState("");
   const [lmsDescription, setLmsDescription] = useState("");
-  const [lmsResourceType, setLmsResourceType] = useState<"document" | "video" | "link" | "readme" | "html">("document");
+  const [lmsResourceType, setLmsResourceType] = useState<"document" | "video" | "link" | "readme" | "html" | "text">("document");
   const [lmsSubjectId, setLmsSubjectId] = useState("");
   const [lmsProgramSemesterStr, setLmsProgramSemesterStr] = useState("");
+  const [lmsSchoolClass, setLmsSchoolClass] = useState("");
   const [lmsFileUrl, setLmsFileUrl] = useState("");
   const [lmsUploadType, setLmsUploadType] = useState<"file" | "url">("file");
   const [lmsReadmeContent, setLmsReadmeContent] = useState("");
   const [lmsHtmlContent, setLmsHtmlContent] = useState("");
+  const [lmsTextContent, setLmsTextContent] = useState("");
   const [selectedLmsFile, setSelectedLmsFile] = useState<File | null>(null);
   const [lmsSubmitLoading, setLmsSubmitLoading] = useState(false);
 
@@ -476,13 +483,33 @@ export const TeacherDashboard = () => {
       setToast("Title is required");
       return;
     }
-    if (!lmsSubjectId || !lmsProgramSemesterStr) {
-      setToast("Subject and Program/Semester assignment are required");
+    if (!lmsSubjectId) {
+      setToast("Subject is required");
+      return;
+    }
+    if (isSchool && !lmsSchoolClass) {
+      setToast("Target class is required");
+      return;
+    }
+    if (!isSchool && !lmsProgramSemesterStr) {
+      setToast("Program and semester assignment are required");
       return;
     }
 
-    const [progId, semStr] = lmsProgramSemesterStr.split("|");
-    const semNum = parseInt(semStr, 10);
+    let progId: string | undefined;
+    let semNum: number | undefined;
+    if (!isSchool && lmsProgramSemesterStr) {
+      const [pId, semStr] = lmsProgramSemesterStr.split("|");
+      progId = pId;
+      semNum = parseInt(semStr, 10);
+    }
+
+    if (isSchool && lmsResourceType === "document" && lmsUploadType === "file" && selectedLmsFile) {
+      if (!selectedLmsFile.name.toLowerCase().endsWith(".pdf") && selectedLmsFile.type !== "application/pdf") {
+        setToast("School teachers can only upload PDF files (.pdf)");
+        return;
+      }
+    }
 
     setLmsSubmitLoading(true);
     try {
@@ -492,9 +519,11 @@ export const TeacherDashboard = () => {
           description: lmsDescription,
           program_id: progId,
           semester: semNum,
+          class: isSchool ? lmsSchoolClass : undefined,
           subject_id: lmsSubjectId,
           readme_content: lmsResourceType === "readme" ? lmsReadmeContent : undefined,
-          html_content: lmsResourceType === "html" ? lmsHtmlContent : undefined
+          html_content: lmsResourceType === "html" ? lmsHtmlContent : undefined,
+          text_content: lmsResourceType === "text" ? lmsTextContent : undefined
         });
         setToast("Study Material updated successfully");
       } else {
@@ -510,17 +539,36 @@ export const TeacherDashboard = () => {
             resource_type: "readme",
             program_id: progId,
             semester: semNum,
+            class: isSchool ? lmsSchoolClass : undefined,
             subject_id: lmsSubjectId,
             file_url: "",
             readme_content: lmsReadmeContent
+          });
+        } else if (lmsResourceType === "text") {
+          if (!lmsTextContent.trim()) {
+            setToast("Please write text content before publishing");
+            setLmsSubmitLoading(false);
+            return;
+          }
+          await createMaterialUrlApi({
+            title: lmsTitle,
+            description: lmsDescription,
+            resource_type: "text",
+            program_id: progId,
+            semester: semNum,
+            class: isSchool ? lmsSchoolClass : undefined,
+            subject_id: lmsSubjectId,
+            file_url: "",
+            text_content: lmsTextContent
           });
         } else if (lmsUploadType === "file" && selectedLmsFile) {
           const formData = new FormData();
           formData.append("title", lmsTitle);
           formData.append("description", lmsDescription);
           formData.append("resource_type", lmsResourceType);
-          formData.append("program_id", progId);
-          formData.append("semester", String(semNum));
+          if (progId) formData.append("program_id", progId);
+          if (semNum !== undefined && !isNaN(semNum)) formData.append("semester", String(semNum));
+          if (isSchool && lmsSchoolClass) formData.append("class", lmsSchoolClass);
           formData.append("subject_id", lmsSubjectId);
           formData.append("file", selectedLmsFile);
 
@@ -537,10 +585,12 @@ export const TeacherDashboard = () => {
             resource_type: lmsResourceType,
             program_id: progId,
             semester: semNum,
+            class: isSchool ? lmsSchoolClass : undefined,
             subject_id: lmsSubjectId,
             file_url: lmsResourceType === "html" ? "" : lmsFileUrl,
             readme_content: lmsReadmeContent,
-            html_content: lmsHtmlContent
+            html_content: lmsHtmlContent,
+            text_content: lmsTextContent
           });
         }
         setToast("Study Material uploaded successfully");
@@ -551,8 +601,10 @@ export const TeacherDashboard = () => {
       setLmsFileUrl("");
       setLmsReadmeContent("");
       setLmsHtmlContent("");
+      setLmsTextContent("");
       setSelectedLmsFile(null);
       setLmsProgramSemesterStr("");
+      setLmsSchoolClass("");
       setLmsSubjectId("");
       setEditingMaterialId(null);
       const fileInput = document.getElementById("lms-file-input") as HTMLInputElement;
@@ -560,6 +612,7 @@ export const TeacherDashboard = () => {
 
       setIsEditingReadme(false);
       setIsEditingHtml(false);
+      setIsEditingText(false);
       setLmsSubTab("library");
       refetchLmsMaterials();
     } catch (err: any) {
@@ -572,15 +625,25 @@ export const TeacherDashboard = () => {
 
   const handleContinueToEditor = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!lmsSubjectId || !lmsProgramSemesterStr) {
-      setToast("Subject and Program/Semester assignment are required");
+    if (!lmsSubjectId) {
+      setToast("Subject is required");
+      return;
+    }
+    if (isSchool && !lmsSchoolClass) {
+      setToast("Target class is required");
+      return;
+    }
+    if (!isSchool && !lmsProgramSemesterStr) {
+      setToast("Program and semester assignment are required");
       return;
     }
     if (!lmsTitle.trim()) {
       setToast("Material Title is required");
       return;
     }
-    if (lmsResourceType === "html") {
+    if (lmsResourceType === "text") {
+      setIsEditingText(true);
+    } else if (lmsResourceType === "html") {
       setIsEditingHtml(true);
     } else {
       setIsEditingReadme(true);
@@ -606,14 +669,17 @@ export const TeacherDashboard = () => {
   const handleLmsCancel = () => {
     setIsEditingReadme(false);
     setIsEditingHtml(false);
+    setIsEditingText(false);
     setEditingMaterialId(null);
     setLmsTitle("");
     setLmsDescription("");
     setLmsFileUrl("");
     setLmsReadmeContent("");
     setLmsHtmlContent("");
+    setLmsTextContent("");
     setSelectedLmsFile(null);
     setLmsProgramSemesterStr("");
+    setLmsSchoolClass("");
     setLmsSubjectId("");
   };
 
@@ -623,7 +689,12 @@ export const TeacherDashboard = () => {
     setLmsDescription(material.description || "");
     setLmsResourceType(material.resource_type);
     setLmsSubjectId(material.subject_id);
-    setLmsProgramSemesterStr(`${material.program_id}|${material.semester}`);
+    if (material.program_id) {
+      setLmsProgramSemesterStr(`${material.program_id}|${material.semester}`);
+    }
+    if (material.class) {
+      setLmsSchoolClass(material.class);
+    }
     
     if (material.resource_type === "readme") {
       setLmsReadmeContent(material.readme_content || "");
@@ -631,6 +702,9 @@ export const TeacherDashboard = () => {
     } else if (material.resource_type === "html") {
       setLmsHtmlContent(material.html_content || "");
       setIsEditingHtml(true);
+    } else if (material.resource_type === "text") {
+      setLmsTextContent(material.text_content || "");
+      setIsEditingText(true);
     }
   };
 
@@ -3701,6 +3775,17 @@ export const TeacherDashboard = () => {
         )}
 
         {activeTab === "lms" && (
+          !isLmsAllowed ? (
+            <div className="flex min-h-[420px] flex-col items-center justify-center p-8 text-center rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-100 dark:bg-slate-800 text-slate-500">
+                <FolderOpen className="h-8 w-8" />
+              </div>
+              <h3 className="text-base font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">LMS Feature Not Enabled</h3>
+              <p className="mt-2 text-xs font-semibold text-slate-400 max-w-md">
+                The Learning Management System (LMS) feature is not enabled for your organization. Please contact your administrator.
+              </p>
+            </div>
+          ) : (
           <div className="space-y-8 animate-fade-in">
             <section className="relative overflow-hidden rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-slate-950 p-6 md:p-8 shadow-xl shadow-slate-200/70 dark:shadow-black/20">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(99,102,241,.35),transparent_32%),radial-gradient(circle_at_85%_8%,rgba(16,185,129,.24),transparent_30%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(30,41,59,.94))]" />
@@ -3714,7 +3799,9 @@ export const TeacherDashboard = () => {
                     Publish study resources into student learning lanes.
                   </h2>
                   <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-slate-300">
-                    Upload documents or attach links, target the right program and semester, and keep your materials organized for students.
+                    {isSchool
+                      ? "Upload PDF documents or write text notes for your class, and keep your materials organized for students."
+                      : "Upload documents or attach links, target the right program and semester, and keep your materials organized for students."}
                   </p>
                 </div>
                 {(() => {
@@ -3731,7 +3818,7 @@ export const TeacherDashboard = () => {
                       </div>
                       <div className="rounded-2xl bg-white/10 p-3">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Modes</p>
-                        <p className="mt-2 text-2xl font-black text-white">2</p>
+                        <p className="mt-2 text-2xl font-black text-white">{isSchool ? "1" : "2"}</p>
                       </div>
                     </div>
                   );
@@ -3787,8 +3874,17 @@ export const TeacherDashboard = () => {
                         <select
                           value={lmsSubjectId}
                           onChange={(e) => {
-                            setLmsSubjectId(e.target.value);
+                            const newSubId = e.target.value;
+                            setLmsSubjectId(newSubId);
                             setLmsProgramSemesterStr("");
+                            if (isSchool) {
+                              const activeSubj = subjects.find(s => s.id === newSubId);
+                              if (activeSubj?.classes && activeSubj.classes.length > 0) {
+                                if (!activeSubj.classes.includes(lmsSchoolClass)) {
+                                  setLmsSchoolClass(activeSubj.classes[0]);
+                                }
+                              }
+                            }
                           }}
                           className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                           required
@@ -3800,26 +3896,53 @@ export const TeacherDashboard = () => {
                         </select>
                       </label>
 
-                      <label className="block">
-                        <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Program & semester</span>
-                        <select
-                          value={lmsProgramSemesterStr}
-                          onChange={(e) => setLmsProgramSemesterStr(e.target.value)}
-                          disabled={!lmsSubjectId}
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                          required
-                        >
-                          <option value="">Choose target audience...</option>
-                          {lmsProgramSemesters.map((ps: any, index: number) => {
-                            const progCode = programs.find((p) => p.id === ps.program_id)?.code || ps.program_id;
-                            return (
-                              <option key={index} value={`${ps.program_id}|${ps.semester}`}>
-                                {progCode} - Semester {ps.semester}
-                              </option>
-                            );
-                          })}
-                        </select>
-                      </label>
+                      {isSchool ? (
+                        <label className="block">
+                          <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Target Class</span>
+                          <select
+                            value={lmsSchoolClass}
+                            onChange={(e) => setLmsSchoolClass(e.target.value)}
+                            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                            required
+                          >
+                            <option value="">Choose target class...</option>
+                            {(() => {
+                              const activeSubj = subjects.find(s => s.id === lmsSubjectId);
+                              const classOptions = (activeSubj && activeSubj.classes && activeSubj.classes.length > 0)
+                                ? activeSubj.classes
+                                : (Array.isArray(registeredClasses) && registeredClasses.length > 0
+                                    ? registeredClasses.map(c => c.name)
+                                    : ["Class 9", "Class 10", "Class 11", "Class 12"]);
+                              return classOptions.map((clsName: string) => (
+                                <option key={clsName} value={clsName}>
+                                  {clsName}
+                                </option>
+                              ));
+                            })()}
+                          </select>
+                        </label>
+                      ) : (
+                        <label className="block">
+                          <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Program & semester</span>
+                          <select
+                            value={lmsProgramSemesterStr}
+                            onChange={(e) => setLmsProgramSemesterStr(e.target.value)}
+                            disabled={!lmsSubjectId}
+                            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                            required
+                          >
+                            <option value="">Choose target audience...</option>
+                            {lmsProgramSemesters.map((ps: any, index: number) => {
+                              const progCode = programs.find((p) => p.id === ps.program_id)?.code || ps.program_id;
+                              return (
+                                <option key={index} value={`${ps.program_id}|${ps.semester}`}>
+                                  {progCode} - Semester {ps.semester}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </label>
+                      )}
 
                       <label className="block">
                         <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Title / Topic</span>
@@ -3844,36 +3967,69 @@ export const TeacherDashboard = () => {
 
                       <label className="block">
                         <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Resource type</span>
-                        <select
-                          value={lmsResourceType}
-                          onChange={(e) => {
-                            const nextType = e.target.value as "document" | "video" | "link" | "readme" | "html";
-                            setLmsResourceType(nextType);
-                            if (nextType === "video" || nextType === "link") {
-                              setLmsUploadType("url");
-                            } else if (nextType === "document") {
-                              setLmsUploadType("file");
-                            }
-                          }}
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                          required
-                        >
-                          <option value="document">PDF Document</option>
-                          <option value="readme">README.md file</option>
-                          <option value="html">HTML Article</option>
-                          <option value="video">Video URL (YouTube/Vimeo)</option>
-                          <option value="link">Other URL Link</option>
-                        </select>
+                        {isSchool ? (
+                          <select
+                            value={lmsResourceType === "readme" || lmsResourceType === "html" || lmsResourceType === "video" || lmsResourceType === "link" ? "document" : lmsResourceType}
+                            onChange={(e) => {
+                              const nextType = e.target.value as "document" | "text";
+                              setLmsResourceType(nextType);
+                              if (nextType === "document") {
+                                setLmsUploadType("file");
+                              }
+                            }}
+                            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                            required
+                          >
+                            <option value="document">PDF Document (.pdf)</option>
+                            <option value="text">Text Article / Notes</option>
+                          </select>
+                        ) : (
+                          <select
+                            value={lmsResourceType === "text" ? "document" : lmsResourceType}
+                            onChange={(e) => {
+                              const nextType = e.target.value as "document" | "video" | "link" | "readme" | "html";
+                              setLmsResourceType(nextType);
+                              if (nextType === "video" || nextType === "link") {
+                                setLmsUploadType("url");
+                              } else if (nextType === "document") {
+                                setLmsUploadType("file");
+                              }
+                            }}
+                            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                            required
+                          >
+                            <option value="document">PDF Document</option>
+                            <option value="readme">README.md file</option>
+                            <option value="html">HTML Article</option>
+                            <option value="video">Video URL (YouTube/Vimeo)</option>
+                            <option value="link">Other URL Link</option>
+                          </select>
+                        )}
                       </label>
                     </div>
 
-                    {lmsResourceType === "readme" || lmsResourceType === "html" ? null : (lmsResourceType === "document" && lmsUploadType === "file") ? (
+                    {lmsResourceType === "readme" || lmsResourceType === "html" || lmsResourceType === "text" ? null : (lmsResourceType === "document" && lmsUploadType === "file") ? (
                       <div className="mt-4">
-                        <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Upload PDF / Document</span>
+                        <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                          {isSchool ? "Upload PDF Document (.pdf only)" : "Upload PDF / Document"}
+                        </span>
                         <div className="flex h-32 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-400 transition bg-slate-50 dark:border-slate-800 dark:bg-slate-950 relative cursor-pointer">
                           <input
+                            id="lms-file-input"
                             type="file"
-                            onChange={(e) => setSelectedLmsFile(e.target.files?.[0] || null)}
+                            accept={isSchool ? ".pdf,application/pdf" : undefined}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              if (file && isSchool) {
+                                if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+                                  setToast("School teachers can only upload PDF files (.pdf)");
+                                  e.target.value = "";
+                                  setSelectedLmsFile(null);
+                                  return;
+                                }
+                              }
+                              setSelectedLmsFile(file);
+                            }}
                             required={lmsUploadType === "file"}
                             className="absolute inset-0 opacity-0 cursor-pointer"
                           />
@@ -3881,15 +4037,19 @@ export const TeacherDashboard = () => {
                           <p className="text-xs font-black text-slate-600 dark:text-slate-300">
                             {selectedLmsFile ? selectedLmsFile.name : "Select or drag file here"}
                           </p>
-                          <p className="mt-1 text-[10px] font-bold text-slate-400">PDF, Word, or presentation files up to 10MB</p>
+                          <p className="mt-1 text-[10px] font-bold text-slate-400">
+                            {isSchool ? "PDF files (.pdf) only up to 10MB" : "PDF, Word, or presentation files up to 10MB"}
+                          </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setLmsUploadType("url")}
-                          className="mt-2 text-xs font-black text-indigo-600 hover:underline dark:text-indigo-400 cursor-pointer"
-                        >
-                          Or enter an external URL link instead
-                        </button>
+                        {!isSchool && (
+                          <button
+                            type="button"
+                            onClick={() => setLmsUploadType("url")}
+                            className="mt-2 text-xs font-black text-indigo-600 hover:underline dark:text-indigo-400 cursor-pointer"
+                          >
+                            Or enter an external URL link instead
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="mt-4">
@@ -3917,7 +4077,15 @@ export const TeacherDashboard = () => {
                       </div>
                     )}
 
-                    {lmsResourceType === "readme" ? (
+                    {lmsResourceType === "text" ? (
+                      <Button
+                        type="button"
+                        className="mt-6 h-12 w-full rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-sm font-black text-white shadow-lg shadow-indigo-500/20 flex items-center justify-center cursor-pointer"
+                        onClick={handleContinueToEditor}
+                      >
+                        Continue to Text Editor
+                      </Button>
+                    ) : lmsResourceType === "readme" ? (
                       <Button
                         type="button"
                         className="mt-6 h-12 w-full rounded-2xl bg-amber-500 hover:bg-amber-600 text-sm font-black text-black shadow-lg shadow-amber-500/20 flex items-center justify-center cursor-pointer"
@@ -4013,12 +4181,14 @@ export const TeacherDashboard = () => {
                             const isVideo = mat.resource_type === "video";
                             const isReadme = mat.resource_type === "readme";
                             const isHtml = mat.resource_type === "html";
+                            const isText = mat.resource_type === "text";
                             const isPdf = isDoc && mat.file_url?.toLowerCase().split('?')[0].endsWith('.pdf');
                             
                             let ResourceIcon = FileText;
                             if (isVideo) ResourceIcon = Youtube;
                             else if (isReadme) ResourceIcon = FileText;
                             else if (isHtml) ResourceIcon = Code;
+                            else if (isText) ResourceIcon = FileText;
                             else if (mat.resource_type === "link") ResourceIcon = Link2;
 
                             const subObj = subjects.find(s => s.id === mat.subject_id);
@@ -4035,6 +4205,8 @@ export const TeacherDashboard = () => {
                                           ? "bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
                                         : isHtml
                                           ? "bg-teal-100 text-teal-600 dark:bg-teal-950/40 dark:text-teal-300"
+                                        : isText
+                                          ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
                                         : isDoc
                                           ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
                                           : "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"
@@ -4046,8 +4218,8 @@ export const TeacherDashboard = () => {
                                         <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate max-w-[280px]">
                                           {mat.title}
                                         </h4>
-                                        <Badge tone="slate" className="rounded-full text-[8px] font-black uppercase tracking-wider scale-90 origin-left">
-                                          {mat.resource_type}
+                                        <Badge tone={isText ? "blue" : isHtml ? "green" : isReadme ? "yellow" : "slate"} className="rounded-full text-[8px] font-black uppercase tracking-wider scale-90 origin-left">
+                                          {mat.resource_type === "text" ? "text notes" : mat.resource_type}
                                         </Badge>
                                       </div>
                                       {mat.description && (
@@ -4063,7 +4235,7 @@ export const TeacherDashboard = () => {
                                 </td>
                                 <td className="py-4 text-xs font-bold text-slate-500">
                                   <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300">
-                                    {progName} · Sem {mat.semester}
+                                    {mat.class ? mat.class : (progName ? `${progName} · Sem ${mat.semester}` : "All")}
                                   </span>
                                 </td>
                                 <td className="py-4 text-right pr-3">
@@ -4078,6 +4250,12 @@ export const TeacherDashboard = () => {
                                       <Link to={`/lms/subjects/${encodeURIComponent(mat.subject_id)}/html/${encodeURIComponent(mat.id)}`}>
                                         <Button className="h-8 rounded-xl text-[10px] font-bold px-3 flex items-center gap-1.5 shadow-sm bg-teal-500 hover:bg-teal-600 text-black">
                                           <Code className="h-3 w-3" /> Preview
+                                        </Button>
+                                      </Link>
+                                    ) : isText ? (
+                                      <Link to={`/lms/subjects/${encodeURIComponent(mat.subject_id)}/text/${encodeURIComponent(mat.id)}`}>
+                                        <Button className="h-8 rounded-xl text-[10px] font-bold px-3 flex items-center gap-1.5 shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white">
+                                          <FileText className="h-3 w-3" /> Preview
                                         </Button>
                                       </Link>
                                     ) : isPdf ? (
@@ -4102,7 +4280,7 @@ export const TeacherDashboard = () => {
                                       </a>
                                     )}
 
-                                    {(isReadme || isHtml) && (
+                                    {(isReadme || isHtml || isText) && (
                                       <button
                                         type="button"
                                         onClick={() => handleLmsEdit(mat)}
@@ -4134,6 +4312,7 @@ export const TeacherDashboard = () => {
               </section>
             )}
           </div>
+          )
         )}
 
         {/* Fullscreen Markdown Editor overlay */}
@@ -4259,6 +4438,75 @@ export const TeacherDashboard = () => {
                 </div>
                 <div className="flex-1 p-8 overflow-y-auto max-w-none bg-white rounded-b-2xl">
                   <MarkdownPreview content={lmsHtmlContent || "<p style='color: #a1a1aa;'>Start typing HTML code to see preview...</p>"} variant="light" isHtml={true} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fullscreen Text Notes Editor overlay */}
+        {isEditingText && (
+          <div className="fixed inset-0 z-[110] bg-[#0c1619] flex flex-col p-6 animate-fade-in text-white">
+            {/* Header */}
+            <div className="flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <span className="mb-2 inline-flex items-center gap-2 rounded-full bg-indigo-500/10 border border-indigo-500/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-400">
+                  <FileText className="h-3.5 w-3.5" />
+                  Text Article / Notes Editor
+                </span>
+                <h2 className="text-xl font-black text-white">{lmsTitle}</h2>
+                <p className="mt-0.5 text-xs text-zinc-400">{lmsDescription || "No description provided"}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="rounded-2xl border border-white/10 text-white hover:bg-white/10 h-10 px-5"
+                  onClick={handleLmsCancel}
+                >
+                  Back to Details
+                </Button>
+                <Button
+                  type="button"
+                  className="rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black h-10 px-6 flex items-center gap-2 cursor-pointer shadow-lg shadow-indigo-500/20"
+                  onClick={handleLmsSubmitFromEditor}
+                  disabled={lmsSubmitLoading}
+                >
+                  {lmsSubmitLoading && <Spinner className="h-4 w-4 mr-2" />}
+                  Publish Material
+                </Button>
+              </div>
+            </div>
+
+            {/* Editor Body */}
+            <div className="flex-1 grid grid-cols-2 gap-6 mt-6 min-h-0">
+              {/* Left: Input Textarea */}
+              <div className="flex flex-col h-full bg-[#080d0f] border border-white/10 rounded-2xl overflow-hidden">
+                <div className="border-b border-white/5 bg-[#101b1e] px-4 py-2.5 flex items-center justify-between text-xs font-bold text-indigo-300">
+                  <span>NORMAL TEXT NOTES</span>
+                  <span>{lmsTextContent.length} characters</span>
+                </div>
+                <textarea
+                  value={lmsTextContent}
+                  onChange={(e) => setLmsTextContent(e.target.value)}
+                  placeholder="Write your study notes and explanations here...&#10;&#10;Separate paragraphs with an empty line.&#10;&#10;Your text will be formatted into beautifully styled paragraphs matching college articles with comfort reading modes for students."
+                  className="flex-1 w-full bg-transparent p-6 font-sans text-sm leading-relaxed text-zinc-200 outline-none resize-none overflow-y-auto"
+                  autoFocus
+                />
+              </div>
+
+              {/* Right: Live Preview */}
+              <div className="flex flex-col h-full bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-inner">
+                <div className="border-b border-zinc-200 bg-zinc-100 px-4 py-2.5 flex items-center justify-between text-xs font-bold text-zinc-700">
+                  <span>LIVE TEXT ARTICLE PREVIEW</span>
+                  <span className="text-[10px] font-black uppercase bg-indigo-500/10 text-indigo-700 px-2 py-0.5 rounded">Article Mode</span>
+                </div>
+                <div className="flex-1 p-8 overflow-y-auto max-w-none bg-white rounded-b-2xl">
+                  <MarkdownPreview
+                    content={formatTextToHtml(lmsTextContent) || "<p style='color: #a1a1aa;'>Start typing text notes to see live preview...</p>"}
+                    variant="light"
+                    isHtml={true}
+                  />
                 </div>
               </div>
             </div>

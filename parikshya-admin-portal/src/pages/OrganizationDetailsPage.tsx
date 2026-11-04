@@ -55,6 +55,7 @@ interface Organization {
   status: "Active" | "Inactive";
   createdAt: string;
   orgType?: "School" | "College";
+  lmsEnabled?: boolean;
   securityFeatures: SecurityFeatures;
   brandingBannerText?: string;
   brandingColor?: string;
@@ -140,6 +141,8 @@ export const OrganizationDetailsPage: React.FC = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [editAdminName, setEditAdminName] = useState("");
   const [editAdminEmail, setEditAdminEmail] = useState("");
+  const [editOrgType, setEditOrgType] = useState<"School" | "College">("School");
+  const [editLmsEnabled, setEditLmsEnabled] = useState(false);
   const [editBrandingBannerText, setEditBrandingBannerText] = useState("");
   const [editBrandingColor, setEditBrandingColor] = useState("");
 
@@ -204,6 +207,8 @@ export const OrganizationDetailsPage: React.FC = () => {
         }
         setEditAddress(oData.address || "");
         setEditLogo(oData.logo || "");
+        setEditOrgType(oData.orgType || "School");
+        setEditLmsEnabled(Boolean(oData.lmsEnabled ?? (oData.orgType === "College")));
         setEditAdminName(oData.adminName || "");
         setEditAdminEmail(oData.adminEmail || "");
         setEditBrandingBannerText(oData.brandingBannerText || "Welcome to Parikshya Online Testing Portal");
@@ -274,6 +279,8 @@ export const OrganizationDetailsPage: React.FC = () => {
         logo: editLogo,
         adminName: editAdminName,
         adminEmail: editAdminEmail,
+        orgType: editOrgType,
+        lmsEnabled: editLmsEnabled,
         brandingBannerText: editBrandingBannerText,
         brandingColor: editBrandingColor,
       };
@@ -290,6 +297,21 @@ export const OrganizationDetailsPage: React.FC = () => {
       setEditError(err.response?.data?.message || "Server error occurred during updates.");
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const toggleLmsFeature = async () => {
+    if (!org) return;
+    const nextLms = !Boolean(org.lmsEnabled);
+    try {
+      const res = await api.put(`/organizations/${org.id}`, { lmsEnabled: nextLms });
+      if (res.data.success) {
+        setOrg({ ...org, lmsEnabled: nextLms });
+        setEditLmsEnabled(nextLms);
+      }
+    } catch (err) {
+      console.error("Failed to toggle LMS:", err);
+      alert("Failed to update LMS setting.");
     }
   };
 
@@ -477,6 +499,27 @@ export const OrganizationDetailsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3 shrink-0 flex-wrap z-10">
+          <span className={`px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${
+            org.orgType === "College"
+              ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+              : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+          }`}>
+            {org.orgType || "School"}
+          </span>
+
+          <button
+            type="button"
+            onClick={toggleLmsFeature}
+            className={`px-3 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border cursor-pointer transition ${
+              org.lmsEnabled
+                ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/25 hover:bg-teal-500/20"
+                : "bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20 hover:bg-slate-500/20"
+            }`}
+            title="Click to toggle LMS feature"
+          >
+            LMS: {org.lmsEnabled ? "Enabled" : "Disabled"}
+          </button>
+
           <span
             className={`px-3 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${org.status === "Active"
               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
@@ -843,6 +886,43 @@ export const OrganizationDetailsPage: React.FC = () => {
                   onChange={(e) => setEditName(e.target.value)}
                   className="w-full bg-transparent text-slate-900 dark:text-white placeholder-slate-550 outline-none font-title text-sm font-bold mt-1"
                 />
+              </div>
+
+              {/* Organization Type & LMS Feature Module */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="rounded-2xl bg-slate-50 dark:bg-[#070A10] border border-slate-200/80 dark:border-[#161D2A] px-4.5 py-2.5">
+                  <label className="block font-title text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                    Organization Type
+                  </label>
+                  <select
+                    value={editOrgType}
+                    onChange={(e) => setEditOrgType(e.target.value as "School" | "College")}
+                    className="w-full bg-transparent text-slate-900 dark:text-white outline-none font-title text-sm font-bold mt-1 cursor-pointer dark:bg-[#070A10]"
+                  >
+                    <option value="School" className="dark:bg-[#070A10]">School</option>
+                    <option value="College" className="dark:bg-[#070A10]">College</option>
+                  </select>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 dark:bg-[#070A10] border border-slate-200/80 dark:border-[#161D2A] px-4.5 py-2.5 flex items-center justify-between">
+                  <div>
+                    <label className="block font-title text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                      LMS Feature Module
+                    </label>
+                    <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 block mt-0.5">
+                      {editLmsEnabled ? "Enabled for tenant" : "Disabled"}
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer ml-4">
+                    <input
+                      type="checkbox"
+                      checked={editLmsEnabled}
+                      onChange={(e) => setEditLmsEnabled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
               </div>
 
               {/* Email & Phone Two-Column Row */}

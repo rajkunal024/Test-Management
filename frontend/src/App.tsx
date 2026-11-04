@@ -41,6 +41,7 @@ export const App = () => (
       <Route path="/lms/subjects/:subjectId/readme/:materialId" element={<StudentLmsReadmePreviewPage />} />
       <Route path="/lms/subjects/:subjectId/pdf/:materialId" element={<StudentLmsPdfPreviewPage />} />
       <Route path="/lms/subjects/:subjectId/html/:materialId" element={<StudentLmsHtmlPreviewPage />} />
+      <Route path="/lms/subjects/:subjectId/text/:materialId" element={<StudentLmsHtmlPreviewPage />} />
       <Route path="/admin/students" element={<AdminStudentsPage />} />
       <Route path="/admin/students/:studentId" element={<AdminStudentProfilePage />} />
       <Route path="/admin/students/:studentId/performance" element={<AdminStudentPerformancePage />} />

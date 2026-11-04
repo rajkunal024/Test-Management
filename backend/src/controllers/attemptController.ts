@@ -110,6 +110,17 @@ export const createAttempt = async (request: IncomingMessage, response: ServerRe
     // Enforce join date visibility check
     const userIdStr = user_id || "student";
     const student = await StudentModel.findOne({ userId: userIdStr });
+    if (student && test.class) {
+      const studentClass = (student.class || "").toLowerCase().trim();
+      const testClass = (test.class || "").toLowerCase().trim();
+      if (testClass && testClass !== "all" && testClass !== "all classes" && testClass !== studentClass) {
+        const expectedUserClass = `${student.program_id || ""}-sem-${student.semester || ""}`.toLowerCase().trim();
+        if (testClass !== expectedUserClass) {
+          json(response, 403, { success: false, message: "Forbidden: This test is not assigned to your class." });
+          return;
+        }
+      }
+    }
     if (student && test.start_time) {
       const rawStudent = student.toObject({ defaults: false } as any) as any;
       const studentJoined = rawStudent.joined_at

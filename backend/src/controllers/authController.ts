@@ -26,6 +26,7 @@ export const getOrganizationByDomain = async (request: IncomingMessage, response
         brandingBannerText: org.brandingBannerText,
         brandingColor: org.brandingColor,
         orgType: org.orgType,
+        lmsEnabled: org.get("lmsEnabled") !== undefined ? Boolean(org.get("lmsEnabled")) : (org.orgType === "College"),
         status: org.status
       }
     });
@@ -154,7 +155,9 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
                 profilePicture: admin.profilePicture,
                 organization_id: admin.organization_id,
                 organizationName: org?.name,
-                organizationLogo: org?.logo
+                organizationLogo: org?.logo,
+                orgType: org?.get("orgType") || "School",
+                lmsEnabled: org?.get("lmsEnabled") !== undefined ? Boolean(org?.get("lmsEnabled")) : (org?.get("orgType") === "College")
               }
             }
           },
@@ -211,7 +214,9 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
                 profilePicture: teacher.profilePicture,
                 organization_id: teacher.organization_id,
                 organizationName: org?.name,
-                organizationLogo: org?.logo
+                organizationLogo: org?.logo,
+                orgType: org?.get("orgType") || "School",
+                lmsEnabled: org?.get("lmsEnabled") !== undefined ? Boolean(org?.get("lmsEnabled")) : (org?.get("orgType") === "College")
               }
             }
           },
@@ -269,7 +274,9 @@ export const login = async (request: IncomingMessage, response: ServerResponse) 
                 joined_at: (student.toObject({ defaults: false } as any) as any).joined_at || student._id.getTimestamp(),
                 organization_id: student.organization_id,
                 organizationName: org?.name,
-                organizationLogo: org?.logo
+                organizationLogo: org?.logo,
+                orgType: org?.get("orgType") || "School",
+                lmsEnabled: org?.get("lmsEnabled") !== undefined ? Boolean(org?.get("lmsEnabled")) : (org?.get("orgType") === "College")
               }
             }
           },
@@ -711,6 +718,8 @@ export const getMe = async (request: IncomingMessage, response: ServerResponse) 
       return;
     }
 
+    const org = await OrganizationModel.findOne({ id: userDoc.organization_id });
+
     json(response, 200, {
       success: true,
       data: {
@@ -723,15 +732,19 @@ export const getMe = async (request: IncomingMessage, response: ServerResponse) 
         dob: userDoc.dob,
         joinedAt: userDoc.createdAt || userDoc.joinedAt,
         organization_id: userDoc.organization_id,
-         profilePicture: userDoc.profilePicture || "",
-         session: userDoc.session,
-         class: userDoc.class,
-         program_id: userDoc.program_id,
-         semester: userDoc.semester,
-         subject: userDoc.subject,
-         subjects: userDoc.subjects || [],
-         program_ids: userDoc.program_ids || []
-       }
+        organizationName: org?.name,
+        organizationLogo: org?.logo,
+        orgType: org?.get("orgType") || "School",
+        lmsEnabled: org?.get("lmsEnabled") !== undefined ? Boolean(org?.get("lmsEnabled")) : (org?.get("orgType") === "College"),
+        profilePicture: userDoc.profilePicture || "",
+        session: userDoc.session,
+        class: userDoc.class,
+        program_id: userDoc.program_id,
+        semester: userDoc.semester,
+        subject: userDoc.subject,
+        subjects: userDoc.subjects || [],
+        program_ids: userDoc.program_ids || []
+      }
     });
   } catch (e) {
     console.error("Error in getMe controller:", e);
@@ -965,7 +978,9 @@ export const loginStudentWithCaptcha = async (request: IncomingMessage, response
             joined_at: (student.toObject({ defaults: false } as any) as any).joined_at || student._id.getTimestamp(),
             organization_id: student.organization_id,
             organizationName: org?.name,
-            organizationLogo: org?.logo
+            organizationLogo: org?.logo,
+            orgType: org?.get("orgType") || "School",
+            lmsEnabled: org?.get("lmsEnabled") !== undefined ? Boolean(org?.get("lmsEnabled")) : (org?.get("orgType") === "College")
           }
         }
       },
@@ -1051,7 +1066,9 @@ export const loginTeacherWithCaptcha = async (request: IncomingMessage, response
             profilePicture: teacher.profilePicture,
             organization_id: teacher.organization_id,
             organizationName: org?.name,
-            organizationLogo: org?.logo
+            organizationLogo: org?.logo,
+            orgType: org?.get("orgType") || "School",
+            lmsEnabled: org?.get("lmsEnabled") !== undefined ? Boolean(org?.get("lmsEnabled")) : (org?.get("orgType") === "College")
           }
         }
       },
@@ -1131,7 +1148,9 @@ export const loginAdminWithCaptcha = async (request: IncomingMessage, response: 
             profilePicture: admin.profilePicture,
             organization_id: admin.organization_id,
             organizationName: org?.name,
-            organizationLogo: org?.logo
+            organizationLogo: org?.logo,
+            orgType: org?.get("orgType") || "School",
+            lmsEnabled: org?.get("lmsEnabled") !== undefined ? Boolean(org?.get("lmsEnabled")) : (org?.get("orgType") === "College")
           }
         }
       },

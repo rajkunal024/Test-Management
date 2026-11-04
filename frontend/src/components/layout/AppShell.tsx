@@ -89,7 +89,10 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
     enabled: Boolean(user),
   });
 
-  const isSchool = orgData?.orgType !== "College";
+  const isSchool = (orgData?.orgType ?? user?.orgType) !== "College";
+  const isLmsAllowed = Boolean(
+    orgData?.lmsEnabled ?? user?.lmsEnabled ?? (orgData?.orgType === "College" || user?.orgType === "College")
+  );
 
   const { data: programs = [] } = useQuery({
     queryKey: ["programs"],
@@ -155,7 +158,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
         { label: "View Question", icon: BookOpenCheck, to: "/dashboard?tab=view" },
         { label: "Test Tracking", icon: ClipboardList, to: "/dashboard?tab=monitoring" },
       ];
-      if (orgData?.orgType === "College" || user?.program_id || (user?.program_ids && user.program_ids.length > 0)) {
+      if (isLmsAllowed) {
         items.push({ label: "LMS Portal", icon: FolderOpen, to: "/dashboard?tab=lms" });
       }
       return items;
@@ -165,7 +168,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
         { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
         { label: "Analytics", icon: BarChart3, to: "/analytics" },
       ];
-      if (orgData?.orgType === "College" || user?.program_id) {
+      if (isLmsAllowed) {
         items.push({ label: "LMS Portal", icon: FolderOpen, to: "/lms" });
       }
       return items;
@@ -181,7 +184,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
       ];
     }
     return sidebarItems;
-  }, [user?.role]);
+  }, [user?.role, isLmsAllowed]);
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -545,7 +548,9 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
       } else if (to.includes("tab=monitoring")) {
         isActive = currentPath.includes("tab=monitoring");
       } else if (to.includes("tab=lms")) {
-        isActive = currentPath.includes("tab=lms");
+        isActive = currentPath.includes("tab=lms") || (user?.role === "Teacher" && currentPath.startsWith("/lms"));
+      } else if (to === "/lms") {
+        isActive = currentPath.startsWith("/lms");
       } else {
         isActive = currentPath === to;
       }
@@ -1116,7 +1121,7 @@ export const AppShell = ({ children, compactRail = false }: { children: ReactNod
                     </div>
                   )}
 
-                  {user.semester && (
+                  {!isSchool && user.semester && (
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 shrink-0">
                         <Sparkles className="h-5 w-5" />

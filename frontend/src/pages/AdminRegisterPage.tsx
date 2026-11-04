@@ -258,12 +258,13 @@ export const AdminRegisterPage: React.FC = () => {
   // ----------------------------------------------------
   const [subjName, setSubjName] = useState("");
   const [subjPrograms, setSubjPrograms] = useState<string[]>([]);
+  const [subjClasses, setSubjClasses] = useState<string[]>([]);
   const [subjSems, setSubjSems] = useState<Record<string, number>>({});
   const [subjError, setSubjError] = useState("");
   const [subjSuccess, setSubjSuccess] = useState("");
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
 
-  const subjectMutation = useMutation<any, Error, string | { name: string; program_id?: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[] }>({
+  const subjectMutation = useMutation<any, Error, string | { name: string; program_id?: string; program_ids?: string[]; program_semesters?: { program_id: string; semester: number }[]; classes?: string[] }>({
     mutationFn: (payload) => {
       const data = typeof payload === "string" ? { name: payload } : payload;
       if (editingSubjectId) {
@@ -275,6 +276,7 @@ export const AdminRegisterPage: React.FC = () => {
       setSubjSuccess(editingSubjectId ? "Subject updated successfully!" : "Subject registered successfully!");
       setSubjName("");
       setSubjPrograms([]);
+      setSubjClasses([]);
       setSubjSems({});
       setEditingSubjectId(null);
       setSubjError("");
@@ -309,7 +311,8 @@ export const AdminRegisterPage: React.FC = () => {
     subjectMutation.mutate({
       name: subjName,
       program_ids: !isSchool ? subjPrograms : [],
-      program_semesters: !isSchool ? program_semesters : []
+      program_semesters: !isSchool ? program_semesters : [],
+      classes: isSchool ? subjClasses : []
     });
   };
 
@@ -840,8 +843,22 @@ export const AdminRegisterPage: React.FC = () => {
                                             : "—"
                                       }
                                     </span>
+                                  ) : isSchool && item.classes && item.classes.length > 0 ? (
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span className="text-[11px] font-bold text-slate-400 mr-0.5">Classes:</span>
+                                      {item.classes.map(cls => (
+                                        <span
+                                          key={cls}
+                                          className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60"
+                                        >
+                                          {cls}
+                                        </span>
+                                      ))}
+                                    </div>
                                   ) : (
-                                    <span className="text-xs text-slate-400 font-medium">Standard Assessment Curriculum</span>
+                                    <span className="text-xs text-slate-400 font-medium">
+                                      {isSchool ? "All Classes (General)" : "Standard Assessment Curriculum"}
+                                    </span>
                                   )}
                                 </td>
                                 <td className="text-right">
@@ -851,6 +868,7 @@ export const AdminRegisterPage: React.FC = () => {
                                       onClick={() => {
                                         setEditingSubjectId(item.id);
                                         setSubjName(item.name);
+                                        setSubjClasses(item.classes || []);
                                         const linkedProgs = item.program_semesters 
                                           ? item.program_semesters.map((ps: any) => ps.program_id) 
                                           : (item.program_ids || []);
@@ -1243,9 +1261,10 @@ export const AdminRegisterPage: React.FC = () => {
                             label="Assigned Subject"
                             options={[
                               { label: "Select Subject", value: "" },
-                              ...subjects
-                                .filter(s => !regProgram || s.program_ids?.includes(regProgram) || s.program_semesters?.some((ps: any) => ps.program_id === regProgram))
-                                .map(s => ({ label: s.name, value: s.name }))
+                              ...subjects.map(s => {
+                                const linked = s.classes && s.classes.length > 0 ? ` (${s.classes.join(", ")})` : "";
+                                return { label: `${s.name}${linked}`, value: s.name };
+                              })
                             ]}
                             value={regSubject}
                             onChange={(e) => setRegSubject(e.target.value)}
@@ -1406,6 +1425,7 @@ export const AdminRegisterPage: React.FC = () => {
                     setEditingSubjectId(null);
                     setSubjName("");
                     setSubjPrograms([]);
+                    setSubjClasses([]);
                     setSubjSems({});
                     setSubjError("");
                     setSubjSuccess("");
@@ -1431,6 +1451,63 @@ export const AdminRegisterPage: React.FC = () => {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <Input label="Subject Name" placeholder="E.g., Mathematics, physics" value={subjName} onChange={(e) => setSubjName(e.target.value)} required />
+                
+                {isSchool && (
+                  <div className="md:col-span-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-extrabold uppercase text-slate-700 dark:text-slate-300 tracking-wider">
+                        Link to Classes (Select Applicable Classes)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allClassNames = (Array.isArray(classes) && classes.length > 0 ? classes.map((c: any) => c.name) : ["Class 9", "Class 10", "Class 11", "Class 12"]);
+                          if (subjClasses.length === allClassNames.length) {
+                            setSubjClasses([]);
+                          } else {
+                            setSubjClasses(allClassNames);
+                          }
+                        }}
+                        className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                      >
+                        {subjClasses.length === ((Array.isArray(classes) && classes.length > 0) ? classes.length : 4) ? "Deselect All" : "Select All Classes"}
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 border border-slate-200 dark:border-slate-800/85 p-4 rounded-xl bg-white/50 dark:bg-slate-900/20">
+                      {(Array.isArray(classes) && classes.length > 0 ? classes.map((c: any) => c.name) : ["Class 9", "Class 10", "Class 11", "Class 12"]).map((clsName: string) => {
+                        const isChecked = subjClasses.includes(clsName);
+                        return (
+                          <label
+                            key={clsName}
+                            className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                              isChecked
+                                ? "bg-indigo-50/90 border-indigo-300 text-indigo-700 dark:bg-indigo-950/50 dark:border-indigo-700 dark:text-indigo-300 shadow-xs"
+                                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setSubjClasses(prev =>
+                                  prev.includes(clsName)
+                                    ? prev.filter(c => c !== clsName)
+                                    : [...prev, clsName]
+                                );
+                              }}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                            />
+                            <span>{clsName}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Students in selected classes will see this subject in their LMS portal and assessments.
+                    </p>
+                  </div>
+                )}
+
                 {!isSchool && (
                   <div className="md:col-span-2 space-y-2">
                     <label className="block text-xs font-extrabold uppercase text-slate-700 dark:text-slate-300 tracking-wider">

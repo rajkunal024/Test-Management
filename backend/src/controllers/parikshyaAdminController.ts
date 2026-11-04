@@ -186,6 +186,8 @@ export const listOrganizations = async (request: IncomingMessage, response: Serv
         },
         adminName: mainAdmin ? mainAdmin.name : "N/A",
         adminEmail: mainAdmin ? mainAdmin.email : "N/A",
+        orgType: org.get("orgType") || "School",
+        lmsEnabled: org.get("lmsEnabled") !== undefined ? Boolean(org.get("lmsEnabled")) : (org.get("orgType") === "College"),
         brandingBannerText: org.get("brandingBannerText"),
         brandingColor: org.get("brandingColor")
       });
@@ -211,7 +213,8 @@ export const createOrganization = async (request: IncomingMessage, response: Ser
       status,
       brandingBannerText,
       brandingColor,
-      orgType
+      orgType,
+      lmsEnabled
     } = body;
 
     if (!name || !code || !contactEmail) {
@@ -271,6 +274,7 @@ export const createOrganization = async (request: IncomingMessage, response: Ser
       brandingBannerText: brandingBannerText || "Welcome to Parikshya Online Testing Portal",
       brandingColor: brandingColor || "#4B52DC",
       orgType: orgType || "School",
+      lmsEnabled: lmsEnabled !== undefined ? Boolean(lmsEnabled) : (orgType === "College"),
       domain: (body.domain || code.toLowerCase().trim()).toLowerCase()
     });
 
@@ -330,6 +334,8 @@ export const getOrganizationDetails = async (request: IncomingMessage, response:
           securityFeatures: org.get("securityFeatures"),
           adminName: mainAdmin ? mainAdmin.name : "N/A",
           adminEmail: mainAdmin ? mainAdmin.email : "N/A",
+          orgType: org.get("orgType") || "School",
+          lmsEnabled: org.get("lmsEnabled") !== undefined ? Boolean(org.get("lmsEnabled")) : (org.get("orgType") === "College"),
           brandingBannerText: org.get("brandingBannerText"),
           brandingColor: org.get("brandingColor")
         },
@@ -642,6 +648,8 @@ export const updateOrganization = async (request: IncomingMessage, response: Ser
     if (body.domain !== undefined) org.set("domain", body.domain.toLowerCase().trim());
     if (brandingBannerText !== undefined) org.set("brandingBannerText", brandingBannerText);
     if (brandingColor !== undefined) org.set("brandingColor", brandingColor);
+    if (body.orgType !== undefined) org.set("orgType", body.orgType);
+    if (body.lmsEnabled !== undefined) org.set("lmsEnabled", Boolean(body.lmsEnabled));
 
     await org.save();
 
